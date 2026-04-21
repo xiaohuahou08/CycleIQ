@@ -48,7 +48,8 @@ Sell CSP（卖出现金担保看跌期权）
 ## D. Roll 决策树（滚仓 vs 到期）
 
 ```text
-临近到期（通常 <= 7 DTE）
+临近到期（示例阈值：<= 7 DTE；也可在 14/21 DTE 提前处理，并结合浮盈比例或 Delta 阈值决定）  
+Near expiration (example threshold: <= 7 DTE; you may also act earlier at 14/21 DTE and confirm with profit % or Delta thresholds)
   ↓
 是否接近/进入实值（ITM）？
   ├─ 否：可让其到期，按原计划循环
