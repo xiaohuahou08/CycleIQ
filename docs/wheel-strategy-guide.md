@@ -42,7 +42,8 @@ Wheel 策略是一种系统化的期权收入策略：先卖出**现金担保看
    IV 高通常意味着期权更贵，卖方可收取更高权利金。
 
 3. **30–45 距到期天数区间 (Days to Expiration, DTE)**  
-   在很多实盘中，这个区间兼顾了 Theta 衰减效率与临近到期的 **Gamma 风险 (Gamma)**。
+   在很多实盘中，这个区间常被视为平衡点：该区间已具备可观的 Theta 收益潜力，同时避免过于临近到期（如 <21 DTE）时 Gamma 风险陡增；因此 30–45 DTE 往往具备更稳健的风险收益特征。  
+   In many live trading setups, this range is treated as a practical balance point: it offers meaningful Theta capture while avoiding the sharp Gamma-risk increase that often appears very close to expiration (for example, <21 DTE); therefore, 30–45 DTE often provides a more stable risk/reward profile.
 
 4. **资金效率 (Capital Efficiency)**  
    通过滚仓与循环卖方策略，让同一笔资本持续产生现金流。
@@ -71,7 +72,7 @@ Wheel 策略是一种系统化的期权收入策略：先卖出**现金担保看
 - 合约规模 100 股，收到权利金：$200。  
 - 冻结现金：$9,500（95 × 100）。
 
-到期时 XYZ 跌到 $93（Put 实值）：  
+到期时 XYZ 跌到 $93（Put 实值，因 $93 < $95 行权价）：  
 - 被行权，以 $95 买入 100 股，花费 $9,500。  
 - 实际持仓成本（含权利金）：$95 - $2 = **$93/股**。
 
