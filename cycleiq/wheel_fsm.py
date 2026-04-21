@@ -239,7 +239,10 @@ class Cycle:
 
         if to_state == CycleState.STOCK_HELD:
             if stock_leg and stock_leg.action == StockAction.BUY:
-                self.current_position = Position(shares=100, strike=stock_leg.price, expiry=None)
+                normalized_shares = max(100, abs(stock_leg.quantity))
+                self.current_position = Position(
+                    shares=normalized_shares, strike=stock_leg.price, expiry=None
+                )
                 self._capital_at_risk = max(
                     self._capital_at_risk,
                     stock_leg.price * Decimal(str(abs(stock_leg.quantity))),
@@ -249,7 +252,7 @@ class Cycle:
         if to_state == CycleState.CC_OPEN:
             sell_leg = self._last_sell_leg(option_legs)
             self.current_position = Position(
-                shares=100,
+                shares=max(100, self.current_position.shares),
                 strike=sell_leg.strike if sell_leg else self.current_position.strike,
                 expiry=sell_leg.expiry if sell_leg else self.current_position.expiry,
             )
@@ -260,7 +263,11 @@ class Cycle:
             return
 
         if event == CycleEvent.CC_EXPIRE_OTM:
-            self.current_position = Position(shares=100, strike=None, expiry=None)
+            self.current_position = Position(
+                shares=max(100, self.current_position.shares),
+                strike=None,
+                expiry=None,
+            )
             return
 
     @staticmethod
@@ -309,4 +316,3 @@ class Cycle:
             raise ValueError("Roll requires one buy-to-close and one sell-to-open")
         if any(leg.type != option_type for leg in option_legs):
             raise ValueError(f"Roll requires {option_type.value} legs")
-
