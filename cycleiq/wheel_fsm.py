@@ -7,6 +7,8 @@ from enum import Enum
 from typing import Iterable
 from uuid import UUID, uuid4
 
+STANDARD_CONTRACT_SIZE = 100
+
 
 class CycleState(str, Enum):
     IDLE = "IDLE"
@@ -239,7 +241,7 @@ class Cycle:
 
         if to_state == CycleState.STOCK_HELD:
             if stock_leg and stock_leg.action == StockAction.BUY:
-                normalized_shares = max(100, abs(stock_leg.quantity))
+                normalized_shares = max(STANDARD_CONTRACT_SIZE, abs(stock_leg.quantity))
                 self.current_position = Position(
                     shares=normalized_shares, strike=stock_leg.price, expiry=None
                 )
@@ -252,7 +254,7 @@ class Cycle:
         if to_state == CycleState.CC_OPEN:
             sell_leg = self._last_sell_leg(option_legs)
             self.current_position = Position(
-                shares=max(100, self.current_position.shares),
+                shares=max(STANDARD_CONTRACT_SIZE, self.current_position.shares),
                 strike=sell_leg.strike if sell_leg else self.current_position.strike,
                 expiry=sell_leg.expiry if sell_leg else self.current_position.expiry,
             )
@@ -264,7 +266,7 @@ class Cycle:
 
         if event == CycleEvent.CC_EXPIRE_OTM:
             self.current_position = Position(
-                shares=max(100, self.current_position.shares),
+                shares=max(STANDARD_CONTRACT_SIZE, self.current_position.shares),
                 strike=None,
                 expiry=None,
             )
