@@ -17,7 +17,12 @@ import {
   generateOptionChain,
   pickExpiry,
 } from "@/lib/terminal/wheel-engine";
-import type { WheelStrategyParams, WheelAdvanceAction } from "@/lib/terminal/wheel-engine";
+import type {
+  MarketSnapshot,
+  OptionChain,
+  WheelAdvanceAction,
+  WheelStrategyParams,
+} from "@/lib/terminal/wheel-engine";
 
 declare global {
   var __cycleiqDemoState: DemoState | undefined;
@@ -25,17 +30,7 @@ declare global {
     | {
         seed: string;
         asOfDate: string; // YYYY-MM-DD
-        strategies: Record<
-          string,
-          {
-            contracts: number;
-            targetDte: number;
-            targetDelta: number;
-            rollDaysBefore: number;
-            takeProfitPct: number;
-            stopLossPct?: number;
-          }
-        >;
+        strategies: Record<string, WheelStrategyParams>;
         wheelEvents: {
           id: string;
           cycleId: string;
@@ -43,12 +38,8 @@ declare global {
           eventType: string;
           payload: Record<string, unknown>;
         }[];
-        market: {
-          asOfDate: string;
-          seed: string;
-          underlyings: Record<string, { price: number; iv: number }>;
-        } | null;
-        chains: Record<string, { put: unknown; call: unknown }>;
+        market: MarketSnapshot | null;
+        chains: Record<string, { put: OptionChain; call: OptionChain }>;
       }
     | undefined;
 }

@@ -26,8 +26,9 @@ function requireDeps(deps?: Partial<ActionDeps>): ActionDeps {
     newId:
       deps?.newId ??
       (() => {
-        if ("randomUUID" in globalThis && typeof globalThis.randomUUID === "function") {
-          return globalThis.randomUUID();
+        const cryptoObj = globalThis.crypto;
+        if (cryptoObj && typeof cryptoObj.randomUUID === "function") {
+          return cryptoObj.randomUUID();
         }
         // Fallback to a short pseudo-id (good enough for demo mode)
         return `id_${Math.random().toString(16).slice(2)}_${Date.now()}`;
@@ -114,7 +115,10 @@ export function executeIntent(
   return { execution };
 }
 
-export function cancelExecution(execution: ExecutionRow, deps?: Partial<ActionDeps>) {
+export function cancelExecution(
+  execution: ExecutionRow,
+  deps?: Partial<ActionDeps>
+): ExecutionRow {
   const d = requireDeps(deps);
   if (execution.status === "canceled") return execution;
   if (execution.status === "filled") return execution;
