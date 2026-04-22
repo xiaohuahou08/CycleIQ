@@ -1,4 +1,4 @@
-import type { CycleRow, ExecutionRow, IntentRow } from "@/lib/demo/types";
+import type { CycleRow, ExecutionRow, IntentRow } from "@/lib/terminal/types";
 
 type NowIso = () => string;
 type IdFactory = () => string;
@@ -30,7 +30,7 @@ function requireDeps(deps?: Partial<ActionDeps>): ActionDeps {
         if (cryptoObj && typeof cryptoObj.randomUUID === "function") {
           return cryptoObj.randomUUID();
         }
-        // Fallback to a short pseudo-id (good enough for demo mode)
+        // Fallback when crypto.randomUUID is unavailable
         return `id_${Math.random().toString(16).slice(2)}_${Date.now()}`;
       }),
     seedLabel: deps?.seedLabel,

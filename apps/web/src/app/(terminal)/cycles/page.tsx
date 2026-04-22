@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useDataMode } from "@/hooks/use-data-mode";
 import { useTerminalData } from "@/hooks/use-terminal-data";
 import { ConfirmModal } from "@/components/confirm-modal";
 import {
@@ -9,12 +8,11 @@ import {
   createWheelCycle,
   planCycles,
 } from "@/lib/terminal/supabase-actions";
-import type { CycleState } from "@/lib/demo/types";
+import type { CycleState } from "@/lib/terminal/types";
 import type { WheelAdvanceAction, WheelStrategyParams } from "@/lib/terminal/wheel-engine";
 
 export default function CyclesPage() {
-  const { mode } = useDataMode();
-  const { data, loading, error, refresh } = useTerminalData(mode);
+  const { data, loading, error, refresh } = useTerminalData();
   const [search, setSearch] = useState("");
   const [stateFilter, setStateFilter] = useState<"all" | string>("all");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -64,27 +62,9 @@ export default function CyclesPage() {
     return ["all", ...Array.from(set)];
   }, [data?.cycles]);
 
-  async function callMemory(endpoint: string, body: unknown) {
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const json = (await res.json().catch(() => null)) as
-        | { error?: string }
-        | null;
-      throw new Error(json?.error ?? `HTTP ${res.status}`);
-    }
-  }
-
   async function runPlan(ids: string[]) {
     if (!ids.length) return;
-    if (mode === "memory") {
-      await callMemory("/api/dev/cycles/plan", { cycleIds: ids, seedLabel: "plan" });
-    } else {
-      await planCycles(ids, "plan");
-    }
+    await planCycles(ids, "plan");
     await refresh();
   }
 
@@ -92,34 +72,17 @@ export default function CyclesPage() {
     const ticker = createTicker.trim().toUpperCase();
     if (!ticker) throw new Error("Ticker is required.");
 
-    if (mode === "memory") {
-      await callMemory("/api/dev/wheel/create", {
-        ticker,
-        seed,
-        asOfDate,
-        strategy,
-      });
-    } else {
-      await createWheelCycle({
-        ticker,
-        seed,
-        asOfDateYmd: asOfDate,
-        strategy,
-      });
-    }
+    await createWheelCycle({
+      ticker,
+      seed,
+      asOfDateYmd: asOfDate,
+      strategy,
+    });
     await refresh();
   }
 
   async function runAdvance(cycleId: string) {
-    if (mode === "memory") {
-      await callMemory("/api/dev/wheel/advance", {
-        cycleId,
-        action: advanceAction,
-        days: advanceDays,
-      });
-    } else {
-      await advanceWheel({ cycleId, action: advanceAction, days: advanceDays });
-    }
+    await advanceWheel({ cycleId, action: advanceAction, days: advanceDays });
     await refresh();
   }
 
@@ -273,7 +236,7 @@ export default function CyclesPage() {
                   </tr>
                 ))
               ) : (
-                <EmptyMessage message="No cycles yet. Seed demo data in Settings." />
+                <EmptyMessage message="No cycles yet. Use Create cycle to add one in your account." />
               )}
             </tbody>
           </table>

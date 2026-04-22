@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useDataMode } from "@/hooks/use-data-mode";
 import { fetchLatestMarketSnapshot } from "@/lib/terminal/supabase-actions";
 
 type MarketPanelState =
@@ -11,7 +10,6 @@ type MarketPanelState =
   | { status: "ready"; title: string; lines: string[] };
 
 export default function DashboardClient() {
-  const { mode } = useDataMode();
   const [market, setMarket] = useState<MarketPanelState>({ status: "idle" });
 
   useEffect(() => {
@@ -19,40 +17,12 @@ export default function DashboardClient() {
     async function load() {
       try {
         setMarket({ status: "loading" });
-        if (mode === "memory") {
-          const res = await fetch("/api/dev/wheel/market", { cache: "no-store" });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const json = (await res.json()) as {
-            market: { asOfDate: string; seed: string; underlyings: Record<string, { price: number; iv: number }> } | null;
-            asOfDate: string;
-            seed: string;
-          };
-          const m = json.market;
-          if (!m) {
-            setMarket({
-              status: "ready",
-              title: "Market (mock)",
-              lines: ["No snapshot yet. Create a Wheel cycle to generate one."],
-            });
-            return;
-          }
-          const lines = Object.entries(m.underlyings).map(
-            ([t, q]) => `${t}: $${q.price.toFixed(2)}  iv=${q.iv}`
-          );
-          setMarket({
-            status: "ready",
-            title: `Market (mock) • ${m.asOfDate} • seed=${m.seed}`,
-            lines,
-          });
-          return;
-        }
-
         const snap = await fetchLatestMarketSnapshot();
         if (!snap) {
           setMarket({
             status: "ready",
-            title: "Market (mock)",
-            lines: ["No snapshot yet. Create a Wheel cycle to generate one."],
+            title: "Market snapshot",
+            lines: ["No snapshot yet. Create a wheel cycle to store quotes."],
           });
           return;
         }
@@ -65,7 +35,7 @@ export default function DashboardClient() {
         );
         setMarket({
           status: "ready",
-          title: `Market (mock) • ${snap.as_of_date} • seed=${snap.seed}`,
+          title: `Market snapshot • ${snap.as_of_date} • seed=${snap.seed}`,
           lines: lines.length ? lines : ["(empty)"],
         });
       } catch (e) {
@@ -80,7 +50,7 @@ export default function DashboardClient() {
     return () => {
       cancelled = true;
     };
-  }, [mode]);
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -100,8 +70,8 @@ export default function DashboardClient() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <KpiCard label="Total premium" value="$0" hint="Simulated" />
-        <KpiCard label="Realized PnL" value="$0" hint="Simulated" />
+        <KpiCard label="Total premium" value="$0" hint="Not aggregated yet" />
+        <KpiCard label="Realized PnL" value="$0" hint="Not aggregated yet" />
         <KpiCard label="Open cycles" value="0" hint="Active" />
         <KpiCard label="Action required" value="0" hint="Approvals / failures" />
       </div>
@@ -115,7 +85,7 @@ export default function DashboardClient() {
         <Panel title="Recent activity" subtitle="Audit/event feed (MVP)">
           <div className="text-sm text-[color:var(--muted)]">No events yet.</div>
         </Panel>
-        <Panel title={market.status === "ready" ? market.title : "Market (mock)"} subtitle="Simulated quotes and IV">
+        <Panel title={market.status === "ready" ? market.title : "Market snapshot"} subtitle="Latest stored underlyings from wheel runs">
           {market.status === "loading" ? (
             <div className="text-sm text-[color:var(--muted)]">Loading…</div>
           ) : market.status === "error" ? (

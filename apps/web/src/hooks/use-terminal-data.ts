@@ -2,13 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { DemoState } from "@/lib/demo/types";
+import type { TerminalState } from "@/lib/terminal/types";
 
-export type DataMode = "supabase" | "memory";
-
-export function useTerminalData(mode: DataMode) {
+export function useTerminalData() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
-  const [data, setData] = useState<DemoState | null>(null);
+  const [data, setData] = useState<TerminalState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,13 +14,6 @@ export function useTerminalData(mode: DataMode) {
     try {
       setLoading(true);
       setError(null);
-
-      if (mode === "memory") {
-        const res = await fetch("/api/demo/state", { cache: "no-store" });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        setData((await res.json()) as DemoState);
-        return;
-      }
 
       if (!supabase) {
         const next = window.location.pathname;
@@ -33,7 +24,6 @@ export function useTerminalData(mode: DataMode) {
       const { data: session } = await supabase.auth.getSession();
       const userId = session.session?.user.id;
       if (!userId) {
-        // Redirect to login for protected pages.
         const next = window.location.pathname;
         window.location.assign(`/login?next=${encodeURIComponent(next)}`);
         return;
@@ -64,8 +54,7 @@ export function useTerminalData(mode: DataMode) {
       if (intentsRes.error) throw intentsRes.error;
       if (execRes.error) throw execRes.error;
 
-      const mapped: DemoState = {
-        seededAt: null,
+      const mapped: TerminalState = {
         cycles:
           cyclesRes.data?.map((c) => ({
             id: c.id,
@@ -110,7 +99,7 @@ export function useTerminalData(mode: DataMode) {
     } finally {
       setLoading(false);
     }
-  }, [mode, supabase]);
+  }, [supabase]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -119,4 +108,3 @@ export function useTerminalData(mode: DataMode) {
 
   return { data, loading, error, refresh };
 }
-

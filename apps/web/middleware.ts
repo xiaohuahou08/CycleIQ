@@ -1,19 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-function isAuthExemptApi(pathname: string) {
-  return (
-    pathname === "/api/demo/state" ||
-    pathname === "/api/dev/seed" ||
-    pathname === "/api/dev/reset"
-  );
-}
-
 function isProtectedPath(pathname: string) {
   return (
-    (pathname.startsWith("/api/") &&
-      !pathname.startsWith("/api/dev/") &&
-      !isAuthExemptApi(pathname)) ||
+    pathname.startsWith("/api/") ||
     pathname === "/dashboard" ||
     pathname.startsWith("/dashboard/") ||
     pathname === "/cycles" ||

@@ -10,7 +10,7 @@ export default function ReportsPage() {
         <div className="text-sm font-medium">MVP reports</div>
         <div className="mt-1 text-sm text-[color:var(--muted)]">
           This page will summarize cycle PnL, premium income, win-rate proxy, and
-          roll counts. Seed demo data to populate.
+          roll counts once you have cycles and fills in Supabase.
         </div>
       </div>
     </div>

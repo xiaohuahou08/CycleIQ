@@ -1,4 +1,4 @@
-import type { CycleRow, IntentRow } from "@/lib/demo/types";
+import type { CycleRow, IntentRow } from "@/lib/terminal/types";
 
 export type WheelStrategyParams = {
   contracts: number;

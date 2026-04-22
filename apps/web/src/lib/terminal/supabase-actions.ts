@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { CycleRow, DemoState, ExecutionRow, IntentRow } from "@/lib/demo/types";
-import type { CycleState } from "@/lib/demo/types";
+import type { CycleRow, CycleState, ExecutionRow, IntentRow, TerminalState } from "@/lib/terminal/types";
 import { applyWheelEvent, executeIntent, planNextStepForCycle, retryExecution } from "@/lib/terminal/actions";
 import type { WheelEventType } from "@/lib/terminal/actions";
 import {
@@ -787,7 +786,7 @@ export async function retryExecutions(executionIds: string[], seedLabel = "retry
   return { created: inserted?.length ?? rows.length };
 }
 
-export async function fetchTerminalStateSupabase(): Promise<DemoState> {
+export async function fetchTerminalStateSupabase(): Promise<TerminalState> {
   const { supabase, userId } = await requireAuthedSupabase();
 
   const [cyclesRes, intentsRes, execRes] = await Promise.all([
@@ -819,7 +818,6 @@ export async function fetchTerminalStateSupabase(): Promise<DemoState> {
   if (execRes.error) throw execRes.error;
 
   return {
-    seededAt: null,
     cycles: cyclesRes.data?.map(mapCycleRow) ?? [],
     intents: intentsRes.data?.map(mapIntentRow) ?? [],
     executions: execRes.data?.map(mapExecutionRow) ?? [],

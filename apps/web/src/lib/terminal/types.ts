@@ -65,10 +65,9 @@ export type ExecutionRow = {
   lastUpdate: string;
 };
 
-export type DemoState = {
-  seededAt: string | null;
+/** Aggregated terminal tables for the signed-in user (Supabase). */
+export type TerminalState = {
   cycles: CycleRow[];
   intents: IntentRow[];
   executions: ExecutionRow[];
 };
-
