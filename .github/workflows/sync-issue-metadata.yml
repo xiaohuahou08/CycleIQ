@@ -1,0 +1,143 @@
+name: Sync Issue Metadata to PR
+
+on:
+  pull_request:
+    types: [opened]
+
+permissions:
+  pull-requests: write
+  issues: write
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync labels, milestone, and project from linked issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // Extract issue number from PR body or branch name
+            const body = pr.body || '';
+            const branch = pr.head.ref;
+            const match =
+              body.match(/(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#(\d+)/i) ||
+              body.match(/#(\d+)/) ||
+              branch.match(/(?:issue|fix|feat|copilot)[-/](\d+)/i) ||
+              branch.match(/(\d+)/);
+
+            if (!match) {
+              console.log('No linked issue found in PR body or branch name');
+              return;
+            }
+
+            const issueNumber = parseInt(match[1], 10);
+            console.log(`Found linked issue: #${issueNumber}`);
+
+            // Fetch issue details
+            const { data: issue } = await github.rest.issues.get({
+              owner,
+              repo,
+              issue_number: issueNumber,
+            });
+
+            // 1. Sync Labels
+            if (issue.labels && issue.labels.length > 0) {
+              const labelNames = issue.labels
+                .filter((l) => l.name)
+                .map((l) => l.name);
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: pr.number,
+                labels: labelNames,
+              });
+              console.log(`Synced labels: ${labelNames.join(', ')}`);
+            }
+
+            // 2. Sync Milestone
+            if (issue.milestone) {
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: pr.number,
+                milestone: issue.milestone.number,
+              });
+              console.log(`Synced milestone: ${issue.milestone.title}`);
+            }
+
+            // 3. Sync Projects (GitHub Projects v2)
+            if (issue.node_id) {
+              try {
+                const query = `
+                  query($issueNodeId: ID!) {
+                    node(id: $issueNodeId) {
+                      ... on Issue {
+                        projectItems(first: 10) {
+                          nodes {
+                            project {
+                              id
+                              title
+                            }
+                            id
+                          }
+                        }
+                      }
+                    }
+                  }
+                `;
+                const projectResult = await github.graphql(query, {
+                  issueNodeId: issue.node_id,
+                });
+
+                const projectItems = projectResult.node?.projectItems?.nodes || [];
+                if (projectItems.length > 0) {
+                  // Add PR to same projects
+                  for (const item of projectItems) {
+                    try {
+                      const addMutation = `
+                        mutation($projectId: ID!, $contentId: ID!) {
+                          addProjectV2ItemById(input: {
+                            projectId: $projectId,
+                            contentId: $contentId
+                          }) {
+                            item {
+                              id
+                            }
+                          }
+                        }
+                      `;
+                      await github.graphql(addMutation, {
+                        projectId: item.project.id,
+                        contentId: pr.node_id,
+                      });
+                      console.log(`Added PR to project: ${item.project.title}`);
+                    } catch (projErr) {
+                      console.log(`Could not add to project ${item.project.title}: ${projErr.message}`);
+                    }
+                  }
+                }
+              } catch (projectErr) {
+                console.log(`Project sync skipped: ${projectErr.message}`);
+              }
+            }
+
+            // 4. Post a comment summarizing synced metadata
+            const syncedItems = [];
+            if (issue.labels?.length) syncedItems.push(`🏷️ Labels: ${issue.labels.map((l) => l.name).join(', ')}`);
+            if (issue.milestone) syncedItems.push(`🎯 Milestone: ${issue.milestone.title}`);
+
+            if (syncedItems.length > 0) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: pr.number,
+                body: `✅ **Auto-synced from Issue #${issueNumber}**\n\n${syncedItems.join('\n')}`,
+              });
+            }
+
+            console.log('Done! Issue metadata synced to PR.');
