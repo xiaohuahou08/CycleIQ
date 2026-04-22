@@ -196,7 +196,9 @@ function LoginPage({ onLogin }: { onLogin: (token: string, rememberMe: boolean) 
       })
       const token = extractToken(response.data)
       if (!token) {
-        setError('Login succeeded but token was missing from response.')
+        setError(
+          'Authentication failed: No token received from server. Please contact support if this persists.',
+        )
         return
       }
 
