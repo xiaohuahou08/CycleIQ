@@ -96,12 +96,6 @@ export default function DashboardClient() {
           >
             View cycles
           </a>
-          <a
-            href="/orders"
-            className="px-3 py-2 rounded-lg border border-border bg-[color:var(--panel)] hover:bg-[color:var(--panel-2)] text-sm"
-          >
-            Pending orders
-          </a>
         </div>
       </div>
 
@@ -115,7 +109,7 @@ export default function DashboardClient() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <Panel title="Action required" subtitle="Pending approvals and failures">
           <div className="text-sm text-[color:var(--muted)]">
-            No pending actions yet. Seed demo data in Settings to populate the terminal.
+            No pending actions yet.
           </div>
         </Panel>
         <Panel title="Recent activity" subtitle="Audit/event feed (MVP)">

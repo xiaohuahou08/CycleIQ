@@ -11,15 +11,13 @@ function isAuthExemptApi(pathname: string) {
 
 function isProtectedPath(pathname: string) {
   return (
-    (pathname.startsWith("/api/") && !isAuthExemptApi(pathname)) ||
+    (pathname.startsWith("/api/") &&
+      !pathname.startsWith("/api/dev/") &&
+      !isAuthExemptApi(pathname)) ||
     pathname === "/dashboard" ||
     pathname.startsWith("/dashboard/") ||
     pathname === "/cycles" ||
     pathname.startsWith("/cycles/") ||
-    pathname === "/orders" ||
-    pathname.startsWith("/orders/") ||
-    pathname === "/executions" ||
-    pathname.startsWith("/executions/") ||
     pathname === "/reports" ||
     pathname.startsWith("/reports/") ||
     pathname === "/settings" ||
@@ -82,8 +80,6 @@ export const config = {
     "/api/:path*",
     "/dashboard/:path*",
     "/cycles/:path*",
-    "/orders/:path*",
-    "/executions/:path*",
     "/reports/:path*",
     "/settings/:path*",
   ],

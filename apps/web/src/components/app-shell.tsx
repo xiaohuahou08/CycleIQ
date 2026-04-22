@@ -2,14 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Activity,
-  BarChart3,
-  Gauge,
-  ListOrdered,
-  Settings,
-  WalletCards,
-} from "lucide-react";
+import { BarChart3, Gauge, Settings, WalletCards } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -17,8 +10,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 const nav = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
   { href: "/cycles", label: "Cycles", icon: WalletCards },
-  { href: "/orders", label: "Orders", icon: ListOrdered },
-  { href: "/executions", label: "Executions", icon: Activity },
   { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

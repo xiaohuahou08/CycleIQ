@@ -4,7 +4,8 @@ This is the CycleIQ trading terminal UI (MVP).
 
 ## Docs
 
-- Local dev + env keys: `LOCAL_DEV.md` (repo root)\n- Supabase schema draft: `supabase/schema.sql`
+- Environment variables (public + server): `apps/web/src/lib/env.ts`
+- Supabase schema draft (reference): `supabase/schema.sql`
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with `[create-next-app](https://nextjs.org/docs/app/api-reference/cli/create-next-app)`.
 
