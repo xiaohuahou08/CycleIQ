@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+/* CycleIQ: Modern trading terminal theme (semantic tokens) */
+:root {
+  /* surfaces */
+  --bg: #0b0f17;
+  --panel: #0f1624;
+  --panel-2: #0c1320;
+  --text: #e7edf6;
+  --muted: #9aa7bc;
+  --border: rgba(255, 255, 255, 0.08);
+
+  /* semantics */
+  --accent: #22d3ee; /* cyan */
+  --accent-2: #60a5fa; /* blue */
+  --positive: #22c55e;
+  --negative: #ef4444;
+  --warning: #f59e0b;
+  --info: #3b82f6;
+
+  /* typography */
+  --radius: 12px;
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+
+  --color-panel: var(--panel);
+  --color-panel2: var(--panel-2);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+
+  --color-accent: var(--accent);
+  --color-accent2: var(--accent-2);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+
+  --radius-lg: var(--radius);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* Light mode tokens (when ThemeProvider sets class 'light') */
+.light {
+  --bg: #f7f9fc;
+  --panel: #ffffff;
+  --panel-2: #f1f5ff;
+  --text: #0b1220;
+  --muted: #475569;
+  --border: rgba(2, 6, 23, 0.10);
+
+  --accent: #0891b2;
+  --accent-2: #2563eb;
+  --positive: #16a34a;
+  --negative: #dc2626;
+  --warning: #d97706;
+  --info: #2563eb;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+* {
+  border-color: var(--border);
+}

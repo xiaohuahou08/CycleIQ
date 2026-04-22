@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.py[cod]
+
+# Node
+node_modules/
+
+# Vercel
+.vercel/
+
+# Local-only editor state
+.cursor/settings.json
