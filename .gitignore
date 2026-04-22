@@ -10,3 +10,6 @@ node_modules/
 
 # Local-only editor state
 .cursor/settings.json
+
+# Local issue queue (issue-work.mjs)
+.github/issue-bot/current.json

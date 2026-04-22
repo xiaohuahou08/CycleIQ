@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "issue:pick": "node scripts/issue-work.mjs pick",
+    "issue:publish": "node scripts/issue-work.mjs publish"
+  },
   "dependencies": {
     "supabase": "^2.93.0"
   }
