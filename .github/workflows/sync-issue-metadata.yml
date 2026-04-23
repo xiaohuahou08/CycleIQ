@@ -37,7 +37,6 @@ jobs:
 
               const branchPatterns = [
                 /(?:^|\/)(?:feat|fix|feature|bugfix|copilot|issue)[/-](\d+)(?:[-/]|$)/i,
-                /(?:^|\/)(\d+)(?:[-/]|$)/,
               ];
 
               for (const pattern of branchPatterns) {
