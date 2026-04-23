@@ -1,0 +1,72 @@
+name: PR Tests
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend-tests:
+    name: backend-tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: "requirements-test.txt"
+
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip -r requirements-test.txt
+
+      - name: Run backend tests with coverage
+        run: PYTHONPATH=. pytest tests/ -v --tb=short --cov=cycleiq --cov-report=term-missing
+
+  frontend-tests:
+    name: frontend-tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for frontend
+        id: check-frontend
+        run: |
+          if [ -f frontend/package.json ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No frontend/package.json found -- skipping frontend checks."
+          fi
+
+      - name: Set up Node.js
+        if: steps.check-frontend.outputs.exists == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        if: steps.check-frontend.outputs.exists == 'true'
+        run: npm ci --prefix frontend
+
+      - name: Lint frontend
+        if: steps.check-frontend.outputs.exists == 'true'
+        run: npm run lint --prefix frontend
+
+      - name: Build frontend
+        if: steps.check-frontend.outputs.exists == 'true'
+        run: npm run build --prefix frontend
+
+      - name: Run frontend tests
+        if: steps.check-frontend.outputs.exists == 'true'
+        run: npm test --prefix frontend -- --passWithNoTests
