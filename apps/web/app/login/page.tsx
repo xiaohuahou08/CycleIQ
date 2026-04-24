@@ -14,6 +14,10 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isValidEmail = useMemo(() => /\S+@\S+\.\S+/.test(email), [email]);
+  const registrationMessage =
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("registered") === "1"
+      ? "Registration successful. Please check your email to confirm your account if required."
+      : null;
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -62,6 +66,12 @@ export default function LoginPage() {
         <h1 className="text-2xl font-semibold text-gray-900">Login</h1>
 
         <form className="mt-6 space-y-4" onSubmit={onSubmit}>
+          {registrationMessage ? (
+            <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              {registrationMessage}
+            </p>
+          ) : null}
+
           <div>
             <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-gray-700">
               Email
