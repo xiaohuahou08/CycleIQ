@@ -38,9 +38,17 @@ export default function RegisterPage() {
 
     try {
       const supabase = getSupabaseClient();
-      const { error: signUpError } = await supabase.auth.signUp({
+      const redirectTo =
+        typeof window !== "undefined" ? `${window.location.origin}/dashboard` : undefined;
+      const {
+        data: { session },
+        error: signUpError,
+      } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: redirectTo,
+        },
       });
 
       if (signUpError) {
@@ -48,8 +56,16 @@ export default function RegisterPage() {
         return;
       }
 
-      router.push("/dashboard");
-      router.refresh();
+      if (session) {
+        router.push("/dashboard");
+        router.refresh();
+        return;
+      }
+
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
+      router.replace("/login?registered=1");
     } catch (submitError) {
       setError(
         submitError instanceof Error

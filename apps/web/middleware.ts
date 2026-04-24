@@ -1,13 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/auth-helpers-nextjs";
-
-function isProtectedRoute(pathname: string) {
-  return pathname.startsWith("/dashboard");
-}
-
-function isAuthRoute(pathname: string) {
-  return pathname === "/login" || pathname === "/register";
-}
+import { isProtectedRoute, resolveAuthRedirect } from "@/lib/auth-redirect.mjs";
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
@@ -41,12 +34,9 @@ export async function middleware(req: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  if (!session && isProtectedRoute(req.nextUrl.pathname)) {
-    return NextResponse.redirect(new URL("/login", req.url));
-  }
-
-  if (session && isAuthRoute(req.nextUrl.pathname)) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
+  const redirectPath = resolveAuthRedirect(req.nextUrl.pathname, Boolean(session));
+  if (redirectPath) {
+    return NextResponse.redirect(new URL(redirectPath, req.url));
   }
 
   return res;
