@@ -266,6 +266,16 @@ npm run dev
 
 访问 http://localhost:5173
 
+### Next.js Web Scaffold 启动
+
+```bash
+cd apps/web
+npm install
+npm run dev
+```
+
+访问 http://localhost:3000
+
 ### 后端启动
 
 ```bash
@@ -287,6 +297,12 @@ VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
+**Next.js Web Scaffold (apps/web/.env.local)**
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
 **后端 (.env)**
 ```env
 FLASK_ENV=development
@@ -303,6 +319,13 @@ JWT_SECRET_KEY=your_jwt_secret
 
 ```
 CycleIQ/
+├── apps/
+│   └── web/                     # Next.js 15+ Web App Scaffold
+│       ├── app/                # App Router pages
+│       ├── lib/supabase/       # Supabase client
+│       ├── middleware.ts       # Route guard
+│       └── package.json
+│
 ├── frontend/                    # React 前端
 │   ├── src/
 │   │   ├── components/        # UI 组件

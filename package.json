@@ -1,0 +1,17 @@
+{
+  "name": "cycleiq",
+  "private": true,
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "web:dev": "npm --prefix apps/web run dev",
+    "web:build": "npm --prefix apps/web run build",
+    "web:build:vercel": "npm run web:build && rm -rf .next && cp -R apps/web/.next .next",
+    "web:lint": "npm --prefix apps/web run lint",
+    "web:test": "npm --prefix apps/web run test"
+  },
+  "dependencies": {
+    "next": "16.2.4"
+  }
+}
