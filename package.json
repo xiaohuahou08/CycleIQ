@@ -10,7 +10,7 @@
     "web:lint": "npm --prefix apps/web run lint",
     "web:test": "npm --prefix apps/web run test"
   },
-  "devDependencies": {
+  "dependencies": {
     "next": "16.2.4"
   }
 }
