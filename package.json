@@ -1,0 +1,16 @@
+{
+  "name": "cycleiq",
+  "private": true,
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "web:dev": "npm --prefix apps/web run dev",
+    "web:build": "npm --prefix apps/web run build",
+    "web:lint": "npm --prefix apps/web run lint",
+    "web:test": "npm --prefix apps/web run test"
+  },
+  "devDependencies": {
+    "next": "16.2.4"
+  }
+}
