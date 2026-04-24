@@ -9,7 +9,9 @@ export async function middleware(req: NextRequest) {
 
   if (!supabaseUrl || !supabaseAnonKey) {
     if (isProtectedRoute(req.nextUrl.pathname)) {
-      return NextResponse.redirect(new URL("/login", req.url));
+      const login = new URL("/login", req.url);
+      login.searchParams.set("next", req.nextUrl.pathname);
+      return NextResponse.redirect(login);
     }
 
     return res;
@@ -34,7 +36,8 @@ export async function middleware(req: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  const redirectPath = resolveAuthRedirect(req.nextUrl.pathname, Boolean(session));
+  const authNext = req.nextUrl.searchParams.get("next");
+  const redirectPath = resolveAuthRedirect(req.nextUrl.pathname, Boolean(session), authNext);
   if (redirectPath) {
     return NextResponse.redirect(new URL(redirectPath, req.url));
   }
@@ -43,5 +46,13 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login", "/register"],
+  matcher: [
+    "/dashboard/:path*",
+    "/cycles/:path*",
+    "/reports/:path*",
+    "/settings/:path*",
+    "/orders/:path*",
+    "/login",
+    "/register",
+  ],
 };
