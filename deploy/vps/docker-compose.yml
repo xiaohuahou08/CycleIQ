@@ -4,7 +4,8 @@ services:
       context: ../../apps/web
       dockerfile: Dockerfile
     restart: unless-stopped
+    # Loopback only — TLS terminates at Nginx on :18503
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     env_file:
       - ./web.env

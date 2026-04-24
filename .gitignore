@@ -1,3 +1,12 @@
 __pycache__/
 *.py[cod]
 .coverage
+
+# secrets / local env (never commit)
+.env
+.env.*
+!.env.example
+
+# deploy env files
+deploy/vps/*.env
+deploy/vps/*.env.*
