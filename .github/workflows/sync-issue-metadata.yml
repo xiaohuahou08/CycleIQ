@@ -12,7 +12,11 @@ permissions:
 
 jobs:
   sync:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    # pull_request events from forks receive a read-only GITHUB_TOKEN.
+    # This job writes labels/milestone/comments, so skip fork-originated PRs.
+    if: >
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     steps:
       - name: Sync labels, milestone, and project metadata from linked issue
