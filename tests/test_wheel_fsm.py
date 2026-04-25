@@ -162,6 +162,34 @@ class WheelFSMTests(unittest.TestCase):
         self.assertEqual(cycle.state, CycleState.STOCK_HELD)
         self.assertEqual(cycle.current_position.shares, 100)
 
+    def test_partial_assignment_normalizes_metrics_to_contract_size(self) -> None:
+        cycle = Cycle(ticker="AMD")
+        start = datetime(2026, 1, 2, tzinfo=timezone.utc)
+        cycle.apply_event(
+            CycleEvent.SELL_CSP,
+            option_legs=[put_sell("100", "1.00", date(2026, 1, 16))],
+            timestamp=start,
+        )
+        cycle.apply_event(
+            CycleEvent.CSP_ASSIGNED,
+            stock_leg=StockLeg(action=StockAction.BUY, price=Decimal("100"), quantity=50),
+            timestamp=start + timedelta(days=14),
+        )
+        cycle.apply_event(
+            CycleEvent.SELL_CC,
+            option_legs=[call_sell("110", "1.00", date(2026, 2, 20))],
+            timestamp=start + timedelta(days=15),
+        )
+        cycle.apply_event(
+            CycleEvent.CC_ASSIGNED,
+            stock_leg=StockLeg(action=StockAction.SELL, price=Decimal("110"), quantity=50),
+            timestamp=start + timedelta(days=45),
+        )
+
+        metrics = cycle.metrics()
+        self.assertEqual(metrics.stock_pnl, Decimal("1000"))
+        self.assertEqual(metrics.total_cycle_pnl, Decimal("1002.00"))
+
     def test_illegal_transition_is_rejected(self) -> None:
         cycle = Cycle(ticker="AAPL")
         with self.assertRaises(InvalidTransitionError):
@@ -182,4 +210,3 @@ class WheelFSMTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
