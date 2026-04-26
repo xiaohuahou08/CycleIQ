@@ -12,6 +12,7 @@
     "web:test": "npm --prefix apps/web run test"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.10.2",
     "next": "16.2.4"
   }
 }
