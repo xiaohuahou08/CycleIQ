@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -59,9 +59,17 @@ export function LoginForm() {
         return;
       }
 
-      const target = safeInternalRedirectPath(nextPath) ?? "/dashboard";
-      router.push(target);
+      // With @supabase/ssr cookie-based storage, the session cookies are
+      // automatically set by the client's setAll handler after signIn.
+      // Use router.refresh() to sync server-side state, then navigate.
       router.refresh();
+
+      const target = safeInternalRedirectPath(nextPath) ?? "/dashboard";
+
+      // Small delay to ensure cookies are persisted and middleware can read them
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      router.push(target);
     } catch (submitError) {
       setError(
         submitError instanceof Error
