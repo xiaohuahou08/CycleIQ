@@ -1,0 +1,166 @@
+name: Sync Issue Metadata to PR
+
+on:
+  pull_request:
+    types: [opened]
+
+permissions:
+  pull-requests: write
+  issues: write
+  contents: read
+  repository-projects: write
+
+jobs:
+  sync:
+    # pull_request events from forks receive a read-only GITHUB_TOKEN.
+    # This job writes labels/milestone/comments, so skip fork-originated PRs.
+    if: >
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.repo.fork == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync labels, milestone, and project metadata from linked issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pr = context.payload.pull_request;
+            const body = pr.body || "";
+            const branch = pr.head.ref || "";
+
+            function extractIssueNumber() {
+              const bodyPatterns = [
+                /(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#(\d+)/i,
+                /(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/issues\/(\d+)/i,
+              ];
+
+              for (const pattern of bodyPatterns) {
+                const match = body.match(pattern);
+                if (match) return Number(match[1]);
+              }
+
+              const branchPatterns = [
+                /(?:^|\/)(?:feat|fix|feature|bugfix|copilot|issue)[/-](\d+)(?:[-/]|$)/i,
+              ];
+
+              for (const pattern of branchPatterns) {
+                const match = branch.match(pattern);
+                if (match) return Number(match[1]);
+              }
+
+              return null;
+            }
+
+            const issueNumber = extractIssueNumber();
+
+            if (!issueNumber) {
+              console.log("No linked issue found in PR body or branch name. Skipping.");
+              return;
+            }
+
+            console.log(`Linked issue resolved to #${issueNumber}`);
+
+            let issue;
+            try {
+              ({ data: issue } = await github.rest.issues.get({
+                owner,
+                repo,
+                issue_number: issueNumber,
+              }));
+            } catch (error) {
+              core.warning(`Unable to load issue #${issueNumber}: ${error.message}`);
+              return;
+            }
+
+            const syncedSummary = [];
+
+            const labelNames = (issue.labels || [])
+              .map((label) => (typeof label === "string" ? label : label.name))
+              .filter(Boolean);
+
+            if (labelNames.length > 0) {
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: pr.number,
+                labels: labelNames,
+              });
+              syncedSummary.push(`🏷️ Labels: ${labelNames.join(", ")}`);
+            }
+
+            if (issue.milestone) {
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: pr.number,
+                milestone: issue.milestone.number,
+              });
+              syncedSummary.push(`🎯 Milestone: ${issue.milestone.title}`);
+            }
+
+            const syncedProjects = [];
+            try {
+              const projectQuery = `
+                query($issueNodeId: ID!) {
+                  node(id: $issueNodeId) {
+                    ... on Issue {
+                      projectItems(first: 20) {
+                        nodes {
+                          project {
+                            id
+                            title
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              `;
+
+              const projectResult = await github.graphql(projectQuery, {
+                issueNodeId: issue.node_id,
+              });
+
+              const projectItems = projectResult?.node?.projectItems?.nodes || [];
+              for (const item of projectItems) {
+                const project = item?.project;
+                if (!project?.id) continue;
+
+                try {
+                  await github.graphql(
+                    `
+                    mutation($projectId: ID!, $contentId: ID!) {
+                      addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
+                        item {
+                          id
+                        }
+                      }
+                    }
+                    `,
+                    {
+                      projectId: project.id,
+                      contentId: pr.node_id,
+                    },
+                  );
+                  syncedProjects.push(project.title || "Untitled Project");
+                } catch (projectError) {
+                  core.warning(`Project sync skipped for "${project.title || "Untitled Project"}": ${projectError.message}`);
+                }
+              }
+            } catch (error) {
+              core.warning(`Unable to query issue project items: ${error.message}`);
+            }
+
+            if (syncedProjects.length > 0) {
+              syncedSummary.push(`📌 Projects: ${syncedProjects.join(", ")}`);
+            }
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: pr.number,
+              body: syncedSummary.length
+                ? `✅ Auto-synced from Issue #${issueNumber}\n\n${syncedSummary.join("\n")}`
+                : `✅ Auto-synced from Issue #${issueNumber}\n\nNo labels, milestone, or project metadata to sync.`,
+            });
