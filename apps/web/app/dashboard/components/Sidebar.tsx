@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 const mainNav = [
   { label: "Dashboard", icon: "🏠", href: "/dashboard" },
-  { label: "Trades", icon: "💹", href: "/trades", disabled: true },
+  { label: "Trades", icon: "💹", href: "/trades" },
   { label: "Calendars", icon: "📅", disabled: true },
   { label: "Performance", icon: "📊", disabled: true },
   { label: "Benchmark", icon: "📈", disabled: true },
