@@ -1,13 +1,15 @@
-﻿from datetime import datetime, timezone
+from datetime import datetime, timezone
 
 from flask import request, jsonify
 from backend.models import db
 from backend.models.trade import Trade
+from backend.auth.supabase import require_auth
 
 
 def register_trades_routes(trades_bp):
     @trades_bp.route("", methods=["GET"])
-    def list_trades():
+    @require_auth
+    def list_trades(user_id):
         status = request.args.get("status")
         ticker = request.args.get("ticker")
         q = Trade.query
@@ -19,7 +21,8 @@ def register_trades_routes(trades_bp):
         return jsonify([t.to_dict() for t in trades])
 
     @trades_bp.route("", methods=["POST"])
-    def create_trade():
+    @require_auth
+    def create_trade(user_id):
         data = request.get_json() or {}
         required = ["ticker", "action", "position_type"]
         for field in required:
@@ -36,19 +39,22 @@ def register_trades_routes(trades_bp):
             quantity=int(data.get("quantity", 1)),
             assigned=bool(data.get("assigned", False)),
             notes=data.get("notes"),
+            user_id=user_id,
         )
         db.session.add(trade)
         db.session.commit()
         return jsonify(trade.to_dict()), 201
 
     @trades_bp.route("/<trade_id>", methods=["GET"])
-    def get_trade(trade_id: str):
-        trade = Trade.query.filter_by(id=trade_id).first_or_404()
+    @require_auth
+    def get_trade(user_id, trade_id: str):
+        trade = Trade.query.filter_by(id=trade_id, user_id=user_id).first_or_404()
         return jsonify(trade.to_dict())
 
     @trades_bp.route("/<trade_id>", methods=["PUT", "PATCH"])
-    def update_trade(trade_id: str):
-        trade = Trade.query.filter_by(id=trade_id).first_or_404()
+    @require_auth
+    def update_trade(user_id, trade_id: str):
+        trade = Trade.query.filter_by(id=trade_id, user_id=user_id).first_or_404()
         data = request.get_json() or {}
 
         for field in ["ticker", "action", "position_type", "status", "notes"]:
@@ -74,8 +80,9 @@ def register_trades_routes(trades_bp):
         return jsonify(trade.to_dict())
 
     @trades_bp.route("/<trade_id>", methods=["DELETE"])
-    def delete_trade(trade_id: str):
-        trade = Trade.query.filter_by(id=trade_id).first_or_404()
+    @require_auth
+    def delete_trade(user_id, trade_id: str):
+        trade = Trade.query.filter_by(id=trade_id, user_id=user_id).first_or_404()
         db.session.delete(trade)
         db.session.commit()
         return "", 204

@@ -1,4 +1,5 @@
-﻿import os
+import os
+from datetime import datetime, timezone
 from flask import Flask, jsonify
 from flask_cors import CORS
 
@@ -30,7 +31,10 @@ def create_app(config_class=Config):
 
     @app.route("/health", methods=["GET"])
     def health():
-        return jsonify({"status": "ok"})
+        return jsonify({
+            "status": "ok",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
 
     return app
 

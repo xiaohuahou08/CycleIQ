@@ -1,4 +1,4 @@
-﻿from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from flask import request, jsonify
 
@@ -6,11 +6,13 @@ from cycleiq.wheel_fsm import (
     Cycle, CycleEvent, CycleState, CycleMetrics,
     OptionLeg, StockLeg, OptionType, OptionAction, StockAction,
 )
+from backend.auth.supabase import require_auth
 
 
 def register_cycles_routes(cycles_bp):
     @cycles_bp.route("/<ticker>/event", methods=["POST"])
-    def apply_event(ticker: str):
+    @require_auth
+    def apply_event(user_id, ticker: str):
         data = request.get_json() or {}
         event_str = data.get("event")
         option_legs = data.get("option_legs", [])
@@ -52,7 +54,8 @@ def register_cycles_routes(cycles_bp):
         })
 
     @cycles_bp.route("/<ticker>/metrics", methods=["GET"])
-    def get_metrics(ticker: str):
+    @require_auth
+    def get_metrics(user_id, ticker: str):
         # In a full implementation this would load the cycle from DB.
         # For now return empty metrics structure.
         return jsonify({

@@ -4,3 +4,5 @@ flask-sqlalchemy>=3.1.0
 psycopg2-binary>=2.9.9
 python-dotenv>=1.0.0
 gunicorn>=21.0.0
+PyJWT>=2.8.0
+httpx>=0.25.0

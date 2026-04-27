@@ -1,14 +1,16 @@
-﻿from flask import jsonify
+from flask import jsonify
 from sqlalchemy import func
 from backend.models import db
 from backend.models.trade import Trade
+from backend.auth.supabase import require_auth
 
 
 def register_dashboard_routes(dashboard_bp):
     @dashboard_bp.route("/summary", methods=["GET"])
-    def summary():
-        open_trades = Trade.query.filter(Trade.status == "open").all()
-        closed_trades = Trade.query.filter(Trade.status == "closed").all()
+    @require_auth
+    def summary(user_id):
+        open_trades = Trade.query.filter(Trade.status == "open", Trade.user_id == user_id).all()
+        closed_trades = Trade.query.filter(Trade.status == "closed", Trade.user_id == user_id).all()
 
         total_premium = sum(float(t.premium or 0) for t in open_trades + closed_trades)
         open_count = len(open_trades)
@@ -22,10 +24,11 @@ def register_dashboard_routes(dashboard_bp):
         })
 
     @dashboard_bp.route("/positions", methods=["GET"])
-    def positions():
+    @require_auth
+    def positions(user_id):
         open_trades = (
             Trade.query
-            .filter(Trade.status == "open")
+            .filter(Trade.status == "open", Trade.user_id == user_id)
             .filter(Trade.position_type.in_(["STOCK", "PUT", "CALL"]))
             .order_by(Trade.ticker, Trade.created_at.desc())
             .all()
@@ -61,12 +64,22 @@ def register_dashboard_routes(dashboard_bp):
         return jsonify(list(positions.values()))
 
     @dashboard_bp.route("/cycles", methods=["GET"])
-    def cycles_summary():
+    @require_auth
+    def cycles_summary(user_id):
         # Return wheel cycle status per ticker
-        tickers = db.session.query(Trade.ticker).filter(Trade.status == "open").distinct().all()
+        tickers = (
+            db.session.query(Trade.ticker)
+            .filter(Trade.status == "open", Trade.user_id == user_id)
+            .distinct()
+            .all()
+        )
         result = []
         for (ticker,) in tickers:
-            trades = Trade.query.filter(Trade.ticker == ticker, Trade.status == "open").all()
+            trades = Trade.query.filter(
+                Trade.ticker == ticker,
+                Trade.status == "open",
+                Trade.user_id == user_id,
+            ).all()
             has_stock = any(t.position_type == "STOCK" for t in trades)
             has_put = any(t.position_type == "PUT" for t in trades)
             has_call = any(t.position_type == "CALL" for t in trades)

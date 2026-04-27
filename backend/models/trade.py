@@ -1,8 +1,8 @@
-﻿from datetime import datetime, date, timezone
+from datetime import datetime, date, timezone
 from decimal import Decimal
 from uuid import uuid4
 
-from sqlalchemy import String, Numeric, Integer, DateTime, Date, Boolean, Enum, ForeignKey, Text
+from sqlalchemy import String, Numeric, Integer, DateTime, Date, Boolean, Enum, ForeignKey, Text, Index
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.models import db
@@ -12,6 +12,7 @@ class Trade(db.Model):
     __tablename__ = "trades"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)  # Supabase user UUID
     ticker: Mapped[str] = mapped_column(String(10), nullable=False, index=True)
     action: Mapped[str] = mapped_column(String(10), nullable=False)  # BUY / SELL
     position_type: Mapped[str] = mapped_column(String(20), nullable=False)  # STOCK / PUT / CALL
@@ -29,9 +30,15 @@ class Trade(db.Model):
         onupdate=lambda: datetime.now(timezone.utc)
     )
 
+    __table_args__ = (
+        Index("ix_trades_user_ticker", "user_id", "ticker"),
+        Index("ix_trades_user_status", "user_id", "status"),
+    )
+
     def to_dict(self) -> dict:
         return {
             "id": self.id,
+            "user_id": self.user_id,
             "ticker": self.ticker,
             "action": self.action,
             "position_type": self.position_type,
