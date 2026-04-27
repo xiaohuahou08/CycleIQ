@@ -15,7 +15,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  let res = NextResponse.next();
+  const res = NextResponse.next();
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
@@ -41,6 +41,7 @@ export async function middleware(req: NextRequest) {
     const redirectUrl = new URL(redirectPath, req.url);
     const redirectRes = NextResponse.redirect(redirectUrl);
     res.cookies.getAll().forEach((c) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       redirectRes.cookies.set(c.name, c.value, c as any);
     });
     return redirectRes;

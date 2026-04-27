@@ -20,7 +20,6 @@ export function getSupabaseClient(rememberMe?: boolean) {
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value, options }) => {
-          const maxAge = rememberMe === false ? undefined : options?.maxAge;
           const expires = rememberMe === false
             ? ""
             : options?.maxAge
