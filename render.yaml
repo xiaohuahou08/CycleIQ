@@ -1,5 +1,5 @@
 # render.yaml — Render Blueprint for CycleIQ Backend
-# Connects to Render PostgreSQL and syncs to GitHub for auto-deploy
+# Uses Supabase PostgreSQL (no Render-managed database needed)
 services:
   - type: web
     name: cycleiq-api
@@ -12,14 +12,8 @@ services:
         value: "3.12"
       - key: SECRET_KEY
         generateValue: true
-      - key: DATABASE_URL
-        fromDatabase:
-          name: cycleiq-db
-          property: connectionString
+        # DATABASE_URL — set in Render dashboard to your Supabase connection string
       - key: FLASK_ENV
         value: production
-
-databases:
-  - name: cycleiq-db
-    plan: free
-    region: oregon
+      - key: FLASK_DEBUG
+        value: "0"
