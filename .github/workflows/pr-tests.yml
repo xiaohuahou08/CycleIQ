@@ -29,44 +29,44 @@ jobs:
       - name: Run backend tests with coverage
         run: PYTHONPATH=. pytest tests/ -v --tb=short --cov=cycleiq --cov-report=term-missing
 
-  frontend-tests:
-    name: frontend-tests
+  web-tests:
+    name: web-tests (Next.js)
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Check for frontend
-        id: check-frontend
+      - name: Check for web app
+        id: check-web
         run: |
-          if [ -f frontend/package.json ]; then
+          if [ -f apps/web/package.json ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "No frontend/package.json found -- skipping frontend checks."
+            echo "No apps/web/package.json found -- skipping web checks."
           fi
 
       - name: Set up Node.js
-        if: steps.check-frontend.outputs.exists == 'true'
+        if: steps.check-web.outputs.exists == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
 
-      - name: Install frontend dependencies
-        if: steps.check-frontend.outputs.exists == 'true'
-        run: npm ci --prefix frontend
+      - name: Install dependencies
+        if: steps.check-web.outputs.exists == 'true'
+        run: |
+          cd apps/web
+          npm ci --prefer-offline --no-audit
 
-      - name: Lint frontend
-        if: steps.check-frontend.outputs.exists == 'true'
-        run: npm run lint --prefix frontend
+      - name: Lint
+        if: steps.check-web.outputs.exists == 'true'
+        run: npm run lint --prefix apps/web
 
-      - name: Build frontend
-        if: steps.check-frontend.outputs.exists == 'true'
-        run: npm run build --prefix frontend
+      - name: Build
+        if: steps.check-web.outputs.exists == 'true'
+        run: npm run build --prefix apps/web
 
-      - name: Run frontend tests
-        if: steps.check-frontend.outputs.exists == 'true'
-        run: npm test --prefix frontend -- --passWithNoTests
+      - name: Run tests
+        if: steps.check-web.outputs.exists == 'true'
+        run: npm test --prefix apps/web

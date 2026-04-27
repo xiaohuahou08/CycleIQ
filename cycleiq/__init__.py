@@ -1,2 +1,1 @@
 """CycleIQ domain models."""
-

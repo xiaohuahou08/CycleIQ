@@ -1,0 +1,19 @@
+# render.yaml — Render Blueprint for CycleIQ Backend
+# Uses Supabase PostgreSQL (no Render-managed database needed)
+services:
+  - type: web
+    name: cycleiq-api
+    region: oregon
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12"
+      - key: SECRET_KEY
+        generateValue: true
+        # DATABASE_URL — set in Render dashboard to your Supabase connection string
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_DEBUG
+        value: "0"
