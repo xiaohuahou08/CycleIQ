@@ -52,21 +52,21 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
-          cache-dependency-path: apps/web/package-lock.json
 
-      - name: Install web dependencies
+      - name: Install dependencies
         if: steps.check-web.outputs.exists == 'true'
-        run: npm ci --prefix apps/web
+        run: |
+          cd apps/web
+          npm ci --prefer-offline --no-audit
 
-      - name: Lint web
+      - name: Lint
         if: steps.check-web.outputs.exists == 'true'
         run: npm run lint --prefix apps/web
 
-      - name: Build web
+      - name: Build
         if: steps.check-web.outputs.exists == 'true'
         run: npm run build --prefix apps/web
 
-      - name: Run web tests
+      - name: Run tests
         if: steps.check-web.outputs.exists == 'true'
-        run: npm test --prefix apps/web -- --passWithNoTests
+        run: npm test --prefix apps/web
