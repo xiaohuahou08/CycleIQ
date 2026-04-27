@@ -195,6 +195,14 @@ async function realCreateTrade(token: string, input: CreateTradeInput): Promise<
   return res.json() as Promise<Trade>;
 }
 
+async function realDeleteTrade(_token: string, id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/trades/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(_token),
+  });
+  if (!res.ok) throw new Error(`Failed to delete trade: ${res.status}`);
+}
+
 // ─── Public API (dispatches to mock or real) ───────────────────────────────
 
 export async function listTrades(
@@ -216,4 +224,13 @@ export async function createTrade(
 ): Promise<Trade> {
   if (MOCK_MODE) return mockCreateTrade(input);
   return realCreateTrade(_token, input);
+}
+
+export async function deleteTrade(_token: string, id: string): Promise<void> {
+  if (MOCK_MODE) {
+    const idx = _mockStore.findIndex((t) => t.id === id);
+    if (idx !== -1) _mockStore.splice(idx, 1);
+    return;
+  }
+  return realDeleteTrade(_token, id);
 }
