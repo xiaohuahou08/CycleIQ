@@ -2,13 +2,9 @@
 
 import { useState } from "react";
 
-interface TradeFiltersProps {
-  onFilterChange: (filters: FilterState) => void;
-  totalCount: number;
-  filteredCount: number;
-}
+// ─── Shared filter types ───────────────────────────────────────────────────────
 
-interface FilterState {
+export interface FilterState {
   ticker: string;
   type: string; // "ALL" | "PUT" | "CALL"
   status: string; // "ALL" | TradeStatus
@@ -16,6 +12,8 @@ interface FilterState {
   dateTo: string;
   search: string;
 }
+
+// ─── Status & type labels ────────────────────────────────────────────────────
 
 const STATUS_LABELS: Record<string, string> = {
   ALL: "All Status",
@@ -32,6 +30,12 @@ const TYPE_LABELS: Record<string, string> = {
   PUT: "CSP (Sell Put)",
   CALL: "CC (Sell Call)",
 };
+
+interface TradeFiltersProps {
+  onFilterChange: (filters: FilterState) => void;
+  totalCount: number;
+  filteredCount: number;
+}
 
 export default function TradeFilters({
   onFilterChange,

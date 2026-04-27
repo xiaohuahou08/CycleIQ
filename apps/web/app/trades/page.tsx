@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   createTrade,
@@ -10,20 +10,11 @@ import {
   type Trade,
 } from "@/lib/api/trades";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import TradeFilters from "./components/TradeFilters";
+import TradeFilters, { type FilterState } from "./components/TradeFilters";
 import TradeList from "./components/TradeList";
 import AddTradeModal from "@/app/dashboard/components/AddTradeModal";
 
 // ─── Filter logic ───────────────────────────────────────────────────────────
-
-interface FilterState {
-  ticker: string;
-  type: string;
-  status: string;
-  dateFrom: string;
-  dateTo: string;
-  search: string;
-}
 
 function applyFilters(trades: Trade[], f: FilterState): Trade[] {
   return trades.filter((t) => {
@@ -125,7 +116,7 @@ export default function TradesPage() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   const [allTrades, setAllTrades] = useState<Trade[]>([]);
-  const [tradesLoading, setTradesLoading] = useState(false);
+  const [tradesLoading, setTradesLoading] = useState(true);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -158,27 +149,16 @@ export default function TradesPage() {
   }, [router]);
 
   // ── Load trades ───────────────────────────────────────────────────────────
-  const loadTrades = useCallback(
-    async (accessToken: string) => {
-      setTradesLoading(true);
-      try {
-        const trades = await listTrades(accessToken);
-        setAllTrades(trades);
-      } catch {
-        setAllTrades([]);
-      } finally {
-        setTradesLoading(false);
-      }
-    },
-    []
-  );
 
   useEffect(() => {
-    if (token) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      void loadTrades(token);
-    }
-  }, [token, loadTrades]);
+    if (!token) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading state before async fetch is intentional
+    setTradesLoading(true);
+    listTrades(token)
+      .then((trades) => setAllTrades(trades))
+      .catch(() => setAllTrades([]))
+      .finally(() => setTradesLoading(false));
+  }, [token]);
 
   const onSaveTrade = async (input: CreateTradeInput) => {
     if (!token) return;
@@ -186,19 +166,20 @@ export default function TradesPage() {
     try {
       await createTrade(token, input);
       setModalOpen(false);
-      void loadTrades(token);
+      setTradesLoading(true);
+      const trades = await listTrades(token);
+      setAllTrades(trades);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save trade.");
+    } finally {
+      setTradesLoading(false);
     }
   };
 
   const onDeleteTrade = async (id: string) => {
     if (!token) return;
-    // Optimistic delete for mock mode
     setAllTrades((prev) => prev.filter((t) => t.id !== id));
-    if (MOCK_MODE && typeof deleteTrade === "function") {
-      // no-op for now, mock store managed in trades.ts
-    }
+    await deleteTrade(token, id);
   };
 
   const onLogout = async () => {
@@ -206,8 +187,6 @@ export default function TradesPage() {
     router.push("/login");
     router.refresh();
   };
-
-  const MOCK_MODE = true;
 
   const filtered = applyFilters(allTrades, filters);
 
