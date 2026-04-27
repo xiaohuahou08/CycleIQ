@@ -10,8 +10,7 @@ const tradeSchema = z.object({
   ticker: z
     .string()
     .min(1, "Ticker is required")
-    .max(10, "Ticker is too long")
-    .transform((v) => v.toUpperCase().trim()),
+    .max(10, "Ticker is too long"),
   option_type: z.enum(["PUT", "CALL"]),
   strike: z.coerce
     .number({ invalid_type_error: "Strike is required" })
@@ -86,7 +85,7 @@ export default function AddTradeModal({
 
   const onSubmit = async (values: TradeFormValues) => {
     const input: CreateTradeInput = {
-      ticker: values.ticker,
+      ticker: values.ticker.toUpperCase().trim(),
       option_type: values.option_type,
       strike: values.strike,
       expiry: values.expiry,
