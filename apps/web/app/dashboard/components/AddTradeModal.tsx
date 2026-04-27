@@ -57,7 +57,8 @@ export default function AddTradeModal({
     reset,
     formState: { errors, isSubmitting },
   } = useForm<TradeFormValues>({
-    resolver: zodResolver(tradeSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(tradeSchema as any),
     defaultValues: {
       option_type: "PUT",
       contracts: 1,
