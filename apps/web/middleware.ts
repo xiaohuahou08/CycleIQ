@@ -1,9 +1,8 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient, type CookieOptions } from "@supabase/auth-helpers-nextjs";
+﻿import { NextResponse, type NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 import { isProtectedRoute, resolveAuthRedirect } from "@/lib/auth-redirect.mjs";
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next();
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -13,18 +12,17 @@ export async function middleware(req: NextRequest) {
       login.searchParams.set("next", req.nextUrl.pathname);
       return NextResponse.redirect(login);
     }
-
-    return res;
+    return NextResponse.next();
   }
+
+  let res = NextResponse.next();
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
         return req.cookies.getAll();
       },
-      setAll(
-        cookiesToSet: { name: string; value: string; options: CookieOptions }[],
-      ) {
+      setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value, options }) => {
           req.cookies.set(name, value);
           res.cookies.set(name, value, options);
@@ -32,6 +30,7 @@ export async function middleware(req: NextRequest) {
       },
     },
   });
+
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -39,7 +38,12 @@ export async function middleware(req: NextRequest) {
   const authNext = req.nextUrl.searchParams.get("next");
   const redirectPath = resolveAuthRedirect(req.nextUrl.pathname, Boolean(session), authNext);
   if (redirectPath) {
-    return NextResponse.redirect(new URL(redirectPath, req.url));
+    const redirectUrl = new URL(redirectPath, req.url);
+    const redirectRes = NextResponse.redirect(redirectUrl);
+    res.cookies.getAll().forEach((c) => {
+      redirectRes.cookies.set(c.name, c.value, c as any);
+    });
+    return redirectRes;
   }
 
   return res;

@@ -1,45 +1,38 @@
-import { createClient, type SupabaseClient, type SupportedStorage } from "@supabase/supabase-js";
+﻿import { createBrowserClient } from "@supabase/ssr";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-function getPreferredStorage(rememberMe?: boolean): SupportedStorage | undefined {
-  if (typeof window === "undefined") {
-    return undefined;
-  }
-
-  if (rememberMe === false) {
-    window.sessionStorage.setItem("cycleiq-remember-me", "false");
-    return window.sessionStorage;
-  }
-
-  if (rememberMe === true) {
-    window.sessionStorage.removeItem("cycleiq-remember-me");
-    return window.localStorage;
-  }
-
-  return window.sessionStorage.getItem("cycleiq-remember-me") === "false"
-    ? window.sessionStorage
-    : window.localStorage;
-}
-
-function createBrowserSupabaseClient(rememberMe?: boolean): SupabaseClient {
+export function getSupabaseClient(rememberMe?: boolean) {
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.",
+      "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables."
     );
   }
 
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      storage: getPreferredStorage(rememberMe),
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
+  return createBrowserClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return document.cookie.split(";").map((c) => {
+          const [name, ...rest] = c.trim().split("=");
+          return { name, value: rest.join("=") };
+        });
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          const maxAge = rememberMe === false ? undefined : options?.maxAge;
+          const expires = rememberMe === false
+            ? ""
+            : options?.maxAge
+              ? `; max-age=${options.maxAge}`
+              : "";
+          const path = options?.path ? `; path=${options.path}` : "; path=/";
+          const sameSite = options?.sameSite ? `; samesite=${options.sameSite}` : "";
+          const secure = options?.domain ? `; secure` : "";
+          const domain = options?.domain ? `; domain=${options.domain}` : "";
+          document.cookie = `${name}=${value}${expires}${path}${sameSite}${secure}${domain}`;
+        });
+      },
     },
   });
-}
-
-export function getSupabaseClient(rememberMe?: boolean): SupabaseClient {
-  return createBrowserSupabaseClient(rememberMe);
 }

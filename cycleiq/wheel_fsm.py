@@ -175,19 +175,21 @@ class Cycle:
                         capital_at_risk, leg.strike * Decimal(str(abs(leg.quantity) * 100))
                     )
             if transition.stock_leg:
+                normalized_qty = abs(transition.stock_leg.quantity)
+                if transition.event in (CycleEvent.CSP_ASSIGNED, CycleEvent.CC_ASSIGNED):
+                    normalized_qty = max(STANDARD_CONTRACT_SIZE, normalized_qty)
                 stock_sign = (
                     Decimal("-1")
                     if transition.stock_leg.action == StockAction.BUY
                     else Decimal("1")
                 )
                 stock_pnl += stock_sign * transition.stock_leg.price * Decimal(
-                    str(abs(transition.stock_leg.quantity))
+                    str(normalized_qty)
                 )
                 if transition.stock_leg.action == StockAction.BUY:
                     capital_at_risk = max(
                         capital_at_risk,
-                        transition.stock_leg.price
-                        * Decimal(str(abs(transition.stock_leg.quantity))),
+                        transition.stock_leg.price * Decimal(str(normalized_qty)),
                     )
 
         total_cycle_pnl = total_premium + stock_pnl
@@ -247,7 +249,7 @@ class Cycle:
                 )
                 self._capital_at_risk = max(
                     self._capital_at_risk,
-                    stock_leg.price * Decimal(str(abs(stock_leg.quantity))),
+                    stock_leg.price * Decimal(str(normalized_shares)),
                 )
             return
 

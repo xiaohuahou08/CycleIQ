@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -60,9 +60,16 @@ export function RegisterForm() {
       }
 
       if (session) {
-        const target = safeInternalRedirectPath(nextPath) ?? "/dashboard";
-        router.push(target);
+        // With @supabase/ssr cookie-based storage, session cookies are
+        // automatically set by the client's setAll handler after signUp.
         router.refresh();
+
+        const target = safeInternalRedirectPath(nextPath) ?? "/dashboard";
+
+        // Small delay to ensure cookies are persisted and middleware can read them
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        router.push(target);
         return;
       }
 
