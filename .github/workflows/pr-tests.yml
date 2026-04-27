@@ -70,3 +70,45 @@ jobs:
       - name: Run frontend tests
         if: steps.check-frontend.outputs.exists == 'true'
         run: npm test --prefix frontend -- --passWithNoTests
+
+  web-tests:
+    name: web-tests (Next.js)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for web app
+        id: check-web
+        run: |
+          if [ -f apps/web/package.json ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No apps/web/package.json found -- skipping web checks."
+          fi
+
+      - name: Set up Node.js
+        if: steps.check-web.outputs.exists == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install web dependencies
+        if: steps.check-web.outputs.exists == 'true'
+        run: npm ci --prefix apps/web
+
+      - name: Lint web
+        if: steps.check-web.outputs.exists == 'true'
+        run: npm run lint --prefix apps/web
+
+      - name: Build web
+        if: steps.check-web.outputs.exists == 'true'
+        run: npm run build --prefix apps/web
+
+      - name: Run web tests
+        if: steps.check-web.outputs.exists == 'true'
+        run: npm test --prefix apps/web -- --passWithNoTests
