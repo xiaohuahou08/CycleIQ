@@ -17,10 +17,6 @@ class Config:
     DEBUG: bool = False
     TESTING: bool = False
 
-    # JWT
-    JWT_SECRET_KEY: str = os.environ.get("JWT_SECRET_KEY", "dev-jwt-secret")
-    JWT_ACCESS_TOKEN_EXPIRES: int = 3600  # 1 hour
-
     # SQLAlchemy – use the pooling URL in production (PgBouncer on port 6543)
     SQLALCHEMY_DATABASE_URI: str = os.environ.get(
         "DATABASE_URL",
@@ -32,10 +28,14 @@ class Config:
         "pool_recycle": 300,
     }
 
-    # Supabase client (used for Auth and direct SDK calls)
+    # Supabase client credentials
     SUPABASE_URL: str = os.environ.get("SUPABASE_URL", "")
     SUPABASE_SERVICE_ROLE_KEY: str = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
     SUPABASE_ANON_KEY: str = os.environ.get("SUPABASE_ANON_KEY", "")
+
+    # Supabase Auth JWT secret – used to verify tokens issued by Supabase Auth.
+    # Find it in: Supabase Dashboard → Settings → API → JWT Settings → JWT Secret
+    SUPABASE_JWT_SECRET: str = os.environ.get("SUPABASE_JWT_SECRET", "")
 
 
 class DevelopmentConfig(Config):

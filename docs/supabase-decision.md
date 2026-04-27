@@ -34,15 +34,26 @@ This document records the decisions made after researching Supabase as the datab
 
 ---
 
-### 2. Authentication: Flask-JWT-Extended (not Supabase Auth) ✅
+### 2. Authentication: Supabase Auth ✅
 
-**Decision**: Keep Flask-JWT-Extended for the MVP.
+**Decision**: Use Supabase Auth for user sign-up, sign-in, and JWT issuance.
 
 **Rationale**:
-- Supabase Auth is tightly coupled to the Supabase JS SDK, adding complexity to the Flask backend.
-- Flask-JWT-Extended gives full control over token lifecycle and middleware.
-- Can migrate to Supabase Auth later if OAuth / magic-link login is required.
-- Issue #8 (Flask Auth API) proceeds as planned.
+- Supabase Auth manages the `auth.users` table implicitly — no custom `users` table or
+  `password_hash` column is needed in the Flask/SQLAlchemy layer.
+- Supabase Auth issues HS256 JWTs signed with the project's `SUPABASE_JWT_SECRET`.
+  The Flask backend verifies these tokens using `PyJWT` via the `require_auth` decorator
+  in `backend/app/auth.py`.
+- `wheel_cycles.user_id` references `auth.users(id)` via a raw-SQL FK constraint added
+  in the migration (Alembic cannot model cross-schema FK in SQLAlchemy automatically).
+- `Flask-JWT-Extended` has been removed; `PyJWT==2.7.0` is used directly.
+- RLS policies now include user-level rules (`auth.uid()`) in addition to the
+  service-role bypass, so the frontend can query Supabase directly with the anon key.
+
+**How Flask verifies a request**:
+1. Client includes `Authorization: Bearer <supabase_access_token>` header.
+2. `require_auth` decorator decodes the token with `SUPABASE_JWT_SECRET` (audience `authenticated`).
+3. `g.user_id` is set to `uuid.UUID(payload["sub"])` for use in route handlers.
 
 ---
 
@@ -63,9 +74,9 @@ This document records the decisions made after researching Supabase as the datab
 **Decision**: Enable RLS on all tables; grant `service_role` full bypass.
 
 **Policies applied in migration `0001_initial_schema`**:
-- `users`, `wheel_cycles`, `trades` all have RLS enabled.
+- `wheel_cycles` and `trades` have RLS enabled (`users` table is in `auth` schema, managed by Supabase).
 - A `service_role_all_*` policy allows the backend (using `SUPABASE_SERVICE_ROLE_KEY`) unrestricted access.
-- User-level policies can be added later when the frontend calls Supabase directly using the `anon` key.
+- User-level policies (`user_own_*`) restrict each authenticated user to their own rows via `auth.uid()`.
 
 ---
 
@@ -77,12 +88,12 @@ All secrets are stored in `.env` (never committed to git).
 | Variable | Source | Used by |
 |----------|--------|---------|
 | `SUPABASE_URL` | Supabase Dashboard → Settings → API | Flask app, supabase-py |
-| `SUPABASE_ANON_KEY` | Supabase Dashboard → Settings → API | Frontend (future) |
+| `SUPABASE_ANON_KEY` | Supabase Dashboard → Settings → API | Frontend |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase Dashboard → Settings → API | Flask backend (supabase-py) |
+| `SUPABASE_JWT_SECRET` | Supabase Dashboard → Settings → API → JWT Settings | Flask backend (`app/auth.py`) |
 | `DATABASE_URL` | Supabase Dashboard → Settings → Database | Alembic migrations |
 | `DATABASE_POOL_URL` | Same, port 6543 + `?pgbouncer=true` | Flask (production) |
 | `SECRET_KEY` | Generate with `python -c "import secrets; print(secrets.token_hex())"` | Flask sessions |
-| `JWT_SECRET_KEY` | Generate same as above | Flask-JWT-Extended |
 
 ---
 
@@ -91,7 +102,7 @@ All secrets are stored in `.env` (never committed to git).
 | Issue | Decision |
 |-------|----------|
 | [#7 Flask Cycle + Trade API](https://github.com/xiaohuahou08/CycleIQ/issues/7) | Proceeds with SQLAlchemy connecting to Supabase PostgreSQL |
-| [#8 Flask Auth API](https://github.com/xiaohuahou08/CycleIQ/issues/8) | Proceeds with Flask-JWT-Extended (Supabase Auth not used for MVP) |
+| [#8 Flask Auth API](https://github.com/xiaohuahou08/CycleIQ/issues/8) | Uses Supabase Auth — no custom auth endpoints needed; Flask verifies Supabase JWTs via `app/auth.py` |
 | [#3 State Machine](https://github.com/xiaohuahou08/CycleIQ/issues/3) | No impact |
 | [#6, #9 Frontend](https://github.com/xiaohuahou08/CycleIQ/issues/6) | Will use REST API endpoints; Supabase JS SDK deferred |
 
@@ -152,18 +163,18 @@ FLASK_ENV=development flask run
 backend/
 ├── app/
 │   ├── __init__.py          # Flask application factory
+│   ├── auth.py              # Supabase Auth JWT verification (require_auth decorator)
 │   ├── database.py          # SQLAlchemy db extension
 │   ├── supabase_client.py   # supabase-py singleton
 │   └── models/
 │       ├── __init__.py
-│       ├── user.py          # User model
-│       ├── wheel_cycle.py   # WheelCycle model
+│       ├── wheel_cycle.py   # WheelCycle model (user_id → auth.users)
 │       └── trade.py         # Trade model
 ├── migrations/
 │   ├── env.py               # Alembic environment
 │   ├── script.py.mako       # Alembic template
 │   └── versions/
-│       └── 0001_initial_schema.py  # Initial migration (RLS included)
+│       └── 0001_initial_schema.py  # wheel_cycles + trades + RLS (auth.users FK)
 ├── .env.example             # Environment variable template
 ├── alembic.ini              # Alembic configuration
 ├── config.py                # Flask configuration classes

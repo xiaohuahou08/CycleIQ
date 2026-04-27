@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String
+from sqlalchemy import DateTime, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -18,8 +18,10 @@ class WheelCycle(db.Model):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    # References auth.users(id) managed by Supabase Auth. No ORM relationship
+    # is declared because the User table lives in the auth schema, not public.
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+        UUID(as_uuid=True), nullable=False, index=True
     )
     ticker: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     state: Mapped[str] = mapped_column(String(50), nullable=False, default="IDLE")
@@ -38,7 +40,6 @@ class WheelCycle(db.Model):
         nullable=False,
     )
 
-    user: Mapped["User"] = relationship("User", back_populates="wheel_cycles")  # noqa: F821
     trades: Mapped[list["Trade"]] = relationship(  # noqa: F821
         "Trade", back_populates="wheel_cycle", cascade="all, delete-orphan"
     )
