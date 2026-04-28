@@ -9,6 +9,7 @@ import {
   type CreateTradeInput,
   type Trade,
 } from "@/lib/api/trades";
+import { UserMenu } from "@/components/auth/UserMenu";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import TradeFilters, { type FilterState } from "./components/TradeFilters";
 import TradeList from "./components/TradeList";
@@ -37,12 +38,10 @@ function applyFilters(trades: Trade[], f: FilterState): Trade[] {
 
 function Sidebar({
   email,
-  onLogout,
   mobileOpen,
   onClose,
 }: {
   email: string | null;
-  onLogout: () => void;
   mobileOpen: boolean;
   onClose: () => void;
 }) {
@@ -90,16 +89,9 @@ function Sidebar({
           ))}
         </nav>
 
-        {/* User */}
         <div className="border-t border-gray-100 px-4 py-4">
           <p className="truncate text-xs text-gray-400">{email ?? "—"}</p>
-          <button
-            type="button"
-            onClick={onLogout}
-            className="mt-2 text-sm text-gray-500 hover:text-gray-700"
-          >
-            Sign out
-          </button>
+          <p className="mt-2 text-[10px] text-gray-400">Account menu is top-right</p>
         </div>
       </aside>
     </>
@@ -182,12 +174,6 @@ export default function TradesPage() {
     await deleteTrade(token, id);
   };
 
-  const onLogout = async () => {
-    await getSupabaseClient().auth.signOut();
-    router.push("/login");
-    router.refresh();
-  };
-
   const filtered = applyFilters(allTrades, filters);
 
   if (isAuthLoading) {
@@ -203,35 +189,32 @@ export default function TradesPage() {
       {/* Sidebar */}
       <Sidebar
         email={email}
-        onLogout={onLogout}
         mobileOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-auto">
-        {/* Mobile topbar */}
-        <div className="flex items-center border-b border-gray-200 bg-white px-4 py-3 lg:hidden">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            className="mr-3 rounded-lg p-1.5 text-gray-500 hover:bg-gray-100"
-            aria-label="Open navigation"
-          >
-            ☰
-          </button>
-          <span className="text-sm font-semibold text-gray-900">CycleIQ</span>
+        <div className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-gray-200 bg-white px-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 lg:hidden"
+              aria-label="Open navigation"
+            >
+              ☰
+            </button>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-gray-900 lg:text-base">Trades</p>
+              <p className="hidden truncate text-xs text-gray-500 sm:block">All your wheel strategy trades</p>
+            </div>
+          </div>
+          <UserMenu email={email} />
         </div>
 
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          {/* Page header */}
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-900">Trades</h1>
-              <p className="mt-1 text-sm text-gray-500">
-                All your wheel strategy trades
-              </p>
-            </div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
             <button
               type="button"
               onClick={() => { setSaveError(null); setModalOpen(true); }}

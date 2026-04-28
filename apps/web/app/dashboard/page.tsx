@@ -11,6 +11,7 @@ import {
   type MetricsSummary,
   type Trade,
 } from "@/lib/api/trades";
+import { UserMenu } from "@/components/auth/UserMenu";
 import Sidebar from "./components/Sidebar";
 import SummaryCards from "./components/SummaryCards";
 import ActivePositionsTable from "./components/ActivePositionsTable";
@@ -86,13 +87,6 @@ export default function DashboardPage() {
     }
   }, [token, loadData]);
 
-  const onLogout = async () => {
-    const supabase = getSupabaseClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  };
-
   const onSaveTrade = async (input: CreateTradeInput) => {
     if (!token) return;
     setSaveError(null);
@@ -132,40 +126,38 @@ export default function DashboardPage() {
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <Sidebar email={email} onLogout={onLogout} />
+        <Sidebar email={email} />
       </div>
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-auto">
-        {/* Mobile topbar */}
-        <div className="flex items-center border-b border-gray-200 bg-white px-4 py-3 lg:hidden">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            className="mr-3 rounded-lg p-1.5 text-gray-500 hover:bg-gray-100"
-            aria-label="Open navigation"
-          >
-            ☰
-          </button>
-          <span className="text-sm font-semibold text-gray-900">CycleIQ</span>
+        <div className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-gray-200 bg-white px-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 lg:hidden"
+              aria-label="Open navigation"
+            >
+              ☰
+            </button>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-gray-900 lg:text-base">Dashboard</p>
+              <p className="hidden truncate text-xs text-gray-500 sm:block">Your wheel strategy at a glance</p>
+            </div>
+          </div>
+          <UserMenu email={email} />
         </div>
 
         <main className="flex-1 px-6 py-8">
-          {/* Page header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-              <p className="mt-1 text-sm text-gray-500">
-                Your wheel strategy at a glance
-              </p>
-            </div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
             <button
               type="button"
               onClick={() => {
                 setSaveError(null);
                 setModalOpen(true);
               }}
-              className="rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
+              className="rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800 sm:shrink-0"
             >
               + Add Trade
             </button>
