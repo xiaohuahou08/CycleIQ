@@ -14,7 +14,7 @@ services:
     healthCheckPath: /health
     # Run Alembic migrations before every deploy.
     # If the migration fails the deploy is aborted and the old version keeps running.
-    preDeployCommand: "cd /app && flask db upgrade"
+    preDeployCommand: "cd /app/backend && flask db upgrade"
     envVars:
       - key: PYTHON_VERSION
         value: "3.12"
