@@ -1,10 +1,3 @@
-# Root requirements.txt — full stack including Flask backend
-flask>=3.0.0
-flask-cors>=4.0.0
-flask-sqlalchemy>=3.1.0
-psycopg2-binary>=2.9.9
-python-dotenv>=1.0.0
-gunicorn>=21.0.0
-PyJWT>=2.8.0
-httpx>=0.25.0
+# Root requirements.txt — delegate to pinned backend requirements
+-r backend/requirements.txt
 -e .
