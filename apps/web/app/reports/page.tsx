@@ -1,15 +1,16 @@
-import Link from "next/link";
+"use client";
+
+import { AuthenticatedShell } from "@/components/auth/AuthenticatedShell";
 
 export default function ReportsPage() {
   return (
-    <main className="min-h-screen bg-gray-50 px-6 py-10">
-      <div className="mx-auto max-w-3xl rounded-2xl bg-white p-8 shadow-sm">
-        <h1 className="text-2xl font-semibold text-gray-900">Reports</h1>
-        <p className="mt-3 text-gray-600">Analytics and exports will be available in a future iteration.</p>
-        <Link href="/dashboard" className="mt-6 inline-block font-medium text-gray-900 underline">
-          Back to dashboard
-        </Link>
-      </div>
-    </main>
+    <AuthenticatedShell title="Reports">
+      <main className="flex-1 px-6 py-10">
+        <div className="mx-auto max-w-3xl rounded-2xl bg-white p-8 shadow-sm">
+          <h1 className="text-2xl font-semibold text-gray-900">Reports</h1>
+          <p className="mt-3 text-gray-600">Reporting views will be added in upcoming milestones.</p>
+        </div>
+      </main>
+    </AuthenticatedShell>
   );
 }

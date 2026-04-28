@@ -41,10 +41,9 @@ const sections: NavSection[] = [
 
 interface SidebarProps {
   email?: string | null;
-  onLogout?: () => void;
 }
 
-export default function Sidebar({ email, onLogout }: SidebarProps) {
+export default function Sidebar({ email }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -100,7 +99,7 @@ export default function Sidebar({ email, onLogout }: SidebarProps) {
         ))}
       </nav>
 
-      {/* User footer */}
+      {/* User footer — logout lives in the top header user menu */}
       <div className="border-t border-gray-200 px-4 py-3">
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-200 text-sm font-medium text-gray-700">
@@ -108,17 +107,8 @@ export default function Sidebar({ email, onLogout }: SidebarProps) {
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs text-gray-600">{email ?? "Signed in"}</p>
+            <p className="mt-0.5 text-[10px] text-gray-400">Account menu is top-right</p>
           </div>
-          {onLogout && (
-            <button
-              type="button"
-              onClick={onLogout}
-              className="text-xs text-gray-500 hover:text-gray-900"
-              title="Logout"
-            >
-              ↩
-            </button>
-          )}
         </div>
       </div>
     </aside>
