@@ -1,7 +1,35 @@
 __pycache__/
 *.py[cod]
-.coverage
+*.pyo
+*.pyd
 
-# Node modules
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Environment variables (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# SQLite dev database
+*.db
+*.sqlite3
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Node / frontend
 node_modules/
-*.log
+dist/
+
+# IDE
+.vscode/
+.idea/
