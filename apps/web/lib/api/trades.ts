@@ -36,7 +36,7 @@ export interface CreateTradeInput {
   notes?: string;
 }
 
-export interface UpdateTradeInput extends Partial<CreateTradeInput> {}
+export type UpdateTradeInput = Partial<CreateTradeInput>;
 
 export interface MetricsSummary {
   total_premium: number;

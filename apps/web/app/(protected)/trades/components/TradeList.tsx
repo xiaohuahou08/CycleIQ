@@ -214,7 +214,7 @@ function TradeGroup({
   const openCount = trades.filter((t) => t.status === "OPEN").length;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div className="overflow-visible rounded-xl border border-gray-200 bg-white shadow-sm">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -240,30 +240,32 @@ function TradeGroup({
       </button>
 
       {open && (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-t border-gray-100 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-400">
-              <th className="px-4 py-2">Strategy</th>
-              <th className="px-4 py-2">Strike</th>
-              <th className="px-4 py-2">Expiry</th>
-              <th className="px-4 py-2">DTE</th>
-              <th className="px-4 py-2">Premium</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {trades.map((trade) => (
-              <TradeRow
-                key={trade.id}
-                trade={trade}
-                onDelete={() => onDeleteTrade(trade.id)}
-                onEdit={() => onEditTrade(trade)}
-                onAction={(action) => onAction(trade, action)}
-              />
-            ))}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-t border-gray-100 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-400">
+                <th className="px-4 py-2">Strategy</th>
+                <th className="px-4 py-2">Strike</th>
+                <th className="px-4 py-2">Expiry</th>
+                <th className="px-4 py-2">DTE</th>
+                <th className="px-4 py-2">Premium</th>
+                <th className="px-4 py-2">Status</th>
+                <th className="px-4 py-2"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {trades.map((trade) => (
+                <TradeRow
+                  key={trade.id}
+                  trade={trade}
+                  onDelete={() => onDeleteTrade(trade.id)}
+                  onEdit={() => onEditTrade(trade)}
+                  onAction={(action) => onAction(trade, action)}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
