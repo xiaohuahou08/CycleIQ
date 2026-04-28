@@ -2,9 +2,11 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install all pinned backend dependencies first
+COPY backend/requirements.txt ./backend/requirements.txt
+RUN pip install --no-cache-dir -r backend/requirements.txt
 
+# Install the cycleiq library
 COPY cycleiq/ ./cycleiq/
 COPY setup.py .
 RUN pip install --no-cache-dir -e .
