@@ -44,5 +44,30 @@ class Trade(db.Model):
         "WheelCycle", back_populates="trades"
     )
 
+    def to_dict(self) -> dict:
+        return {
+            "id": str(self.id),
+            "wheel_cycle_id": str(self.wheel_cycle_id),
+            "option_type": self.option_type,
+            "action": self.action,
+            "strike": float(self.strike) if self.strike is not None else None,
+            "expiration_date": (
+                self.expiration_date.isoformat() if self.expiration_date else None
+            ),
+            "contracts": self.contracts,
+            "premium_per_contract": (
+                float(self.premium_per_contract)
+                if self.premium_per_contract is not None
+                else None
+            ),
+            "stock_price": (
+                float(self.stock_price) if self.stock_price is not None else None
+            ),
+            "event": self.event,
+            "trade_date": self.trade_date.isoformat() if self.trade_date else None,
+            "notes": self.notes,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
     def __repr__(self) -> str:
         return f"<Trade {self.action} {self.option_type} event={self.event}>"
