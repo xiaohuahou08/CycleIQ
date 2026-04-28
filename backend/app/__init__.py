@@ -21,9 +21,8 @@ def create_app(config_object=Config):
 
     CORS(app)
     db.init_app(app)
-
-    with app.app_context():
-        db.create_all()
+    # Schema changes are managed by Alembic migrations (flask db upgrade).
+    # Avoid create_all() on startup so app boot is not coupled to DDL calls.
 
     register_trades_routes(trades_bp)
     register_dashboard_routes(dashboard_bp)
