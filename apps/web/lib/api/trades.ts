@@ -51,12 +51,23 @@ function authHeaders(token: string): HeadersInit {
   };
 }
 
+async function getErrorMessage(res: Response, fallback: string): Promise<string> {
+  try {
+    const data = (await res.json()) as { error?: string; message?: string };
+    const detail = data.error || data.message;
+    if (detail) return `${fallback}: ${detail}`;
+  } catch {
+    // Ignore JSON parse failures and fallback to plain status.
+  }
+  return `${fallback}: ${res.status}`;
+}
+
 async function realListTrades(token: string, params?: { status?: string }): Promise<Trade[]> {
   const qs = new URLSearchParams();
   if (params?.status) qs.set("status", params.status);
   const url = qs.size ? `${API_BASE}/api/trades?${qs}` : `${API_BASE}/api/trades`;
   const res = await fetch(url, { headers: authHeaders(token) });
-  if (!res.ok) throw new Error(`Failed to load trades: ${res.status}`);
+  if (!res.ok) throw new Error(await getErrorMessage(res, "Failed to load trades"));
   const data = (await res.json()) as Trade[] | { trades: Trade[]; total: number };
   if (Array.isArray(data)) return data;
   return data.trades ?? [];
@@ -66,7 +77,7 @@ async function realGetMetricsSummary(token: string): Promise<MetricsSummary> {
   const res = await fetch(`${API_BASE}/api/metrics/summary`, {
     headers: authHeaders(token),
   });
-  if (!res.ok) throw new Error(`Failed to load metrics: ${res.status}`);
+  if (!res.ok) throw new Error(await getErrorMessage(res, "Failed to load metrics"));
   return res.json() as Promise<MetricsSummary>;
 }
 
@@ -76,7 +87,7 @@ async function realCreateTrade(token: string, input: CreateTradeInput): Promise<
     headers: authHeaders(token),
     body: JSON.stringify(input),
   });
-  if (!res.ok) throw new Error(`Failed to create trade: ${res.status}`);
+  if (!res.ok) throw new Error(await getErrorMessage(res, "Failed to create trade"));
   return res.json() as Promise<Trade>;
 }
 
@@ -85,7 +96,7 @@ async function realDeleteTrade(_token: string, id: string): Promise<void> {
     method: "DELETE",
     headers: authHeaders(_token),
   });
-  if (!res.ok) throw new Error(`Failed to delete trade: ${res.status}`);
+  if (!res.ok) throw new Error(await getErrorMessage(res, "Failed to delete trade"));
 }
 
 export async function listTrades(
