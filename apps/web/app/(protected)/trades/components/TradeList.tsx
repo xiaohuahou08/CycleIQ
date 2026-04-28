@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Trade, TradeStatus } from "@/lib/api/trades";
 
 interface TradeGroupProps {
@@ -57,6 +57,34 @@ function TradeRow({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (menuRef.current?.contains(target)) return;
+      if (triggerRef.current?.contains(target)) return;
+      setMenuOpen(false);
+    };
+
+    const handleViewportChange = () => {
+      setMenuOpen(false);
+    };
+
+    window.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+
+    return () => {
+      window.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+    };
+  }, [menuOpen]);
 
   return (
     <>
@@ -90,19 +118,31 @@ function TradeRow({
         </td>
         <td className="relative px-4 py-3 text-right">
           <button
+            ref={triggerRef}
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              setMenuOpen((v) => !v);
+              if (menuOpen) {
+                setMenuOpen(false);
+                return;
+              }
+              const rect = e.currentTarget.getBoundingClientRect();
+              setMenuPos({
+                top: rect.bottom + 6,
+                left: rect.right - 144,
+              });
+              setMenuOpen(true);
             }}
             className="rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100"
             title="Actions"
           >
             ⋯
           </button>
-          {menuOpen && (
+          {menuOpen && menuPos && (
             <div
-              className="absolute right-8 z-10 mt-1 w-36 overflow-hidden rounded-md border border-gray-200 bg-white text-left text-sm shadow-lg"
+              ref={menuRef}
+              className="fixed z-[100] w-36 overflow-hidden rounded-md border border-gray-200 bg-white text-left text-sm shadow-lg"
+              style={{ top: menuPos.top, left: menuPos.left }}
               onClick={(e) => e.stopPropagation()}
             >
               <button
