@@ -1,0 +1,116 @@
+import importlib.util
+import os
+from pathlib import Path
+
+import jwt
+import pytest
+
+pytest.importorskip("flask_cors")
+
+_root = Path(__file__).resolve().parents[1]
+_app_path = _root / "backend" / "app.py"
+_spec = importlib.util.spec_from_file_location("cycleiq_backend_app_module", _app_path)
+assert _spec and _spec.loader
+_app_mod = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_app_mod)
+create_app = _app_mod.create_app
+
+from backend.config import TestingConfig
+from backend.models import db
+
+
+@pytest.fixture
+def app():
+    os.environ["SUPABASE_JWT_SECRET"] = "unit_test_jwt_secret"
+    application = create_app(config_class=TestingConfig)
+    with application.app_context():
+        db.create_all()
+    yield application
+    with application.app_context():
+        db.drop_all()
+
+
+@pytest.fixture
+def client(app):
+    return app.test_client()
+
+
+def auth_headers(user_id: str = "00000000-0000-0000-0000-000000000099") -> dict[str, str]:
+    token = jwt.encode({"sub": user_id}, "unit_test_jwt_secret", algorithm="HS256")
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_create_cycle_and_transition(client):
+    h = auth_headers()
+    r = client.post("/api/cycles", json={"ticker": "aapl"}, headers=h)
+    assert r.status_code == 201
+    cid = r.get_json()["id"]
+
+    r2 = client.post(
+        f"/api/cycles/{cid}/transitions",
+        json={
+            "event": "sell_csp",
+            "params": {"strike": 150, "expiry": "2026-05-16", "premium": 2.5},
+        },
+        headers=h,
+    )
+    assert r2.status_code == 200
+    body = r2.get_json()
+    assert body["to_state"] == "CSP_OPEN"
+
+    r3 = client.get(f"/api/cycles/{cid}/state", headers=h)
+    assert r3.status_code == 200
+    assert r3.get_json()["state"] == "CSP_OPEN"
+
+
+def test_trade_crud_and_user_scope(client):
+    h = auth_headers("11111111-1111-1111-1111-111111111111")
+    h2 = auth_headers("22222222-2222-2222-2222-222222222222")
+
+    payload = {
+        "ticker": "MSFT",
+        "option_type": "PUT",
+        "strike": 300,
+        "expiry": "2026-06-20",
+        "trade_date": "2026-04-01",
+        "premium": 3.25,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    r = client.post("/api/trades", json=payload, headers=h)
+    assert r.status_code == 201
+    tid = r.get_json()["id"]
+
+    r_list = client.get("/api/trades", headers=h)
+    assert r_list.status_code == 200
+    data = r_list.get_json()
+    assert data["total"] == 1
+    assert len(data["trades"]) == 1
+
+    r_other = client.get("/api/trades", headers=h2)
+    assert r_other.get_json()["total"] == 0
+
+    r_patch = client.patch(f"/api/trades/{tid}/status", json={"status": "CLOSED"}, headers=h)
+    assert r_patch.status_code == 200
+    assert r_patch.get_json()["status"] == "CLOSED"
+
+    r_del = client.delete(f"/api/trades/{tid}", headers=h)
+    assert r_del.status_code == 204
+
+
+def test_invalid_trade_status(client):
+    h = auth_headers()
+    r = client.post(
+        "/api/trades",
+        json={
+            "ticker": "X",
+            "option_type": "PUT",
+            "strike": 1,
+            "expiry": "2026-06-20",
+            "trade_date": "2026-04-01",
+            "premium": 1,
+            "status": "NOT_A_STATUS",
+        },
+        headers=h,
+    )
+    assert r.status_code == 400

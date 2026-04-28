@@ -174,7 +174,9 @@ async function realListTrades(token: string, params?: { status?: string }): Prom
   const url = qs.size ? `${API_BASE}/api/trades?${qs}` : `${API_BASE}/api/trades`;
   const res = await fetch(url, { headers: authHeaders(token) });
   if (!res.ok) throw new Error(`Failed to load trades: ${res.status}`);
-  return res.json() as Promise<Trade[]>;
+  const data = (await res.json()) as Trade[] | { trades: Trade[]; total: number };
+  if (Array.isArray(data)) return data;
+  return data.trades ?? [];
 }
 
 async function realGetMetricsSummary(token: string): Promise<MetricsSummary> {
