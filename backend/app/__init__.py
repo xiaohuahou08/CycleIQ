@@ -41,3 +41,7 @@ def create_app(config_object=None):
         return {"status": "ok"}
 
     return app
+
+
+# Compatibility entrypoint for WSGI servers configured as `backend.app:app`.
+app = create_app()
