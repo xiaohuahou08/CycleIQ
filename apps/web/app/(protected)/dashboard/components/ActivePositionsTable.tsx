@@ -55,7 +55,6 @@ export default function ActivePositionsTable({
           ))}
         </div>
       ) : trades.length === 0 ? (
-        /* Empty state */
         <div className="flex flex-col items-center px-6 py-12 text-center">
           <div className="text-4xl">📋</div>
           <p className="mt-3 text-sm font-medium text-gray-900">No trades yet</p>

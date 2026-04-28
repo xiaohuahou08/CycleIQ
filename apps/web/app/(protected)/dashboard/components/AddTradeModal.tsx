@@ -67,7 +67,6 @@ export default function AddTradeModal({
     },
   });
 
-  // Reset form when modal opens
   useEffect(() => {
     if (open) {
       reset({
@@ -110,7 +109,6 @@ export default function AddTradeModal({
       aria-labelledby="add-trade-title"
     >
       <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-xl">
-        {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
           <h2 id="add-trade-title" className="text-base font-semibold text-gray-900">
             Add Trade
@@ -125,14 +123,12 @@ export default function AddTradeModal({
           </button>
         </div>
 
-        {/* Form */}
         <form
           onSubmit={handleSubmit(onSubmit)}
           className="max-h-[70vh] overflow-y-auto px-6 py-5"
           noValidate
         >
           <div className="grid grid-cols-2 gap-4">
-            {/* Ticker */}
             <div>
               <label
                 htmlFor="ticker"
@@ -152,7 +148,6 @@ export default function AddTradeModal({
               )}
             </div>
 
-            {/* Option Type */}
             <div>
               <label
                 htmlFor="option_type"
@@ -170,7 +165,6 @@ export default function AddTradeModal({
               </select>
             </div>
 
-            {/* Strike */}
             <div>
               <label
                 htmlFor="strike"
@@ -192,7 +186,6 @@ export default function AddTradeModal({
               )}
             </div>
 
-            {/* Premium */}
             <div>
               <label
                 htmlFor="premium"
@@ -214,7 +207,6 @@ export default function AddTradeModal({
               )}
             </div>
 
-            {/* Expiry */}
             <div>
               <label
                 htmlFor="expiry"
@@ -233,7 +225,6 @@ export default function AddTradeModal({
               )}
             </div>
 
-            {/* Trade Date */}
             <div>
               <label
                 htmlFor="trade_date"
@@ -252,7 +243,6 @@ export default function AddTradeModal({
               )}
             </div>
 
-            {/* Contracts */}
             <div>
               <label
                 htmlFor="contracts"
@@ -273,7 +263,6 @@ export default function AddTradeModal({
               )}
             </div>
 
-            {/* Delta */}
             <div>
               <label
                 htmlFor="delta"
@@ -297,7 +286,6 @@ export default function AddTradeModal({
             </div>
           </div>
 
-          {/* Notes (full width) */}
           <div className="mt-4">
             <label
               htmlFor="notes"
@@ -318,7 +306,6 @@ export default function AddTradeModal({
             )}
           </div>
 
-          {/* Footer actions */}
           <div className="mt-6 flex justify-end gap-3">
             <button
               type="button"
