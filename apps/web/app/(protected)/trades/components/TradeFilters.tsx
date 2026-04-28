@@ -2,18 +2,14 @@
 
 import { useState } from "react";
 
-// ─── Shared filter types ───────────────────────────────────────────────────────
-
 export interface FilterState {
   ticker: string;
-  type: string; // "ALL" | "PUT" | "CALL"
-  status: string; // "ALL" | TradeStatus
+  type: string;
+  status: string;
   dateFrom: string;
   dateTo: string;
   search: string;
 }
-
-// ─── Status & type labels ────────────────────────────────────────────────────
 
 const STATUS_LABELS: Record<string, string> = {
   ALL: "All Status",
@@ -81,7 +77,6 @@ export default function TradeFilters({
   return (
     <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
       <div className="flex flex-wrap items-center gap-3">
-        {/* Search */}
         <div className="relative min-w-[160px] flex-1">
           <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
             🔍
@@ -95,7 +90,6 @@ export default function TradeFilters({
           />
         </div>
 
-        {/* Ticker */}
         <input
           type="text"
           placeholder="Ticker"
@@ -104,7 +98,6 @@ export default function TradeFilters({
           className="w-20 rounded-lg border border-gray-200 bg-gray-50 py-1.5 px-3 text-sm uppercase text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:bg-white focus:outline-none"
         />
 
-        {/* Type */}
         <select
           value={filters.type}
           onChange={(e) => apply({ type: e.target.value })}
@@ -117,7 +110,6 @@ export default function TradeFilters({
           ))}
         </select>
 
-        {/* Status */}
         <select
           value={filters.status}
           onChange={(e) => apply({ status: e.target.value })}
@@ -130,7 +122,6 @@ export default function TradeFilters({
           ))}
         </select>
 
-        {/* Date From */}
         <input
           type="date"
           title="From date"
@@ -139,16 +130,14 @@ export default function TradeFilters({
           className="rounded-lg border border-gray-200 bg-gray-50 py-1.5 px-2 text-sm text-gray-900 focus:border-gray-400 focus:bg-white focus:outline-none"
         />
 
-        {/* Date To */}
         <input
           type="date"
           title="To date"
           value={filters.dateTo}
           onChange={(e) => apply({ dateTo: e.target.value })}
-          className="rounded-lg border border-gray-200 bg-gray-200 bg-gray-50 py-1.5 px-2 text-sm text-gray-900 focus:border-gray-400 focus:bg-white focus:outline-none"
+          className="rounded-lg border border-gray-200 bg-gray-50 py-1.5 px-2 text-sm text-gray-900 focus:border-gray-400 focus:bg-white focus:outline-none"
         />
 
-        {/* Clear */}
         {hasFilters && (
           <button
             type="button"
@@ -160,7 +149,6 @@ export default function TradeFilters({
         )}
       </div>
 
-      {/* Count */}
       <div className="mt-2 text-xs text-gray-400">
         {filteredCount === totalCount
           ? `${totalCount} trade${totalCount !== 1 ? "s" : ""}`

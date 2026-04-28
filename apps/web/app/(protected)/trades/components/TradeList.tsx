@@ -48,34 +48,23 @@ function TradeRow({ trade, onDelete }: { trade: Trade; onDelete: () => void }) {
         className="group cursor-pointer border-b border-gray-50 hover:bg-gray-50"
         onClick={() => setExpanded((v) => !v)}
       >
-        {/* Strategy */}
         <td className="px-4 py-3">
           <span className={`text-xs font-semibold ${getTypeColor(trade)}`}>
             {getStrategy(trade)}
           </span>
         </td>
-
-        {/* Strike */}
         <td className="px-4 py-3 text-sm text-gray-700">
           ${trade.strike.toFixed(2)}
         </td>
-
-        {/* Expiry */}
         <td className="px-4 py-3 text-sm text-gray-700">
           {fmtDate(trade.expiry)}
         </td>
-
-        {/* DTE */}
         <td className="px-4 py-3 text-sm text-gray-500">
           {getDte(trade.expiry)}d
         </td>
-
-        {/* Premium */}
         <td className="px-4 py-3 text-sm font-medium text-green-700">
           +${(trade.premium * trade.contracts * 100).toFixed(0)}
         </td>
-
-        {/* Status */}
         <td className="px-4 py-3">
           <span
             className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[trade.status]}`}
@@ -83,8 +72,6 @@ function TradeRow({ trade, onDelete }: { trade: Trade; onDelete: () => void }) {
             {trade.status}
           </span>
         </td>
-
-        {/* Actions */}
         <td className="px-4 py-3 text-right">
           <button
             type="button"
@@ -100,7 +87,6 @@ function TradeRow({ trade, onDelete }: { trade: Trade; onDelete: () => void }) {
         </td>
       </tr>
 
-      {/* Expanded detail */}
       {expanded && (
         <tr className="border-b border-gray-100 bg-gray-50/50">
           <td colSpan={7} className="px-4 py-3 text-sm text-gray-600">
@@ -135,17 +121,11 @@ function TradeRow({ trade, onDelete }: { trade: Trade; onDelete: () => void }) {
 
 function TradeGroup({ ticker, trades, onDeleteTrade }: TradeGroupProps) {
   const [open, setOpen] = useState(true);
-
-  // Premium totals for this ticker
-  const totalPremium = trades.reduce(
-    (sum, t) => sum + t.premium * t.contracts * 100,
-    0
-  );
+  const totalPremium = trades.reduce((sum, t) => sum + t.premium * t.contracts * 100, 0);
   const openCount = trades.filter((t) => t.status === "OPEN").length;
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-      {/* Group header */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -170,7 +150,6 @@ function TradeGroup({ ticker, trades, onDeleteTrade }: TradeGroupProps) {
         </div>
       </button>
 
-      {/* Table */}
       {open && (
         <table className="w-full text-sm">
           <thead>
@@ -212,14 +191,12 @@ export default function TradeList({
   onAddTrade,
   onDeleteTrade,
 }: TradeListProps) {
-  // Group by ticker
   const groups = trades.reduce<Record<string, Trade[]>>((acc, t) => {
     if (!acc[t.ticker]) acc[t.ticker] = [];
     acc[t.ticker].push(t);
     return acc;
   }, {});
 
-  // Sort tickers: most trades first
   const sortedTickers = Object.keys(groups).sort(
     (a, b) => groups[b].length - groups[a].length
   );
@@ -228,7 +205,10 @@ export default function TradeList({
     return (
       <div className="space-y-4">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="h-24 animate-pulse rounded-xl border border-gray-200 bg-gray-100" />
+          <div
+            key={i}
+            className="h-24 animate-pulse rounded-xl border border-gray-200 bg-gray-100"
+          />
         ))}
       </div>
     );
