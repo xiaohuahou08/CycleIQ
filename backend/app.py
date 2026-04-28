@@ -5,10 +5,11 @@ from flask_cors import CORS
 
 from backend.config import Config
 from backend.models import db
-from backend.routes import trades_bp, dashboard_bp, cycles_bp
+from backend.routes import trades_bp, dashboard_bp, cycles_bp, metrics_bp
 from backend.routes.trades import register_trades_routes
 from backend.routes.dashboard import register_dashboard_routes
 from backend.routes.cycles import register_cycles_routes
+from backend.routes.metrics import register_metrics_routes
 
 
 def create_app(config_class=Config):
@@ -25,9 +26,11 @@ def create_app(config_class=Config):
     register_trades_routes(trades_bp)
     register_dashboard_routes(dashboard_bp)
     register_cycles_routes(cycles_bp)
+    register_metrics_routes(metrics_bp)
     app.register_blueprint(trades_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(cycles_bp)
+    app.register_blueprint(metrics_bp)
 
     @app.route("/health", methods=["GET"])
     def health():

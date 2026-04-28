@@ -1,87 +1,160 @@
-from datetime import datetime, timezone
+from __future__ import annotations
+
+from datetime import date, datetime, timezone
 
 from flask import request, jsonify
-from backend.models import db
-from backend.models.trade import Trade
+
 from backend.auth.supabase import require_auth
+from backend.models import db
+from backend.models.trade import ALLOWED_TRADE_STATUSES, Trade
+from backend.models.wheel_cycle import WheelCycle
 
 
 def register_trades_routes(trades_bp):
     @trades_bp.route("", methods=["GET"])
     @require_auth
-    def list_trades(user_id):
+    def list_trades(user_id: str):
         status = request.args.get("status")
         ticker = request.args.get("ticker")
-        q = Trade.query
+        cycle_id = request.args.get("cycle_id")
+
+        q = Trade.query.filter_by(user_id=user_id)
         if status:
-            q = q.filter(Trade.status == status)
+            q = q.filter(Trade.status == status.upper())
         if ticker:
-            q = q.filter(Trade.ticker == ticker.upper())
+            q = q.filter(Trade.ticker == ticker.strip().upper())
+        if cycle_id:
+            q = q.filter(Trade.cycle_id == cycle_id)
+
         trades = q.order_by(Trade.created_at.desc()).all()
-        return jsonify([t.to_dict() for t in trades])
+        body = {"trades": [t.to_api_dict() for t in trades], "total": len(trades)}
+        return jsonify(body)
 
     @trades_bp.route("", methods=["POST"])
     @require_auth
-    def create_trade(user_id):
+    def create_trade(user_id: str):
         data = request.get_json() or {}
-        required = ["ticker", "action", "position_type"]
+        required = ["ticker", "option_type", "strike", "expiry", "trade_date", "premium"]
         for field in required:
-            if not data.get(field):
+            if data.get(field) is None or (isinstance(data.get(field), str) and not str(data.get(field)).strip()):
                 return jsonify({"error": f"Missing required field: {field}"}), 400
 
+        cycle_id = data.get("cycle_id")
+        if cycle_id:
+            exists = WheelCycle.query.filter_by(id=cycle_id, user_id=user_id).first()
+            if not exists:
+                return jsonify({"error": "cycle_id not found"}), 400
+
+        try:
+            expiry = date.fromisoformat(str(data["expiry"]))
+            trade_date = date.fromisoformat(str(data["trade_date"]))
+        except ValueError:
+            return jsonify({"error": "Invalid date format; use YYYY-MM-DD"}), 400
+
+        option_type = str(data["option_type"]).upper()
+        if option_type not in ("PUT", "CALL"):
+            return jsonify({"error": "option_type must be PUT or CALL"}), 400
+
+        status = str(data.get("status", "OPEN")).upper()
+        if status not in ALLOWED_TRADE_STATUSES:
+            return jsonify({"error": f"Invalid status; allowed: {sorted(ALLOWED_TRADE_STATUSES)}"}), 400
+
         trade = Trade(
-            ticker=data["ticker"].upper(),
-            action=data["action"].upper(),
-            position_type=data["position_type"].upper(),
-            strike=float(data["strike"]) if data.get("strike") else None,
-            expiry=data.get("expiry"),
-            premium=float(data["premium"]) if data.get("premium") else None,
-            quantity=int(data.get("quantity", 1)),
-            assigned=bool(data.get("assigned", False)),
-            notes=data.get("notes"),
             user_id=user_id,
+            cycle_id=cycle_id,
+            ticker=str(data["ticker"]).strip().upper(),
+            option_type=option_type,
+            strike=float(data["strike"]),
+            expiry=expiry,
+            trade_date=trade_date,
+            premium=float(data["premium"]),
+            delta=float(data["delta"]) if data.get("delta") is not None else None,
+            contracts=int(data.get("contracts", 1)),
+            status=status,
+            notes=data.get("notes"),
         )
         db.session.add(trade)
         db.session.commit()
-        return jsonify(trade.to_dict()), 201
+        return jsonify(trade.to_api_dict()), 201
 
     @trades_bp.route("/<trade_id>", methods=["GET"])
     @require_auth
-    def get_trade(user_id, trade_id: str):
+    def get_trade(user_id: str, trade_id: str):
         trade = Trade.query.filter_by(id=trade_id, user_id=user_id).first_or_404()
-        return jsonify(trade.to_dict())
+        return jsonify(trade.to_api_dict())
 
-    @trades_bp.route("/<trade_id>", methods=["PUT", "PATCH"])
+    @trades_bp.route("/<trade_id>", methods=["PUT"])
     @require_auth
-    def update_trade(user_id, trade_id: str):
+    def update_trade(user_id: str, trade_id: str):
         trade = Trade.query.filter_by(id=trade_id, user_id=user_id).first_or_404()
         data = request.get_json() or {}
 
-        for field in ["ticker", "action", "position_type", "status", "notes"]:
-            if field in data:
-                setattr(trade, field, data[field].upper() if field in ("action", "position_type") else data[field])
+        if "ticker" in data and data["ticker"]:
+            trade.ticker = str(data["ticker"]).strip().upper()
+        if "option_type" in data:
+            ot = str(data["option_type"]).upper()
+            if ot not in ("PUT", "CALL"):
+                return jsonify({"error": "option_type must be PUT or CALL"}), 400
+            trade.option_type = ot
+        if "strike" in data:
+            trade.strike = float(data["strike"])
+        if "premium" in data:
+            trade.premium = float(data["premium"])
+        if "contracts" in data:
+            trade.contracts = int(data["contracts"])
+        if "delta" in data:
+            trade.delta = float(data["delta"]) if data["delta"] is not None else None
+        if "notes" in data:
+            trade.notes = data["notes"]
+        if "cycle_id" in data:
+            cid = data["cycle_id"]
+            if cid is None:
+                trade.cycle_id = None
+            else:
+                exists = WheelCycle.query.filter_by(id=cid, user_id=user_id).first()
+                if not exists:
+                    return jsonify({"error": "cycle_id not found"}), 400
+                trade.cycle_id = cid
 
-        for field in ["strike", "premium"]:
-            if field in data:
-                setattr(trade, field, float(data[field]))
+        if "expiry" in data and data["expiry"]:
+            try:
+                trade.expiry = date.fromisoformat(str(data["expiry"]))
+            except ValueError:
+                return jsonify({"error": "Invalid expiry"}), 400
+        if "trade_date" in data and data["trade_date"]:
+            try:
+                trade.trade_date = date.fromisoformat(str(data["trade_date"]))
+            except ValueError:
+                return jsonify({"error": "Invalid trade_date"}), 400
 
-        if "quantity" in data:
-            trade.quantity = int(data["quantity"])
-        if "assigned" in data:
-            trade.assigned = bool(data["assigned"])
-        if "expiry" in data:
-            trade.expiry = data["expiry"]
+        if "status" in data and data["status"] is not None:
+            st = str(data["status"]).upper()
+            if st not in ALLOWED_TRADE_STATUSES:
+                return jsonify({"error": f"Invalid status; allowed: {sorted(ALLOWED_TRADE_STATUSES)}"}), 400
+            trade.status = st
 
-        if data.get("status") == "closed" and trade.status != "closed":
-            trade.status = "closed"
-            trade.closed_at = datetime.now(timezone.utc)
-
+        trade.updated_at = datetime.now(timezone.utc)
         db.session.commit()
-        return jsonify(trade.to_dict())
+        return jsonify(trade.to_api_dict())
+
+    @trades_bp.route("/<trade_id>/status", methods=["PATCH"])
+    @require_auth
+    def patch_trade_status(user_id: str, trade_id: str):
+        trade = Trade.query.filter_by(id=trade_id, user_id=user_id).first_or_404()
+        data = request.get_json() or {}
+        if "status" not in data:
+            return jsonify({"error": "status is required"}), 400
+        st = str(data["status"]).upper()
+        if st not in ALLOWED_TRADE_STATUSES:
+            return jsonify({"error": f"Invalid status; allowed: {sorted(ALLOWED_TRADE_STATUSES)}"}), 400
+        trade.status = st
+        trade.updated_at = datetime.now(timezone.utc)
+        db.session.commit()
+        return jsonify(trade.to_api_dict())
 
     @trades_bp.route("/<trade_id>", methods=["DELETE"])
     @require_auth
-    def delete_trade(user_id, trade_id: str):
+    def delete_trade(user_id: str, trade_id: str):
         trade = Trade.query.filter_by(id=trade_id, user_id=user_id).first_or_404()
         db.session.delete(trade)
         db.session.commit()
