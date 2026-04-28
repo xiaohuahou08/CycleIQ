@@ -6,14 +6,39 @@ services:
     region: oregon
     plan: free
     dockerfilePath: ./Dockerfile
+    # Fallback commands used when the service runs as a native Python environment
+    # (i.e. not via the Docker path above).  Render ignores these when building
+    # from the Dockerfile.
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn --bind 0.0.0.0:$PORT backend.wsgi:app"
     healthCheckPath: /health
+    # Run Alembic migrations before every deploy.
+    # If the migration fails the deploy is aborted and the old version keeps running.
+    preDeployCommand: "cd /app/backend && flask db upgrade"
     envVars:
       - key: PYTHON_VERSION
         value: "3.12"
       - key: SECRET_KEY
         generateValue: true
-        # DATABASE_URL — set in Render dashboard to your Supabase connection string
       - key: FLASK_ENV
         value: production
       - key: FLASK_DEBUG
         value: "0"
+      - key: FLASK_APP
+        value: backend.app
+      # --- Secrets: set these manually in the Render Dashboard ---
+      # Supabase → Settings → Database → Connection string (port 5432, direct)
+      - key: DATABASE_URL
+        sync: false
+      # Supabase → Settings → API → Project URL
+      - key: SUPABASE_URL
+        sync: false
+      # Supabase → Settings → API → anon public key
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      # Supabase → Settings → API → service_role key (keep secret)
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # Supabase → Settings → API → JWT Settings → JWT Secret
+      - key: SUPABASE_JWT_SECRET
+        sync: false

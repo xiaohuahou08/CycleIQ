@@ -11,9 +11,13 @@ def create_app(config_object=None):
     """Create and configure the Flask application."""
     app = Flask(__name__)
 
-    # Load configuration
+    # Load configuration – support both repo-root (Docker) and backend/ (local)
+    # working directories.
     if config_object is None:
-        from config import get_config
+        try:
+            from config import get_config  # backend/ in sys.path (local dev / migrations)
+        except ImportError:
+            from backend.config import get_config  # repo root in sys.path (Docker)
         config_object = get_config()
     app.config.from_object(config_object)
 
@@ -25,9 +29,12 @@ def create_app(config_object=None):
     # Register models so Alembic / Flask-Migrate can detect them
     from . import models  # noqa: F401
 
-    # Register blueprints (add routes here as they are implemented)
-    # from .routes.cycles import cycles_bp
-    # app.register_blueprint(cycles_bp, url_prefix="/api/cycles")
+    # Register blueprints
+    from .routes import cycles_bp, dashboard_bp, trades_bp
+
+    app.register_blueprint(cycles_bp)
+    app.register_blueprint(dashboard_bp)
+    app.register_blueprint(trades_bp)
 
     @app.get("/health")
     def health():
