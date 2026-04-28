@@ -11,6 +11,7 @@ export type TradeStatus =
 export interface Trade {
   id: string;
   ticker: string;
+  cycle_id?: string | null;
   option_type: "PUT" | "CALL";
   strike: number;
   expiry: string;
@@ -35,11 +36,18 @@ export interface CreateTradeInput {
   notes?: string;
 }
 
+export interface UpdateTradeInput extends Partial<CreateTradeInput> {}
+
 export interface MetricsSummary {
   total_premium: number;
   annualized_return: number;
   active_positions: number;
   win_rate: number;
+}
+
+export interface CycleTransitionInput {
+  event: "expire_otm" | "assigned" | "roll";
+  params?: Record<string, unknown>;
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -99,6 +107,33 @@ async function realDeleteTrade(_token: string, id: string): Promise<void> {
   if (!res.ok) throw new Error(await getErrorMessage(res, "Failed to delete trade"));
 }
 
+async function realUpdateTrade(
+  token: string,
+  id: string,
+  input: UpdateTradeInput
+): Promise<Trade> {
+  const res = await fetch(`${API_BASE}/api/trades/${id}`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(await getErrorMessage(res, "Failed to update trade"));
+  return res.json() as Promise<Trade>;
+}
+
+async function realPostCycleTransition(
+  token: string,
+  cycleId: string,
+  input: CycleTransitionInput
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/cycles/${cycleId}/transitions`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(await getErrorMessage(res, "Failed to apply cycle transition"));
+}
+
 export async function listTrades(
   _token: string,
   params?: { status?: string }
@@ -119,4 +154,20 @@ export async function createTrade(
 
 export async function deleteTrade(_token: string, id: string): Promise<void> {
   return realDeleteTrade(_token, id);
+}
+
+export async function updateTrade(
+  _token: string,
+  id: string,
+  input: UpdateTradeInput
+): Promise<Trade> {
+  return realUpdateTrade(_token, id, input);
+}
+
+export async function postCycleTransition(
+  _token: string,
+  cycleId: string,
+  input: CycleTransitionInput
+): Promise<void> {
+  return realPostCycleTransition(_token, cycleId, input);
 }

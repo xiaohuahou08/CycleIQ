@@ -5,8 +5,11 @@ import {
   createTrade,
   deleteTrade,
   listTrades,
+  postCycleTransition,
+  updateTrade,
   type CreateTradeInput,
   type Trade,
+  type TradeStatus,
 } from "@/lib/api/trades";
 import { useProtectedAuth } from "../auth-context";
 import AddTradeModal from "../dashboard/components/AddTradeModal";
@@ -77,6 +80,98 @@ export default function TradesPage() {
     await deleteTrade(token, id);
   };
 
+  const onEditTrade = async (trade: Trade) => {
+    if (!token) return;
+    const notes = window.prompt("Edit notes", trade.notes ?? "");
+    if (notes === null) return;
+    try {
+      const updated = await updateTrade(token, trade.id, { notes });
+      setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to update trade.");
+    }
+  };
+
+  const onAction = async (
+    trade: Trade,
+    action: "buy_to_close" | "expire" | "assign" | "roll"
+  ) => {
+    if (!token) return;
+    try {
+      if (action === "buy_to_close") {
+        const updated = await updateTrade(token, trade.id, { status: "CLOSED" });
+        setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
+        return;
+      }
+
+      if (action === "expire") {
+        if (trade.cycle_id) {
+          await postCycleTransition(token, trade.cycle_id, { event: "expire_otm" });
+        }
+        const updated = await updateTrade(token, trade.id, { status: "EXPIRED" });
+        setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
+        return;
+      }
+
+      if (action === "assign") {
+        if (trade.cycle_id) {
+          await postCycleTransition(token, trade.cycle_id, {
+            event: "assigned",
+            params: { shares: trade.contracts * 100 },
+          });
+        }
+        const updated = await updateTrade(token, trade.id, { status: "ASSIGNED" });
+        setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
+        return;
+      }
+
+      if (action === "roll") {
+        const defaultExpiry = trade.expiry;
+        const defaultStrike = trade.strike.toString();
+        const defaultPremium = trade.premium.toString();
+        const strikeInput = window.prompt("New strike", defaultStrike);
+        if (strikeInput === null) return;
+        const expiryInput = window.prompt("New expiry (YYYY-MM-DD)", defaultExpiry);
+        if (expiryInput === null) return;
+        const premiumInput = window.prompt("Net premium", defaultPremium);
+        if (premiumInput === null) return;
+
+        const newStrike = Number(strikeInput);
+        const netPremium = Number(premiumInput);
+        if (!Number.isFinite(newStrike) || !Number.isFinite(netPremium)) {
+          setSaveError("Invalid roll params.");
+          return;
+        }
+
+        if (trade.cycle_id) {
+          await postCycleTransition(token, trade.cycle_id, {
+            event: "roll",
+            params: {
+              new_strike: newStrike,
+              new_expiry: expiryInput,
+              net_premium: netPremium,
+            },
+          });
+        }
+        const updated = await updateTrade(token, trade.id, {
+          status: "ROLLED",
+          strike: newStrike,
+          expiry: expiryInput,
+          premium: netPremium,
+        });
+        setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
+        return;
+      }
+
+      const updated = await updateTrade(token, trade.id, { status: "CLOSED" as TradeStatus });
+      setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
+    } catch (err) {
+      setSaveError(
+        err instanceof Error ? err.message : "Failed to apply trade action."
+      );
+    }
+  };
+
   if (isAuthLoading) return null;
 
   const filtered = applyFilters(allTrades, filters);
@@ -123,6 +218,8 @@ export default function TradesPage() {
               setModalOpen(true);
             }}
             onDeleteTrade={onDeleteTrade}
+            onEditTrade={onEditTrade}
+            onAction={onAction}
           />
         </div>
       </main>

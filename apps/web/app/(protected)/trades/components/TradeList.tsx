@@ -7,6 +7,11 @@ interface TradeGroupProps {
   ticker: string;
   trades: Trade[];
   onDeleteTrade: (id: string) => void;
+  onEditTrade: (trade: Trade) => void;
+  onAction: (
+    trade: Trade,
+    action: "buy_to_close" | "expire" | "assign" | "roll"
+  ) => void;
 }
 
 const STATUS_STYLES: Record<TradeStatus, string> = {
@@ -39,8 +44,19 @@ function getDte(expiry: string): number {
   return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 }
 
-function TradeRow({ trade, onDelete }: { trade: Trade; onDelete: () => void }) {
+function TradeRow({
+  trade,
+  onDelete,
+  onEdit,
+  onAction,
+}: {
+  trade: Trade;
+  onDelete: () => void;
+  onEdit: () => void;
+  onAction: (action: "buy_to_close" | "expire" | "assign" | "roll") => void;
+}) {
   const [expanded, setExpanded] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <>
@@ -72,18 +88,85 @@ function TradeRow({ trade, onDelete }: { trade: Trade; onDelete: () => void }) {
             {trade.status}
           </span>
         </td>
-        <td className="px-4 py-3 text-right">
+        <td className="relative px-4 py-3 text-right">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onDelete();
+              setMenuOpen((v) => !v);
             }}
-            className="rounded px-2 py-0.5 text-xs text-gray-400 hover:bg-red-50 hover:text-red-600"
-            title="Delete trade"
+            className="rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100"
+            title="Actions"
           >
-            🗑
+            ⋯
           </button>
+          {menuOpen && (
+            <div
+              className="absolute right-8 z-10 mt-1 w-36 overflow-hidden rounded-md border border-gray-200 bg-white text-left text-sm shadow-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onEdit();
+                }}
+                className="block w-full px-3 py-2 hover:bg-gray-50"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onAction("buy_to_close");
+                }}
+                className="block w-full px-3 py-2 hover:bg-gray-50"
+              >
+                Buy to Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onAction("expire");
+                }}
+                className="block w-full px-3 py-2 hover:bg-gray-50"
+              >
+                Expire
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onAction("assign");
+                }}
+                className="block w-full px-3 py-2 hover:bg-gray-50"
+              >
+                Assign
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onAction("roll");
+                }}
+                className="block w-full px-3 py-2 hover:bg-gray-50"
+              >
+                Roll
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onDelete();
+                }}
+                className="block w-full px-3 py-2 text-red-600 hover:bg-red-50"
+              >
+                Delete
+              </button>
+            </div>
+          )}
         </td>
       </tr>
 
@@ -119,7 +202,13 @@ function TradeRow({ trade, onDelete }: { trade: Trade; onDelete: () => void }) {
   );
 }
 
-function TradeGroup({ ticker, trades, onDeleteTrade }: TradeGroupProps) {
+function TradeGroup({
+  ticker,
+  trades,
+  onDeleteTrade,
+  onEditTrade,
+  onAction,
+}: TradeGroupProps) {
   const [open, setOpen] = useState(true);
   const totalPremium = trades.reduce((sum, t) => sum + t.premium * t.contracts * 100, 0);
   const openCount = trades.filter((t) => t.status === "OPEN").length;
@@ -169,6 +258,8 @@ function TradeGroup({ ticker, trades, onDeleteTrade }: TradeGroupProps) {
                 key={trade.id}
                 trade={trade}
                 onDelete={() => onDeleteTrade(trade.id)}
+                onEdit={() => onEditTrade(trade)}
+                onAction={(action) => onAction(trade, action)}
               />
             ))}
           </tbody>
@@ -183,6 +274,11 @@ interface TradeListProps {
   loading: boolean;
   onAddTrade: () => void;
   onDeleteTrade: (id: string) => void;
+  onEditTrade: (trade: Trade) => void;
+  onAction: (
+    trade: Trade,
+    action: "buy_to_close" | "expire" | "assign" | "roll"
+  ) => void;
 }
 
 export default function TradeList({
@@ -190,6 +286,8 @@ export default function TradeList({
   loading,
   onAddTrade,
   onDeleteTrade,
+  onEditTrade,
+  onAction,
 }: TradeListProps) {
   const groups = trades.reduce<Record<string, Trade[]>>((acc, t) => {
     if (!acc[t.ticker]) acc[t.ticker] = [];
@@ -241,6 +339,8 @@ export default function TradeList({
           ticker={ticker}
           trades={groups[ticker]}
           onDeleteTrade={onDeleteTrade}
+          onEditTrade={onEditTrade}
+          onAction={onAction}
         />
       ))}
     </div>
