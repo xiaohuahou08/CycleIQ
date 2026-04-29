@@ -197,6 +197,7 @@ function TradeRow({
         <td className="px-4 py-3 text-sm text-gray-700">
           ${trade.strike.toFixed(2)}
         </td>
+        <td className="px-4 py-3 text-sm text-gray-700">{trade.contracts}</td>
         <td className="px-4 py-3 text-sm text-gray-700">
           {fmtDate(trade.expiry)}
         </td>
@@ -311,7 +312,7 @@ function TradeRow({
 
       {expanded && (
         <tr className="border-b border-gray-100 bg-gray-50/50">
-          <td colSpan={8} className="px-4 py-3 text-sm text-gray-600">
+          <td colSpan={9} className="px-4 py-3 text-sm text-gray-600">
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <span className="text-xs text-gray-400">Contracts</span>
@@ -387,6 +388,7 @@ function TradeGroup({
                 <th className="px-4 py-2 text-left">Ticker</th>
                 <th className="px-4 py-2 text-left">Strategy</th>
                 <th className="px-4 py-2 text-left">Strike</th>
+                <th className="px-4 py-2 text-left">Qty</th>
                 <th className="px-4 py-2 text-left">Expiry</th>
                 <th className="px-4 py-2 text-left">DTE</th>
                 <th className="px-4 py-2 text-left">Premium</th>

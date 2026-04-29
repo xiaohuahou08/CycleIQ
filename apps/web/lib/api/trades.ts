@@ -74,6 +74,15 @@ export interface DashboardInsights {
   };
 }
 
+export interface CycleSummary {
+  id: string;
+  user_id: string;
+  ticker: string;
+  state: "IDLE" | "CSP_OPEN" | "CSP_CLOSED" | "STOCK_HELD" | "CC_OPEN" | "EXIT" | string;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 export interface CycleTransitionInput {
   event: "expire_otm" | "assigned" | "roll";
   params?: Record<string, unknown>;
@@ -176,6 +185,16 @@ async function realPostCycleTransition(
   if (!res.ok) throw new Error(await getErrorMessage(res, "Failed to apply cycle transition"));
 }
 
+async function realListCycles(token: string): Promise<CycleSummary[]> {
+  const res = await fetch(`${API_BASE}/api/cycles`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error(await getErrorMessage(res, "Failed to load cycles"));
+  const data = (await res.json()) as CycleSummary[] | { cycles: CycleSummary[]; total: number };
+  if (Array.isArray(data)) return data;
+  return data.cycles ?? [];
+}
+
 export async function listTrades(
   _token: string,
   params?: { status?: string }
@@ -216,6 +235,10 @@ export async function postCycleTransition(
   input: CycleTransitionInput
 ): Promise<void> {
   return realPostCycleTransition(_token, cycleId, input);
+}
+
+export async function listCycles(_token: string): Promise<CycleSummary[]> {
+  return realListCycles(_token);
 }
 
 export async function expireTrade(

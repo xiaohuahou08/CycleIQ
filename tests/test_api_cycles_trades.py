@@ -17,6 +17,7 @@ create_app = _app_mod.create_app
 
 from backend.config import TestingConfig
 from backend.models import db
+from backend.models.wheel_cycle import WheelCycle
 
 
 @pytest.fixture
@@ -82,6 +83,7 @@ def test_trade_crud_and_user_scope(client):
     assert r.status_code == 201
     tid = r.get_json()["id"]
     assert r.get_json()["commission_fee"] == pytest.approx(0.19)
+    assert r.get_json()["cycle_id"] is not None
 
     r_list = client.get("/api/trades", headers=h)
     assert r_list.status_code == 200
@@ -98,6 +100,55 @@ def test_trade_crud_and_user_scope(client):
 
     r_del = client.delete(f"/api/trades/{tid}", headers=h)
     assert r_del.status_code == 204
+
+
+def test_trade_auto_attaches_existing_cycle(client):
+    h = auth_headers("66666666-6666-6666-6666-666666666666")
+    cycle = client.post("/api/cycles", json={"ticker": "UNH"}, headers=h)
+    assert cycle.status_code == 201
+    cycle_id = cycle.get_json()["id"]
+
+    payload = {
+        "ticker": "UNH",
+        "option_type": "PUT",
+        "strike": 360,
+        "expiry": "2026-06-20",
+        "trade_date": "2026-04-01",
+        "premium": 3.25,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    created = client.post("/api/trades", json=payload, headers=h)
+    assert created.status_code == 201
+    assert created.get_json()["cycle_id"] == cycle_id
+
+
+def test_trade_auto_creates_cycle_if_existing_is_exit(client, app):
+    h = auth_headers("77777777-7777-7777-7777-777777777777")
+    with app.app_context():
+        exited = WheelCycle(
+            user_id="77777777-7777-7777-7777-777777777777",
+            ticker="UNH",
+            state="EXIT",
+            transition_log="[]",
+        )
+        db.session.add(exited)
+        db.session.commit()
+        exited_id = exited.id
+
+    payload = {
+        "ticker": "UNH",
+        "option_type": "PUT",
+        "strike": 360,
+        "expiry": "2026-06-20",
+        "trade_date": "2026-04-01",
+        "premium": 3.25,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    created = client.post("/api/trades", json=payload, headers=h)
+    assert created.status_code == 201
+    assert created.get_json()["cycle_id"] != exited_id
 
 
 def test_invalid_trade_status(client):

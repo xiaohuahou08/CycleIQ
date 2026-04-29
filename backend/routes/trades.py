@@ -9,6 +9,8 @@ from backend.models import db
 from backend.models.trade import ALLOWED_EXPIRE_TYPES, ALLOWED_TRADE_STATUSES, Trade
 from backend.models.wheel_cycle import WheelCycle
 
+AUTO_ATTACH_CYCLE_STATES = frozenset({"IDLE", "CSP_OPEN", "STOCK_HELD", "CC_OPEN"})
+
 
 def register_trades_routes(trades_bp):
     @trades_bp.route("", methods=["GET"])
@@ -39,11 +41,30 @@ def register_trades_routes(trades_bp):
             if data.get(field) is None or (isinstance(data.get(field), str) and not str(data.get(field)).strip()):
                 return jsonify({"error": f"Missing required field: {field}"}), 400
 
+        ticker = str(data["ticker"]).strip().upper()
         cycle_id = data.get("cycle_id")
         if cycle_id:
             exists = WheelCycle.query.filter_by(id=cycle_id, user_id=user_id).first()
             if not exists:
                 return jsonify({"error": "cycle_id not found"}), 400
+        else:
+            existing_cycle = (
+                WheelCycle.query.filter_by(user_id=user_id, ticker=ticker)
+                .order_by(WheelCycle.updated_at.desc())
+                .first()
+            )
+            if existing_cycle and existing_cycle.state in AUTO_ATTACH_CYCLE_STATES:
+                cycle_id = existing_cycle.id
+            else:
+                new_cycle = WheelCycle(
+                    user_id=user_id,
+                    ticker=ticker,
+                    state="IDLE",
+                    transition_log="[]",
+                )
+                db.session.add(new_cycle)
+                db.session.flush()
+                cycle_id = new_cycle.id
 
         try:
             expiry = date.fromisoformat(str(data["expiry"]))
@@ -62,7 +83,7 @@ def register_trades_routes(trades_bp):
         trade = Trade(
             user_id=user_id,
             cycle_id=cycle_id,
-            ticker=str(data["ticker"]).strip().upper(),
+            ticker=ticker,
             option_type=option_type,
             strike=float(data["strike"]),
             expiry=expiry,
