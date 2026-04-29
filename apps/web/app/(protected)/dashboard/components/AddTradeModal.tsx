@@ -3,14 +3,18 @@
 import {
   useEffect,
   useMemo,
-  useRef,
   useState,
-  type MouseEvent as ReactMouseEvent,
 } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { CreateTradeInput } from "@/lib/api/trades";
+import {
+  ModalActionButtons,
+  OptionalFieldsCard,
+  OptionalFieldsToggle,
+  TradeModalShell,
+} from "../../components/TradeModalShared";
 
 const tradeSchema = z.object({
   ticker: z
@@ -114,11 +118,6 @@ export default function AddTradeModal({
 }: AddTradeModalProps) {
   const [showOptionalFields, setShowOptionalFields] = useState(true);
   const [commissionFees, setCommissionFees] = useState<string>("");
-
-  const [modalOffset, setModalOffset] = useState({ x: 0, y: 0 });
-  const dragStartRef = useRef<{ x: number; y: number; offsetX: number; offsetY: number } | null>(
-    null
-  );
   const {
     register,
     handleSubmit,
@@ -157,7 +156,6 @@ export default function AddTradeModal({
 
   useEffect(() => {
     if (open) {
-      setModalOffset({ x: 0, y: 0 });
       setShowOptionalFields(true);
       setCommissionFees("");
       reset({
@@ -173,44 +171,6 @@ export default function AddTradeModal({
       });
     }
   }, [open, reset, initialValues]);
-
-  useEffect(() => {
-    const onMouseMove = (event: MouseEvent) => {
-      const dragStart = dragStartRef.current;
-      if (!dragStart) return;
-      setModalOffset({
-        x: dragStart.offsetX + (event.clientX - dragStart.x),
-        y: dragStart.offsetY + (event.clientY - dragStart.y),
-      });
-    };
-
-    const onMouseUp = () => {
-      dragStartRef.current = null;
-      document.body.style.userSelect = "";
-      document.body.style.cursor = "";
-    };
-
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-      document.body.style.userSelect = "";
-      document.body.style.cursor = "";
-    };
-  }, []);
-
-  const onDragStart = (event: ReactMouseEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-    dragStartRef.current = {
-      x: event.clientX,
-      y: event.clientY,
-      offsetX: modalOffset.x,
-      offsetY: modalOffset.y,
-    };
-    document.body.style.userSelect = "none";
-    document.body.style.cursor = "grabbing";
-  };
 
   const onSubmit = async (values: TradeFormValues) => {
     const commissionNumber = commissionFees.trim() ? Number(commissionFees) : null;
@@ -240,40 +200,12 @@ export default function AddTradeModal({
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="add-trade-title"
-    >
-      <div
-        className="relative w-full max-w-lg rounded-2xl bg-white shadow-xl"
-        style={{
-          transform: `translate(${modalOffset.x}px, ${modalOffset.y}px)`,
-        }}
+    <TradeModalShell open={open} title={title} onClose={onClose} draggable labelledById="add-trade-title">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="max-h-[70vh] overflow-y-auto px-6 py-5"
+        noValidate
       >
-        <div
-          className="flex cursor-grab items-center justify-between border-b border-gray-200 px-6 py-4 active:cursor-grabbing"
-          onMouseDown={onDragStart}
-        >
-          <h2 id="add-trade-title" className="text-base font-semibold text-gray-900">
-            {title}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1 text-gray-400 hover:text-gray-600"
-            aria-label="Close"
-          >
-            ✕
-          </button>
-        </div>
-
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="max-h-[70vh] overflow-y-auto px-6 py-5"
-          noValidate
-        >
           <div className="space-y-4">
             <div>
               <label
@@ -470,17 +402,14 @@ export default function AddTradeModal({
             </div>
 
             <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => setShowOptionalFields((v) => !v)}
-                className="w-full rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 hover:bg-purple-100"
-              >
-                {showOptionalFields ? "▲ Hide Optional Fields" : "▼ Show Optional Fields"}
-              </button>
+              <OptionalFieldsToggle
+                open={showOptionalFields}
+                onToggle={() => setShowOptionalFields((v) => !v)}
+              />
             </div>
 
             {showOptionalFields && (
-              <div className="rounded-lg border border-purple-200 bg-purple-50 px-4 py-3">
+              <OptionalFieldsCard>
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-purple-800">
                   Optional Details
                 </p>
@@ -550,29 +479,17 @@ export default function AddTradeModal({
                     <p className="mt-1 text-xs text-red-600">{errors.notes.message}</p>
                   )}
                 </div>
-              </div>
+              </OptionalFieldsCard>
             )}
           </div>
 
-          <div className="mt-6 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isSubmitting ? "Saving…" : submitLabel}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+          <ModalActionButtons
+            onCancel={onClose}
+            submitLabel={submitLabel}
+            submittingLabel="Saving…"
+            isSubmitting={isSubmitting}
+          />
+      </form>
+    </TradeModalShell>
   );
 }
