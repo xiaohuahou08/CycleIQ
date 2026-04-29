@@ -6,7 +6,7 @@ import {
   getDashboardInsights,
   listTrades,
   type CreateTradeInput,
-  type DashboardInsights,
+  type DashboardInsights as DashboardInsightsData,
   type Trade,
 } from "@/lib/api/trades";
 import { useProtectedAuth } from "../auth-context";
@@ -17,7 +17,7 @@ import DashboardInsights from "./components/DashboardInsights";
 export default function DashboardPage() {
   const { token, isAuthLoading } = useProtectedAuth();
   const [allTrades, setAllTrades] = useState<Trade[]>([]);
-  const [insights, setInsights] = useState<DashboardInsights | null>(null);
+  const [insights, setInsights] = useState<DashboardInsightsData | null>(null);
   const [tradesLoading, setTradesLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
