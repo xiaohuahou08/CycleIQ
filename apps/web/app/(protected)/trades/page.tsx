@@ -44,6 +44,7 @@ export default function TradesPage() {
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [expiringTrade, setExpiringTrade] = useState<Trade | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     ticker: "",
     type: "ALL",
@@ -73,12 +74,14 @@ export default function TradesPage() {
   const onSaveTrade = async (input: CreateTradeInput) => {
     if (!token) return;
     setSaveError(null);
+    setSaveSuccess(null);
     try {
       await createTrade(token, input);
       setModalOpen(false);
       setTradesLoading(true);
       const trades = await listTrades(token);
       setAllTrades(trades);
+      setSaveSuccess("Trade saved successfully.");
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save trade.");
     } finally {
@@ -89,11 +92,14 @@ export default function TradesPage() {
   const onSaveEditedTrade = async (input: CreateTradeInput) => {
     if (!token || !editingTrade) return;
     setSaveError(null);
+    setSaveSuccess(null);
     try {
-      const updated = await updateTrade(token, editingTrade.id, input);
-      setAllTrades((prev) => prev.map((t) => (t.id === editingTrade.id ? updated : t)));
+      await updateTrade(token, editingTrade.id, input);
+      const trades = await listTrades(token);
+      setAllTrades(trades);
       setModalOpen(false);
       setEditingTrade(null);
+      setSaveSuccess("Trade updated successfully.");
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to update trade.");
     }
@@ -120,6 +126,7 @@ export default function TradesPage() {
       if (action === "buy_to_close") {
         const updated = await updateTrade(token, trade.id, { status: "CLOSED" });
         setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
+        setSaveSuccess("Trade closed successfully.");
         return;
       }
 
@@ -137,6 +144,7 @@ export default function TradesPage() {
         }
         const updated = await updateTrade(token, trade.id, { status: "ASSIGNED" });
         setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
+        setSaveSuccess("Trade assigned successfully.");
         return;
       }
 
@@ -175,11 +183,13 @@ export default function TradesPage() {
           premium: netPremium,
         });
         setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
+        setSaveSuccess("Trade rolled successfully.");
         return;
       }
 
       const updated = await updateTrade(token, trade.id, { status: "CLOSED" as TradeStatus });
       setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
+      setSaveSuccess("Trade updated successfully.");
     } catch (err) {
       setSaveError(
         err instanceof Error ? err.message : "Failed to apply trade action."
@@ -202,6 +212,7 @@ export default function TradesPage() {
             type="button"
             onClick={() => {
               setSaveError(null);
+              setSaveSuccess(null);
               setEditingTrade(null);
               setModalOpen(true);
             }}
@@ -214,6 +225,11 @@ export default function TradesPage() {
         {saveError && (
           <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {saveError}
+          </div>
+        )}
+        {saveSuccess && (
+          <div className="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            {saveSuccess}
           </div>
         )}
 
@@ -231,6 +247,7 @@ export default function TradesPage() {
             loading={tradesLoading}
             onAddTrade={() => {
               setSaveError(null);
+              setSaveSuccess(null);
               setEditingTrade(null);
               setModalOpen(true);
             }}
@@ -295,6 +312,7 @@ export default function TradesPage() {
             }
 
             setExpiringTrade(null);
+            setSaveSuccess("Trade expired successfully.");
           } catch (err) {
             setSaveError(err instanceof Error ? err.message : "Failed to expire trade.");
             throw err;

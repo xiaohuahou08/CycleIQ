@@ -26,6 +26,19 @@ const mockTrades = [
     contracts: 2,
     status: "ASSIGNED",
   },
+  {
+    id: "mock-seed-3",
+    ticker: "UNH",
+    option_type: "PUT",
+    strike: 360,
+    expiry: "2026-05-08",
+    trade_date: "2026-04-29",
+    premium: 1.0,
+    contracts: 1,
+    status: "EXPIRED",
+    expired_at: "2026-05-08",
+    expire_type: "EXPIRED_WORTHLESS",
+  },
 ];
 
 function sumPremiumDollars(trades) {
@@ -43,9 +56,15 @@ test("mock trade fixtures match frontend trade contract", () => {
     assert.equal(typeof trade.premium, "number");
     assert.equal(typeof trade.contracts, "number");
     assert.ok(["OPEN", "CLOSED", "EXPIRED", "ASSIGNED", "CALLED_AWAY", "ROLLED"].includes(trade.status));
+    if (trade.expired_at !== undefined && trade.expired_at !== null) {
+      assert.match(trade.expired_at, /^\d{4}-\d{2}-\d{2}$/);
+    }
+    if (trade.expire_type !== undefined && trade.expire_type !== null) {
+      assert.ok(["EXPIRED_WORTHLESS", "EXPIRED_ITM"].includes(trade.expire_type));
+    }
   }
 });
 
 test("mock trade fixtures produce deterministic premium totals", () => {
-  assert.equal(sumPremiumDollars(mockTrades), 615);
+  assert.equal(sumPremiumDollars(mockTrades), 715);
 });

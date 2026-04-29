@@ -13,6 +13,7 @@ from backend.routes.cycles import register_cycles_routes
 from backend.routes.metrics import register_metrics_routes
 
 migrate = Migrate()
+_ROUTES_REGISTERED = False
 
 
 def create_app(config_class=Config):
@@ -26,11 +27,14 @@ def create_app(config_class=Config):
     with app.app_context():
         db.create_all()
 
-    # Register routes
-    register_trades_routes(trades_bp)
-    register_dashboard_routes(dashboard_bp)
-    register_cycles_routes(cycles_bp)
-    register_metrics_routes(metrics_bp)
+    # Register blueprint routes only once per Python process.
+    global _ROUTES_REGISTERED
+    if not _ROUTES_REGISTERED:
+        register_trades_routes(trades_bp)
+        register_dashboard_routes(dashboard_bp)
+        register_cycles_routes(cycles_bp)
+        register_metrics_routes(metrics_bp)
+        _ROUTES_REGISTERED = True
     app.register_blueprint(trades_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(cycles_bp)

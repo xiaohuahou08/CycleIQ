@@ -15,6 +15,7 @@ from backend.routes.metrics import register_metrics_routes
 from backend.routes.trades import register_trades_routes
 
 migrate = Migrate()
+_ROUTES_REGISTERED = False
 
 
 def create_app(config_object=Config):
@@ -28,10 +29,13 @@ def create_app(config_object=Config):
     # Schema changes are managed by Alembic migrations (flask db upgrade).
     # Avoid create_all() on startup so app boot is not coupled to DDL calls.
 
-    register_trades_routes(trades_bp)
-    register_dashboard_routes(dashboard_bp)
-    register_cycles_routes(cycles_bp)
-    register_metrics_routes(metrics_bp)
+    global _ROUTES_REGISTERED
+    if not _ROUTES_REGISTERED:
+        register_trades_routes(trades_bp)
+        register_dashboard_routes(dashboard_bp)
+        register_cycles_routes(cycles_bp)
+        register_metrics_routes(metrics_bp)
+        _ROUTES_REGISTERED = True
     app.register_blueprint(trades_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(cycles_bp)

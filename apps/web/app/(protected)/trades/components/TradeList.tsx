@@ -33,12 +33,20 @@ const LOGO_URL_BUILDERS = [
   (ticker: string) => `https://eodhd.com/img/logos/US/${ticker}.png`,
 ];
 
+function parseDateLike(input: string): Date {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(input)) {
+    const [year, month, day] = input.split("-").map(Number);
+    return new Date(year, (month ?? 1) - 1, day ?? 1);
+  }
+  return new Date(input);
+}
+
 function fmtDate(iso: string): string {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "2-digit",
     year: "numeric",
-  }).format(new Date(iso));
+  }).format(parseDateLike(iso));
 }
 
 function getStrategy(t: Trade): string {
@@ -50,7 +58,7 @@ function getTypeColor(t: Trade): string {
 }
 
 function getDte(expiry: string): number {
-  const diffMs = new Date(expiry).getTime() - Date.now();
+  const diffMs = parseDateLike(expiry).getTime() - Date.now();
   return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 }
 
@@ -58,7 +66,7 @@ function isExpiredEligible(trade: Trade): boolean {
   if (trade.status !== "OPEN") return false;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const expiry = new Date(trade.expiry);
+  const expiry = parseDateLike(trade.expiry);
   expiry.setHours(0, 0, 0, 0);
   return expiry <= today;
 }
@@ -85,7 +93,7 @@ function parseLocalDateKey(key: string): Date {
 }
 
 function getWeekKey(expiry: string): string {
-  return toLocalDateKey(startOfWeekMonday(new Date(expiry)));
+  return toLocalDateKey(startOfWeekMonday(parseDateLike(expiry)));
 }
 
 function formatWeekLabel(weekKey: string): string {
@@ -432,7 +440,7 @@ export default function TradeList({
   }, {});
 
   const sortedWeekKeys = Object.keys(groups).sort(
-    (a, b) => new Date(a).getTime() - new Date(b).getTime()
+    (a, b) => parseLocalDateKey(a).getTime() - parseLocalDateKey(b).getTime()
   );
 
   if (loading) {

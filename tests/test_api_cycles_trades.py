@@ -154,3 +154,56 @@ def test_dashboard_insights_api(client):
     assert body["kpis"]["total_premium"] == pytest.approx(690.0)
     assert body["kpis"]["realized_pnl"] == pytest.approx(450.0)
     assert isinstance(body["charts"]["daily_premium_income"], list)
+
+
+def test_expire_trade_endpoint_sets_metadata(client):
+    h = auth_headers("44444444-4444-4444-4444-444444444444")
+
+    payload = {
+        "ticker": "UNH",
+        "option_type": "PUT",
+        "strike": 360,
+        "expiry": "2026-05-08",
+        "trade_date": "2026-04-29",
+        "premium": 1.0,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    created = client.post("/api/trades", json=payload, headers=h)
+    assert created.status_code == 201
+    tid = created.get_json()["id"]
+
+    expired = client.patch(
+        f"/api/trades/{tid}/expire",
+        json={"expired_at": "2026-05-08", "expire_type": "expired_worthless"},
+        headers=h,
+    )
+    assert expired.status_code == 200
+    body = expired.get_json()
+    assert body["status"] == "EXPIRED"
+    assert body["expired_at"] == "2026-05-08"
+    assert body["expire_type"] == "EXPIRED_WORTHLESS"
+
+
+def test_expire_trade_requires_open_status(client):
+    h = auth_headers("55555555-5555-5555-5555-555555555555")
+    payload = {
+        "ticker": "UNH",
+        "option_type": "PUT",
+        "strike": 360,
+        "expiry": "2026-05-08",
+        "trade_date": "2026-04-29",
+        "premium": 1.0,
+        "contracts": 1,
+        "status": "CLOSED",
+    }
+    created = client.post("/api/trades", json=payload, headers=h)
+    assert created.status_code == 201
+    tid = created.get_json()["id"]
+
+    expired = client.patch(
+        f"/api/trades/{tid}/expire",
+        json={"expired_at": "2026-05-08", "expire_type": "expired_worthless"},
+        headers=h,
+    )
+    assert expired.status_code == 400
