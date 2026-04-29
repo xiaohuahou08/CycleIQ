@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from flask import Flask, jsonify
 from flask_cors import CORS
+from flask_migrate import Migrate
 
 from backend.config import Config
 from backend.models import db
@@ -13,6 +14,8 @@ from backend.routes.dashboard import register_dashboard_routes
 from backend.routes.metrics import register_metrics_routes
 from backend.routes.trades import register_trades_routes
 
+migrate = Migrate()
+
 
 def create_app(config_object=Config):
     """Create and configure the Flask application."""
@@ -21,6 +24,7 @@ def create_app(config_object=Config):
 
     CORS(app)
     db.init_app(app)
+    migrate.init_app(app, db)
     # Schema changes are managed by Alembic migrations (flask db upgrade).
     # Avoid create_all() on startup so app boot is not coupled to DDL calls.
 

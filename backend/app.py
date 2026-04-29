@@ -2,6 +2,7 @@ import os
 from datetime import datetime, timezone
 from flask import Flask, jsonify
 from flask_cors import CORS
+from flask_migrate import Migrate
 
 from backend.config import Config
 from backend.models import db
@@ -11,6 +12,8 @@ from backend.routes.dashboard import register_dashboard_routes
 from backend.routes.cycles import register_cycles_routes
 from backend.routes.metrics import register_metrics_routes
 
+migrate = Migrate()
+
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -18,6 +21,7 @@ def create_app(config_class=Config):
 
     CORS(app)
     db.init_app(app)
+    migrate.init_app(app, db)
 
     with app.app_context():
         db.create_all()
