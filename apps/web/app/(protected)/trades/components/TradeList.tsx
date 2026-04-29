@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import type { Trade, TradeStatus } from "@/lib/api/trades";
 
 interface TradeGroupProps {
-  ticker: string;
+  weekLabel: string;
+  positionCount: number;
   trades: Trade[];
   onDeleteTrade: (id: string) => void;
   onEditTrade: (trade: Trade) => void;
@@ -42,6 +43,32 @@ function getTypeColor(t: Trade): string {
 function getDte(expiry: string): number {
   const diffMs = new Date(expiry).getTime() - Date.now();
   return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+}
+
+function startOfWeekMonday(input: Date): Date {
+  const d = new Date(input);
+  const day = d.getDay();
+  const offset = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + offset);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function getWeekKey(expiry: string): string {
+  return startOfWeekMonday(new Date(expiry)).toISOString().slice(0, 10);
+}
+
+function formatWeekLabel(weekKey: string): string {
+  const monday = new Date(weekKey);
+  const friday = new Date(monday);
+  friday.setDate(monday.getDate() + 4);
+  const fmt = (date: Date, withYear = false) =>
+    new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "2-digit",
+      ...(withYear ? { year: "numeric" } : {}),
+    }).format(date);
+  return `WEEK OF ${fmt(monday).toUpperCase()} - ${fmt(friday, true).toUpperCase()}`;
 }
 
 function TradeRow({
@@ -243,7 +270,8 @@ function TradeRow({
 }
 
 function TradeGroup({
-  ticker,
+  weekLabel,
+  positionCount,
   trades,
   onDeleteTrade,
   onEditTrade,
@@ -262,10 +290,7 @@ function TradeGroup({
       >
         <div className="flex items-center gap-2">
           <span className="text-lg">{open ? "▼" : "▶"}</span>
-          <span className="text-sm font-semibold text-gray-900">{ticker}</span>
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-            {trades.length} trade{trades.length !== 1 ? "s" : ""}
-          </span>
+          <span className="text-sm font-semibold text-gray-900">{weekLabel}</span>
           {openCount > 0 && (
             <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
               {openCount} open
@@ -273,6 +298,9 @@ function TradeGroup({
           )}
         </div>
         <div className="flex items-center gap-4 text-xs text-gray-500">
+          <span>
+            {positionCount} position{positionCount !== 1 ? "s" : ""}
+          </span>
           <span className="font-medium text-green-700">
             +${totalPremium.toFixed(0)} total
           </span>
@@ -284,13 +312,13 @@ function TradeGroup({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-t border-gray-100 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-400">
-                <th className="px-4 py-2">Strategy</th>
-                <th className="px-4 py-2">Strike</th>
-                <th className="px-4 py-2">Expiry</th>
-                <th className="px-4 py-2">DTE</th>
-                <th className="px-4 py-2">Premium</th>
-                <th className="px-4 py-2">Status</th>
-                <th className="px-4 py-2"></th>
+                <th className="px-4 py-2 text-left">Strategy</th>
+                <th className="px-4 py-2 text-left">Strike</th>
+                <th className="px-4 py-2 text-left">Expiry</th>
+                <th className="px-4 py-2 text-left">DTE</th>
+                <th className="px-4 py-2 text-left">Premium</th>
+                <th className="px-4 py-2 text-left">Status</th>
+                <th className="px-4 py-2 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -332,13 +360,14 @@ export default function TradeList({
   onAction,
 }: TradeListProps) {
   const groups = trades.reduce<Record<string, Trade[]>>((acc, t) => {
-    if (!acc[t.ticker]) acc[t.ticker] = [];
-    acc[t.ticker].push(t);
+    const weekKey = getWeekKey(t.expiry);
+    if (!acc[weekKey]) acc[weekKey] = [];
+    acc[weekKey].push(t);
     return acc;
   }, {});
 
-  const sortedTickers = Object.keys(groups).sort(
-    (a, b) => groups[b].length - groups[a].length
+  const sortedWeekKeys = Object.keys(groups).sort(
+    (a, b) => new Date(a).getTime() - new Date(b).getTime()
   );
 
   if (loading) {
@@ -375,11 +404,12 @@ export default function TradeList({
 
   return (
     <div className="space-y-4">
-      {sortedTickers.map((ticker) => (
+      {sortedWeekKeys.map((weekKey) => (
         <TradeGroup
-          key={ticker}
-          ticker={ticker}
-          trades={groups[ticker]}
+          key={weekKey}
+          weekLabel={formatWeekLabel(weekKey)}
+          positionCount={groups[weekKey].length}
+          trades={groups[weekKey]}
           onDeleteTrade={onDeleteTrade}
           onEditTrade={onEditTrade}
           onAction={onAction}
