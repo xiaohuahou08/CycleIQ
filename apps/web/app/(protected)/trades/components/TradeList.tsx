@@ -230,7 +230,7 @@ function TradeRow({
           {menuOpen && menuPos && (
             <div
               ref={menuRef}
-              className="fixed z-[100] w-36 overflow-hidden rounded-md border border-gray-200 bg-white text-left text-sm shadow-lg transition-shadow duration-150 hover:shadow-2xl"
+              className="fixed z-[100] w-36 overflow-hidden rounded-md border border-gray-200 bg-white text-left text-sm shadow-xl transition-shadow duration-150 hover:shadow-[0_20px_45px_-12px_rgba(15,23,42,0.45)]"
               style={{ top: menuPos.top, left: menuPos.left }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -240,7 +240,7 @@ function TradeRow({
                   setMenuOpen(false);
                   onEdit();
                 }}
-                className="block w-full px-3 py-2 transition-shadow duration-150 hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]"
+                className="block w-full px-3 py-2 transition-shadow duration-150 hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.16)]"
               >
                 Edit
               </button>
@@ -250,7 +250,7 @@ function TradeRow({
                   setMenuOpen(false);
                   onAction("buy_to_close");
                 }}
-                className="block w-full px-3 py-2 transition-shadow duration-150 hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]"
+                className="block w-full px-3 py-2 transition-shadow duration-150 hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.16)]"
               >
                 Buy to Close
               </button>
@@ -261,7 +261,7 @@ function TradeRow({
                     setMenuOpen(false);
                     onAction("expire");
                   }}
-                  className="block w-full px-3 py-2 transition-shadow duration-150 hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]"
+                  className="block w-full px-3 py-2 transition-shadow duration-150 hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.16)]"
                 >
                   Expire
                 </button>
@@ -272,7 +272,7 @@ function TradeRow({
                   setMenuOpen(false);
                   onAction("assign");
                 }}
-                className="block w-full px-3 py-2 transition-shadow duration-150 hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]"
+                className="block w-full px-3 py-2 transition-shadow duration-150 hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.16)]"
               >
                 Assign
               </button>
@@ -282,7 +282,7 @@ function TradeRow({
                   setMenuOpen(false);
                   onAction("roll");
                 }}
-                className="block w-full px-3 py-2 transition-shadow duration-150 hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]"
+                className="block w-full px-3 py-2 transition-shadow duration-150 hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.16)]"
               >
                 Roll
               </button>
@@ -292,7 +292,7 @@ function TradeRow({
                   setMenuOpen(false);
                   onDelete();
                 }}
-                className="block w-full px-3 py-2 text-red-600 transition-shadow duration-150 hover:bg-red-50 hover:shadow-[inset_0_0_0_1px_rgba(220,38,38,0.14)]"
+                className="block w-full px-3 py-2 text-red-600 transition-shadow duration-150 hover:bg-red-50 hover:shadow-[inset_0_0_0_1px_rgba(220,38,38,0.24)]"
               >
                 Delete
               </button>
