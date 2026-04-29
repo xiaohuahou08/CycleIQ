@@ -58,6 +58,12 @@ test("mock trade fixtures match frontend trade contract", () => {
     if (trade.commission_fee !== undefined && trade.commission_fee !== null) {
       assert.equal(typeof trade.commission_fee, "number");
     }
+    if (trade.fees_on_assignment !== undefined && trade.fees_on_assignment !== null) {
+      assert.equal(typeof trade.fees_on_assignment, "number");
+    }
+    if (trade.stock_cost_basis_per_share !== undefined && trade.stock_cost_basis_per_share !== null) {
+      assert.equal(typeof trade.stock_cost_basis_per_share, "number");
+    }
     assert.equal(typeof trade.contracts, "number");
     assert.ok(["OPEN", "CLOSED", "EXPIRED", "ASSIGNED", "CALLED_AWAY", "ROLLED"].includes(trade.status));
     if (trade.expired_at !== undefined && trade.expired_at !== null) {

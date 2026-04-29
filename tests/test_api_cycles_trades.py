@@ -102,6 +102,73 @@ def test_trade_crud_and_user_scope(client):
     assert r_del.status_code == 204
 
 
+def test_put_assigned_sets_stock_cost_basis_csp(client):
+    """Premium is per share; commissions are total USD, spread across shares."""
+    h = auth_headers("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+    payload = {
+        "ticker": "HIMS",
+        "option_type": "PUT",
+        "strike": 28,
+        "expiry": "2026-06-15",
+        "trade_date": "2026-04-01",
+        "premium": 1.2,
+        "commission_fee": 18.0,
+        "contracts": 3,
+        "status": "OPEN",
+    }
+    created = client.post("/api/trades", json=payload, headers=h)
+    assert created.status_code == 201
+    tid = created.get_json()["id"]
+
+    assignment_price = 28.0
+    fees_assignment = 5.0
+    shares = 300
+    expected = assignment_price - 1.2 + (18.0 + fees_assignment) / shares
+
+    assign = client.put(
+        f"/api/trades/{tid}",
+        json={
+            "status": "ASSIGNED",
+            "trade_date": "2026-04-29",
+            "strike": assignment_price,
+            "fees_on_assignment": fees_assignment,
+        },
+        headers=h,
+    )
+    assert assign.status_code == 200
+    body = assign.get_json()
+    assert body["stock_cost_basis_per_share"] == pytest.approx(expected, abs=1e-4)
+
+
+def test_put_called_away_clears_stock_cost_basis(client):
+    h = auth_headers("cccccccc-cccc-cccc-cccc-cccccccccccc")
+    payload = {
+        "ticker": "HIMS",
+        "option_type": "CALL",
+        "strike": 30,
+        "expiry": "2026-06-15",
+        "trade_date": "2026-04-01",
+        "premium": 1.5,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    created = client.post("/api/trades", json=payload, headers=h)
+    assert created.status_code == 201
+    tid = created.get_json()["id"]
+
+    out = client.put(
+        f"/api/trades/{tid}",
+        json={
+            "status": "CALLED_AWAY",
+            "trade_date": "2026-04-29",
+            "strike": 30,
+        },
+        headers=h,
+    )
+    assert out.status_code == 200
+    assert out.get_json()["stock_cost_basis_per_share"] is None
+
+
 def test_trade_auto_attaches_existing_cycle(client):
     h = auth_headers("66666666-6666-6666-6666-666666666666")
     cycle = client.post("/api/cycles", json={"ticker": "UNH"}, headers=h)

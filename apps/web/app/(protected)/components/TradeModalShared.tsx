@@ -3,6 +3,9 @@ import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type R
 interface TradeModalShellProps {
   open: boolean;
   title: string;
+  subtitle?: string;
+  /** Shown inside a blue circle to the left of the title (e.g. lifecycle icon). */
+  headerIcon?: ReactNode;
   onClose: () => void;
   children: ReactNode;
   draggable?: boolean;
@@ -12,6 +15,8 @@ interface TradeModalShellProps {
 export function TradeModalShell({
   open,
   title,
+  subtitle,
+  headerIcon,
   onClose,
   children,
   draggable = false,
@@ -81,18 +86,31 @@ export function TradeModalShell({
         style={{ transform: `translate(${modalOffset.x}px, ${modalOffset.y}px)` }}
       >
         <div
-          className={`flex items-center justify-between border-b border-gray-200 px-6 py-4 ${
+          className={`flex items-start justify-between gap-3 border-b border-gray-200 px-6 py-4 ${
             draggable ? "cursor-grab active:cursor-grabbing" : ""
           }`}
           onMouseDown={onDragStart}
         >
-          <h2 id={labelledById} className="text-base font-semibold text-gray-900">
-            {title}
-          </h2>
+          <div className="flex min-w-0 items-start gap-3">
+            {headerIcon ? (
+              <div
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white [&_svg]:h-5 [&_svg]:w-5"
+                aria-hidden
+              >
+                {headerIcon}
+              </div>
+            ) : null}
+            <div className="min-w-0 pt-0.5">
+              <h2 id={labelledById} className="text-base font-semibold text-gray-900">
+                {title}
+              </h2>
+              {subtitle ? <p className="mt-1 text-sm text-gray-500">{subtitle}</p> : null}
+            </div>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1 text-gray-400 hover:text-gray-600"
+            className="shrink-0 rounded-lg p-1 text-gray-400 hover:text-gray-600"
             aria-label="Close"
           >
             ✕
@@ -132,13 +150,21 @@ export function ModalActionButtons({
   submittingLabel = "Saving...",
   isSubmitting,
   onSubmit,
+  submitTone = "dark",
+  submitDisabled = false,
 }: {
   onCancel: () => void;
   submitLabel: string;
   submittingLabel?: string;
   isSubmitting: boolean;
   onSubmit?: () => void;
+  submitTone?: "dark" | "blue";
+  submitDisabled?: boolean;
 }) {
+  const submitClass =
+    submitTone === "blue"
+      ? "rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+      : "rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-60";
   return (
     <div className="mt-6 flex justify-end gap-3">
       <button
@@ -152,8 +178,8 @@ export function ModalActionButtons({
       <button
         type={onSubmit ? "button" : "submit"}
         onClick={onSubmit}
-        disabled={isSubmitting}
-        className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-60"
+        disabled={isSubmitting || submitDisabled}
+        className={submitClass}
       >
         {isSubmitting ? submittingLabel : submitLabel}
       </button>

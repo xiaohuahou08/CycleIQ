@@ -9,6 +9,7 @@ from backend.models import db
 from backend.models.trade import ALLOWED_EXPIRE_TYPES, ALLOWED_TRADE_STATUSES, Trade
 from backend.models.wheel_cycle import WheelCycle
 from backend.services.cycle_fsm import append_transition, apply_api_event, replay_cycle
+from backend.services.trade_cost_basis import apply_stock_cost_basis
 from cycleiq.wheel_fsm import InvalidTransitionError
 
 AUTO_ATTACH_CYCLE_STATES = frozenset({"IDLE", "CSP_OPEN", "STOCK_HELD", "CC_OPEN"})
@@ -152,6 +153,9 @@ def register_trades_routes(trades_bp):
             trade.commission_fee = (
                 float(data["commission_fee"]) if data["commission_fee"] is not None else None
             )
+        if "fees_on_assignment" in data:
+            fv = data["fees_on_assignment"]
+            trade.fees_on_assignment = float(fv) if fv is not None else None
         if "contracts" in data:
             trade.contracts = int(data["contracts"])
         if "delta" in data:
@@ -189,6 +193,7 @@ def register_trades_routes(trades_bp):
                 trade.expire_type = None
 
         trade.updated_at = datetime.now(timezone.utc)
+        apply_stock_cost_basis(trade)
         db.session.commit()
         return jsonify(trade.to_api_dict())
 
@@ -220,6 +225,7 @@ def register_trades_routes(trades_bp):
         trade.expired_at = expired_at
         trade.expire_type = expire_type
         trade.updated_at = datetime.now(timezone.utc)
+        apply_stock_cost_basis(trade)
 
         if trade.cycle_id:
             cycle = WheelCycle.query.filter_by(id=trade.cycle_id, user_id=user_id).first()
@@ -248,6 +254,7 @@ def register_trades_routes(trades_bp):
             return jsonify({"error": f"Invalid status; allowed: {sorted(ALLOWED_TRADE_STATUSES)}"}), 400
         trade.status = st
         trade.updated_at = datetime.now(timezone.utc)
+        apply_stock_cost_basis(trade)
         db.session.commit()
         return jsonify(trade.to_api_dict())
 

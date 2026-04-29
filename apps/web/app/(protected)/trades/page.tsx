@@ -14,6 +14,7 @@ import {
 } from "@/lib/api/trades";
 import { useProtectedAuth } from "../auth-context";
 import AddTradeModal from "../dashboard/components/AddTradeModal";
+import AssignTradeModal from "./components/AssignTradeModal";
 import ExpireTradeModal from "./components/ExpireTradeModal";
 import TradeFilters, { type FilterState } from "./components/TradeFilters";
 import TradeList from "./components/TradeList";
@@ -43,6 +44,7 @@ export default function TradesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [expiringTrade, setExpiringTrade] = useState<Trade | null>(null);
+  const [assigningTrade, setAssigningTrade] = useState<Trade | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>({
@@ -142,15 +144,7 @@ export default function TradesPage() {
       }
 
       if (action === "assign") {
-        if (trade.cycle_id) {
-          await postCycleTransition(token, trade.cycle_id, {
-            event: "assigned",
-            params: { shares: trade.contracts * 100 },
-          });
-        }
-        const updated = await updateTrade(token, trade.id, { status: "ASSIGNED" });
-        setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
-        setSaveSuccess("Trade assigned successfully.");
+        setAssigningTrade(trade);
         return;
       }
 
@@ -291,6 +285,56 @@ export default function TradesPage() {
         }
         title={editingTrade ? "Edit Trade" : "Add Trade"}
         submitLabel={editingTrade ? "Update Trade" : "Save Trade"}
+      />
+
+      <AssignTradeModal
+        open={Boolean(assigningTrade)}
+        trade={assigningTrade}
+        onClose={() => setAssigningTrade(null)}
+        onConfirm={async (input) => {
+          if (!token || !assigningTrade) return;
+          setSaveError(null);
+          try {
+            if (assigningTrade.cycle_id) {
+              await postCycleTransition(token, assigningTrade.cycle_id, {
+                event: "assigned",
+                params: {
+                  shares: assigningTrade.contracts * 100,
+                  assignment_price: input.assignment_price,
+                },
+              });
+            }
+            const terminalStatus =
+              assigningTrade.option_type === "CALL" ? "CALLED_AWAY" : "ASSIGNED";
+            const updated = await updateTrade(token, assigningTrade.id, {
+              status: terminalStatus,
+              trade_date: input.trade_date,
+              strike: input.assignment_price,
+              ...(input.fees_on_assignment !== undefined
+                ? { fees_on_assignment: input.fees_on_assignment }
+                : {}),
+              ...(input.notes?.trim()
+                ? {
+                    notes: [assigningTrade.notes?.trim(), input.notes.trim()]
+                      .filter(Boolean)
+                      .join("\n"),
+                  }
+                : {}),
+            });
+            setAllTrades((prev) =>
+              prev.map((t) => (t.id === assigningTrade.id ? updated : t))
+            );
+            setAssigningTrade(null);
+            setSaveSuccess(
+              assigningTrade.option_type === "CALL"
+                ? "Position marked called away successfully."
+                : "Trade assigned successfully."
+            );
+          } catch (err) {
+            setSaveError(err instanceof Error ? err.message : "Failed to assign trade.");
+            throw err;
+          }
+        }}
       />
 
       <ExpireTradeModal

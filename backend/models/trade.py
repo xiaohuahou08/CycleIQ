@@ -30,6 +30,8 @@ class Trade(db.Model):
     trade_date: Mapped[date] = mapped_column(Date, nullable=False)
     premium: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     commission_fee: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    fees_on_assignment: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    stock_cost_basis_per_share: Mapped[float | None] = mapped_column(Numeric(14, 4), nullable=True)
     delta: Mapped[float | None] = mapped_column(Numeric(5, 3), nullable=True)
     contracts: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="OPEN")
@@ -66,6 +68,12 @@ class Trade(db.Model):
             "trade_date": self.trade_date.isoformat(),
             "premium": float(self.premium),
             "commission_fee": float(self.commission_fee) if self.commission_fee is not None else None,
+            "fees_on_assignment": float(self.fees_on_assignment)
+            if self.fees_on_assignment is not None
+            else None,
+            "stock_cost_basis_per_share": float(self.stock_cost_basis_per_share)
+            if self.stock_cost_basis_per_share is not None
+            else None,
             "delta": float(self.delta) if self.delta is not None else None,
             "contracts": self.contracts,
             "status": self.status,

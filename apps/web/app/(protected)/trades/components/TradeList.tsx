@@ -62,6 +62,22 @@ function getDte(expiry: string): number {
   return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 }
 
+/** Net stock cost per share after CSP assignment (backend-computed). */
+function fmtStockCostPerShare(trade: Trade): string {
+  if (
+    trade.status === "ASSIGNED" &&
+    trade.option_type === "PUT" &&
+    trade.stock_cost_basis_per_share != null &&
+    Number.isFinite(trade.stock_cost_basis_per_share)
+  ) {
+    return `$${trade.stock_cost_basis_per_share.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 4,
+    })}`;
+  }
+  return "—";
+}
+
 function isExpiredEligible(trade: Trade): boolean {
   if (trade.status !== "OPEN") return false;
   const today = new Date();
@@ -207,6 +223,16 @@ function TradeRow({
         <td className="px-4 py-3 text-sm font-medium text-green-700">
           +${(trade.premium * trade.contracts * 100).toFixed(0)}
         </td>
+        <td
+          className="px-4 py-3 text-right tabular-nums text-sm text-gray-700"
+          title={
+            trade.status === "ASSIGNED" && trade.option_type === "PUT"
+              ? "Net stock cost per share after assignment"
+              : undefined
+          }
+        >
+          {fmtStockCostPerShare(trade)}
+        </td>
         <td className="px-4 py-3">
           <span
             className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[trade.status]}`}
@@ -312,8 +338,8 @@ function TradeRow({
 
       {expanded && (
         <tr className="border-b border-gray-100 bg-gray-50/50">
-          <td colSpan={9} className="px-4 py-3 text-sm text-gray-600">
-            <div className="grid grid-cols-3 gap-4">
+          <td colSpan={10} className="px-4 py-3 text-sm text-gray-600">
+            <div className="grid grid-cols-3 gap-4 sm:grid-cols-4">
               <div>
                 <span className="text-xs text-gray-400">Contracts</span>
                 <p className="font-medium">{trade.contracts}</p>
@@ -328,6 +354,14 @@ function TradeRow({
                 <span className="text-xs text-gray-400">Trade Date</span>
                 <p className="font-medium">{fmtDate(trade.trade_date)}</p>
               </div>
+              {trade.status === "ASSIGNED" &&
+                trade.option_type === "PUT" &&
+                trade.stock_cost_basis_per_share != null && (
+                  <div>
+                    <span className="text-xs text-gray-400">Stock cost / share</span>
+                    <p className="font-medium tabular-nums">{fmtStockCostPerShare(trade)}</p>
+                  </div>
+                )}
             </div>
             {trade.notes && (
               <div className="mt-2">
@@ -392,6 +426,12 @@ function TradeGroup({
                 <th className="px-4 py-2 text-left">Expiry</th>
                 <th className="px-4 py-2 text-left">DTE</th>
                 <th className="px-4 py-2 text-left">Premium</th>
+                <th
+                  className="px-4 py-2 text-right"
+                  title="每股成本：指派后净持股成本（仅 CSP 已指派）"
+                >
+                  Cost / sh
+                </th>
                 <th className="px-4 py-2 text-left">Status</th>
                 <th className="px-4 py-2 text-right">Action</th>
               </tr>

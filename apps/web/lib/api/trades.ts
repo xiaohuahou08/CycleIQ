@@ -18,6 +18,10 @@ export interface Trade {
   trade_date: string;
   premium: number;
   commission_fee?: number | null;
+  /** One-time USD total for assignment (not premium); used in cost basis. */
+  fees_on_assignment?: number | null;
+  /** CSP assigned: approximate net stock cost/share (stored). */
+  stock_cost_basis_per_share?: number | null;
   contracts: number;
   delta?: number;
   status: TradeStatus;
@@ -40,7 +44,9 @@ export interface CreateTradeInput {
   notes?: string;
 }
 
-export type UpdateTradeInput = Partial<CreateTradeInput>;
+export type UpdateTradeInput = Partial<CreateTradeInput> & {
+  fees_on_assignment?: number | null;
+};
 
 export interface MetricsSummary {
   total_premium: number;
@@ -83,9 +89,13 @@ export interface CycleSummary {
   updated_at: string | null;
 }
 
+/** Params for POST /cycles/:id/transitions — shape depends on `event`. */
 export interface CycleTransitionInput {
   event: "expire_otm" | "assigned" | "roll";
-  params?: Record<string, unknown>;
+  params?: Record<string, unknown> & {
+    /** assigned: overrides open leg strike when recording stock BUY/SELL price at assignment */
+    assignment_price?: number;
+  };
 }
 
 export interface ExpireTradeInput {

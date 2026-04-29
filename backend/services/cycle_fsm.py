@@ -161,14 +161,24 @@ def apply_api_event(cycle: Cycle, event_name: str, params: dict[str, Any]) -> An
     if event_name == "assigned":
         shares = int(params.get("shares", 100))
         if st == CycleState.CSP_OPEN:
-            px = cycle.current_position.strike
-            if px is None:
+            fallback = cycle.current_position.strike
+            override = params.get("assignment_price")
+            if override is not None:
+                px = Decimal(str(override))
+            elif fallback is not None:
+                px = fallback
+            else:
                 raise ValueError("Missing strike on open CSP position")
             stock = StockLeg(action=StockAction.BUY, price=px, quantity=shares)
             return cycle.apply_event(CycleEvent.CSP_ASSIGNED, [], stock, timestamp=now)
         if st == CycleState.CC_OPEN:
-            px = cycle.current_position.strike
-            if px is None:
+            fallback = cycle.current_position.strike
+            override = params.get("assignment_price")
+            if override is not None:
+                px = Decimal(str(override))
+            elif fallback is not None:
+                px = fallback
+            else:
                 raise ValueError("Missing strike on open CC position")
             stock = StockLeg(action=StockAction.SELL, price=px, quantity=shares)
             return cycle.apply_event(CycleEvent.CC_ASSIGNED, [], stock, timestamp=now)
