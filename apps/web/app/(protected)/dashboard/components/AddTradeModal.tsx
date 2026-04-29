@@ -192,7 +192,8 @@ export default function AddTradeModal({
       contracts: values.contracts,
       status: initialValues?.status ?? "OPEN",
       delta: values.delta === "" ? undefined : (values.delta as number | undefined),
-      notes: values.notes || undefined,
+      // Keep empty string so Edit can explicitly clear notes.
+      notes: values.notes?.trim() ?? "",
     };
     await onSave(input);
   };

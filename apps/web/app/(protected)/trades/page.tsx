@@ -63,6 +63,12 @@ export default function TradesPage() {
       .finally(() => setTradesLoading(false));
   }, [token]);
 
+  useEffect(() => {
+    if (!saveSuccess) return;
+    const timeout = window.setTimeout(() => setSaveSuccess(null), 3000);
+    return () => window.clearTimeout(timeout);
+  }, [saveSuccess]);
+
   const tickerSuggestions = useMemo(
     () =>
       Array.from(new Set(allTrades.map((trade) => trade.ticker)))
