@@ -122,6 +122,10 @@ def test_trade_auto_attaches_existing_cycle(client):
     assert created.status_code == 201
     assert created.get_json()["cycle_id"] == cycle_id
 
+    cycle_after = client.get(f"/api/cycles/{cycle_id}", headers=h)
+    assert cycle_after.status_code == 200
+    assert cycle_after.get_json()["state"] == "CSP_OPEN"
+
 
 def test_trade_auto_creates_cycle_if_existing_is_exit(client, app):
     h = auth_headers("77777777-7777-7777-7777-777777777777")

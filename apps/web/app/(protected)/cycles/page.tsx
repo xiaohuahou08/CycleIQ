@@ -33,6 +33,47 @@ function stateBadgeStyle(state: string): string {
   return "bg-slate-100 text-slate-700";
 }
 
+const WHEEL_STEPS = ["IDLE", "CSP_OPEN", "STOCK_HELD", "CC_OPEN", "EXIT"] as const;
+
+function wheelProgressIndex(state: string): number {
+  const idx = WHEEL_STEPS.indexOf(state as (typeof WHEEL_STEPS)[number]);
+  return idx >= 0 ? idx : 0;
+}
+
+function CycleWheel({ state }: { state: string }) {
+  const activeIndex = wheelProgressIndex(state);
+  const size = 54;
+  const center = size / 2;
+  const radius = 20;
+
+  return (
+    <div className="relative h-14 w-14 shrink-0 rounded-full border border-gray-200 bg-white">
+      <svg viewBox={`0 0 ${size} ${size}`} className="h-full w-full">
+        <circle cx={center} cy={center} r={radius} fill="none" stroke="#e5e7eb" strokeWidth="3" />
+        {WHEEL_STEPS.map((step, index) => {
+          const angle = (Math.PI * 2 * index) / WHEEL_STEPS.length - Math.PI / 2;
+          const x = center + radius * Math.cos(angle);
+          const y = center + radius * Math.sin(angle);
+          const isActive = index <= activeIndex;
+          const isCurrent = step === state;
+          return (
+            <circle
+              key={step}
+              cx={x}
+              cy={y}
+              r={isCurrent ? 4.5 : 3.5}
+              fill={isActive ? "#2563eb" : "#d1d5db"}
+            />
+          );
+        })}
+      </svg>
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[9px] font-semibold text-gray-500">
+        Wheel
+      </div>
+    </div>
+  );
+}
+
 export default function CyclesPage() {
   const { token, isAuthLoading } = useProtectedAuth();
   const [cycles, setCycles] = useState<CycleSummary[]>([]);
@@ -110,6 +151,7 @@ export default function CyclesPage() {
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-lg">{expanded ? "▼" : "▶"}</span>
+                      <CycleWheel state={cycle.state} />
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-base font-semibold text-gray-900">{cycle.ticker}</span>

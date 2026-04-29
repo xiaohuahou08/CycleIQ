@@ -8,6 +8,8 @@ from backend.auth.supabase import require_auth
 from backend.models import db
 from backend.models.trade import ALLOWED_EXPIRE_TYPES, ALLOWED_TRADE_STATUSES, Trade
 from backend.models.wheel_cycle import WheelCycle
+from backend.services.cycle_fsm import append_transition, apply_api_event, replay_cycle
+from cycleiq.wheel_fsm import InvalidTransitionError
 
 AUTO_ATTACH_CYCLE_STATES = frozenset({"IDLE", "CSP_OPEN", "STOCK_HELD", "CC_OPEN"})
 
@@ -98,6 +100,28 @@ def register_trades_routes(trades_bp):
             notes=data.get("notes"),
         )
         db.session.add(trade)
+
+        # Auto-drive cycle state for newly opened CSP trades.
+        if trade.cycle_id and option_type == "PUT" and status == "OPEN":
+            cycle = WheelCycle.query.filter_by(id=trade.cycle_id, user_id=user_id).first()
+            if cycle and cycle.state == "IDLE":
+                try:
+                    fsm_cycle = replay_cycle(cycle.ticker, cycle.transition_log)
+                    transition = apply_api_event(
+                        fsm_cycle,
+                        "sell_csp",
+                        {
+                            "strike": float(trade.strike),
+                            "expiry": trade.expiry.isoformat(),
+                            "premium": float(trade.premium),
+                        },
+                    )
+                    cycle.transition_log = append_transition(cycle.transition_log, transition)
+                    cycle.state = fsm_cycle.state.value
+                except (InvalidTransitionError, ValueError, KeyError, TypeError):
+                    # Keep trade creation robust even if cycle FSM replay/transition fails.
+                    pass
+
         db.session.commit()
         return jsonify(trade.to_api_dict()), 201
 
@@ -200,9 +224,6 @@ def register_trades_routes(trades_bp):
         if trade.cycle_id:
             cycle = WheelCycle.query.filter_by(id=trade.cycle_id, user_id=user_id).first()
             if cycle:
-                from backend.services.cycle_fsm import append_transition, apply_api_event, replay_cycle
-                from cycleiq.wheel_fsm import InvalidTransitionError
-
                 try:
                     fsm_cycle = replay_cycle(cycle.ticker, cycle.transition_log)
                     transition = apply_api_event(fsm_cycle, "expire_otm", {})
