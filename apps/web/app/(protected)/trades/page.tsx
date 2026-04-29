@@ -14,6 +14,7 @@ import {
 } from "@/lib/api/trades";
 import { useProtectedAuth } from "../auth-context";
 import AddTradeModal from "../dashboard/components/AddTradeModal";
+import ExpireTradeModal from "./components/ExpireTradeModal";
 import TradeFilters, { type FilterState } from "./components/TradeFilters";
 import TradeList from "./components/TradeList";
 
@@ -41,6 +42,7 @@ export default function TradesPage() {
   const [tradesLoading, setTradesLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
+  const [expiringTrade, setExpiringTrade] = useState<Trade | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     ticker: "",
@@ -122,25 +124,7 @@ export default function TradesPage() {
       }
 
       if (action === "expire") {
-        const defaultExpiredAt = new Date().toISOString().slice(0, 10);
-        const expiredAtInput = window.prompt("Expired at (YYYY-MM-DD)", defaultExpiredAt);
-        if (expiredAtInput === null) return;
-        const expireTypeInput = window.prompt(
-          "Expire type: expired_worthless or expired_itm",
-          "expired_worthless"
-        );
-        if (expireTypeInput === null) return;
-        const normalizedType = expireTypeInput.trim().toLowerCase();
-        if (normalizedType !== "expired_worthless" && normalizedType !== "expired_itm") {
-          setSaveError("Invalid expire type. Use expired_worthless or expired_itm.");
-          return;
-        }
-
-        const updated = await expireTrade(token, trade.id, {
-          expired_at: expiredAtInput,
-          expire_type: normalizedType,
-        });
-        setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
+        setExpiringTrade(trade);
         return;
       }
 
@@ -283,6 +267,39 @@ export default function TradesPage() {
         }
         title={editingTrade ? "Edit Trade" : "Add Trade"}
         submitLabel={editingTrade ? "Update Trade" : "Save Trade"}
+      />
+
+      <ExpireTradeModal
+        open={Boolean(expiringTrade)}
+        trade={expiringTrade}
+        onClose={() => setExpiringTrade(null)}
+        onConfirm={async (input) => {
+          if (!token || !expiringTrade) return;
+          setSaveError(null);
+          try {
+            const updated = await expireTrade(token, expiringTrade.id, {
+              expired_at: input.expired_at,
+              expire_type: input.expire_type,
+            });
+
+            if (input.notes) {
+              const mergedNotes = [updated.notes?.trim(), input.notes.trim()]
+                .filter(Boolean)
+                .join("\n");
+              const notesUpdated = await updateTrade(token, updated.id, { notes: mergedNotes });
+              setAllTrades((prev) =>
+                prev.map((t) => (t.id === notesUpdated.id ? notesUpdated : t))
+              );
+            } else {
+              setAllTrades((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+            }
+
+            setExpiringTrade(null);
+          } catch (err) {
+            setSaveError(err instanceof Error ? err.message : "Failed to expire trade.");
+            throw err;
+          }
+        }}
       />
     </>
   );
