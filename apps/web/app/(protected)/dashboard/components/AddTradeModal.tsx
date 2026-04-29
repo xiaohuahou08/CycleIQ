@@ -542,6 +542,7 @@ export default function AddTradeModal({
                 </div>
               </div>
             )}
+          </div>
 
           <div className="mt-6 flex justify-end gap-3">
             <button
