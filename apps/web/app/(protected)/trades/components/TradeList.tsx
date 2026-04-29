@@ -54,12 +54,24 @@ function startOfWeekMonday(input: Date): Date {
   return d;
 }
 
+function toLocalDateKey(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseLocalDateKey(key: string): Date {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
 function getWeekKey(expiry: string): string {
-  return startOfWeekMonday(new Date(expiry)).toISOString().slice(0, 10);
+  return toLocalDateKey(startOfWeekMonday(new Date(expiry)));
 }
 
 function formatWeekLabel(weekKey: string): string {
-  const monday = new Date(weekKey);
+  const monday = parseLocalDateKey(weekKey);
   const friday = new Date(monday);
   friday.setDate(monday.getDate() + 4);
   const fmt = (date: Date, withYear = false) =>
@@ -119,6 +131,7 @@ function TradeRow({
         className="group cursor-pointer border-b border-gray-50 hover:bg-gray-50"
         onClick={() => setExpanded((v) => !v)}
       >
+        <td className="px-4 py-3 text-sm font-medium text-gray-900">{trade.ticker}</td>
         <td className="px-4 py-3">
           <span className={`text-xs font-semibold ${getTypeColor(trade)}`}>
             {getStrategy(trade)}
@@ -239,7 +252,7 @@ function TradeRow({
 
       {expanded && (
         <tr className="border-b border-gray-100 bg-gray-50/50">
-          <td colSpan={7} className="px-4 py-3 text-sm text-gray-600">
+          <td colSpan={8} className="px-4 py-3 text-sm text-gray-600">
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <span className="text-xs text-gray-400">Contracts</span>
@@ -312,6 +325,7 @@ function TradeGroup({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-t border-gray-100 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-400">
+                <th className="px-4 py-2 text-left">Ticker</th>
                 <th className="px-4 py-2 text-left">Strategy</th>
                 <th className="px-4 py-2 text-left">Strike</th>
                 <th className="px-4 py-2 text-left">Expiry</th>
