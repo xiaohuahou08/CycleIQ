@@ -28,6 +28,10 @@ function getStrategy(trade: Trade): "CSP" | "CC" {
 }
 
 const LOGO_URL_BUILDERS = [
+  (ticker: string) =>
+    `https://cdn.brandfetch.io/ticker/${encodeURIComponent(
+      ticker
+    )}?theme=light&c=1idEaEn5uowTmWO3jvO`,
   (ticker: string) => `https://financialmodelingprep.com/image-stock/${ticker}.png`,
   (ticker: string) => `https://eodhd.com/img/logos/US/${ticker}.png`,
 ];

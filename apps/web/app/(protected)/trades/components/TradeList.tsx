@@ -24,6 +24,15 @@ const STATUS_STYLES: Record<TradeStatus, string> = {
   ROLLED: "bg-blue-100 text-blue-800",
 };
 
+const LOGO_URL_BUILDERS = [
+  (ticker: string) =>
+    `https://cdn.brandfetch.io/ticker/${encodeURIComponent(
+      ticker
+    )}?theme=light&c=1idEaEn5uowTmWO3jvO`,
+  (ticker: string) => `https://financialmodelingprep.com/image-stock/${ticker}.png`,
+  (ticker: string) => `https://eodhd.com/img/logos/US/${ticker}.png`,
+];
+
 function fmtDate(iso: string): string {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -83,6 +92,32 @@ function formatWeekLabel(weekKey: string): string {
   return `WEEK OF ${fmt(monday).toUpperCase()} - ${fmt(friday, true).toUpperCase()}`;
 }
 
+function TickerLogo({ ticker }: { ticker: string }) {
+  const [urlIndex, setUrlIndex] = useState(0);
+
+  useEffect(() => {
+    setUrlIndex(0);
+  }, [ticker]);
+
+  if (urlIndex >= LOGO_URL_BUILDERS.length) {
+    return (
+      <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-blue-100 text-[10px] font-semibold text-blue-700">
+        {ticker[0]}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={LOGO_URL_BUILDERS[urlIndex](ticker)}
+      alt={`${ticker} logo`}
+      className="h-5 w-5 rounded object-cover"
+      onError={() => setUrlIndex((prev) => prev + 1)}
+      loading="lazy"
+    />
+  );
+}
+
 function TradeRow({
   trade,
   onDelete,
@@ -131,7 +166,12 @@ function TradeRow({
         className="group cursor-pointer border-b border-gray-50 hover:bg-gray-50"
         onClick={() => setExpanded((v) => !v)}
       >
-        <td className="px-4 py-3 text-sm font-medium text-gray-900">{trade.ticker}</td>
+        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+          <div className="flex items-center gap-2">
+            <TickerLogo ticker={trade.ticker} />
+            <span>{trade.ticker}</span>
+          </div>
+        </td>
         <td className="px-4 py-3">
           <span className={`text-xs font-semibold ${getTypeColor(trade)}`}>
             {getStrategy(trade)}
