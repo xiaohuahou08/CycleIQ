@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   createTrade,
   getMetricsSummary,
@@ -22,6 +22,14 @@ export default function DashboardPage() {
   const [tradesLoading, setTradesLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  const tickerSuggestions = useMemo(
+    () =>
+      Array.from(new Set(activeTrades.map((trade) => trade.ticker)))
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b)),
+    [activeTrades]
+  );
 
   const loadData = useCallback(async (accessToken: string) => {
     setSummaryLoading(true);
@@ -110,6 +118,7 @@ export default function DashboardPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onSave={onSaveTrade}
+        tickerSuggestions={tickerSuggestions}
       />
     </>
   );

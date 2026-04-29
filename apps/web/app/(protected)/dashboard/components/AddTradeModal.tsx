@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -41,6 +47,10 @@ function TickerLogo({ ticker }: { ticker: string }) {
     [ticker]
   );
   const [urlIndex, setUrlIndex] = useState(0);
+
+  useEffect(() => {
+    setUrlIndex(0);
+  }, [ticker]);
 
   if (!ticker) {
     return (
@@ -92,6 +102,9 @@ export default function AddTradeModal({
   onSave,
   tickerSuggestions = [],
 }: AddTradeModalProps) {
+  const [showOptionalFields, setShowOptionalFields] = useState(true);
+  const [commissionFees, setCommissionFees] = useState<string>("");
+
   const [modalOffset, setModalOffset] = useState({ x: 0, y: 0 });
   const dragStartRef = useRef<{ x: number; y: number; offsetX: number; offsetY: number } | null>(
     null
@@ -116,6 +129,15 @@ export default function AddTradeModal({
   const [isTickerFocused, setIsTickerFocused] = useState(false);
 
   const tickerValue = (watch("ticker") ?? "").toUpperCase().trim();
+  const premiumValue = watch("premium");
+  const contractsValue = watch("contracts");
+  const totalReceived = (() => {
+    const p = Number(premiumValue ?? 0);
+    const c = Number(contractsValue ?? 0);
+    if (!Number.isFinite(p) || !Number.isFinite(c)) return 0;
+    return p * c * 100;
+  })();
+
   const filteredTickerSuggestions = useMemo(() => {
     if (!tickerSuggestions.length) return [];
     return tickerSuggestions
@@ -126,6 +148,8 @@ export default function AddTradeModal({
   useEffect(() => {
     if (open) {
       setModalOffset({ x: 0, y: 0 });
+      setShowOptionalFields(true);
+      setCommissionFees("");
       reset({
         option_type: "PUT",
         contracts: 1,
@@ -179,6 +203,15 @@ export default function AddTradeModal({
   };
 
   const onSubmit = async (values: TradeFormValues) => {
+    const commissionNumber = commissionFees.trim() ? Number(commissionFees) : null;
+
+    let notesToSubmit: string | undefined = values.notes || undefined;
+    if (commissionNumber !== null && Number.isFinite(commissionNumber) && commissionNumber > 0) {
+      const line = `Commission Fees: $${commissionNumber.toFixed(2)}`;
+      notesToSubmit = notesToSubmit ? `${notesToSubmit}\n${line}` : line;
+      notesToSubmit = notesToSubmit.slice(0, 500);
+    }
+
     const input: CreateTradeInput = {
       ticker: values.ticker.toUpperCase().trim(),
       option_type: values.option_type,
@@ -189,7 +222,7 @@ export default function AddTradeModal({
       contracts: values.contracts,
       status: "OPEN",
       delta: values.delta === "" ? undefined : (values.delta as number | undefined),
-      notes: values.notes || undefined,
+      notes: notesToSubmit,
     };
     await onSave(input);
   };
@@ -231,222 +264,284 @@ export default function AddTradeModal({
           className="max-h-[70vh] overflow-y-auto px-6 py-5"
           noValidate
         >
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label
-                htmlFor="ticker"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                Ticker <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  id="ticker"
-                  type="text"
-                  placeholder="e.g. AAPL"
-                  autoComplete="off"
-                  {...register("ticker", {
-                    onChange: (event) => {
-                      const nextValue = String(event.target.value || "").toUpperCase();
-                      if (nextValue !== event.target.value) {
-                        event.target.value = nextValue;
-                      }
-                    },
-                  })}
-                  onFocus={() => setIsTickerFocused(true)}
-                  onBlur={() => {
-                    window.setTimeout(() => setIsTickerFocused(false), 120);
-                  }}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm uppercase text-gray-900 placeholder:normal-case focus:border-gray-700 focus:outline-none"
-                />
-                {isTickerFocused && filteredTickerSuggestions.length > 0 && (
-                  <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
-                    <ul className="max-h-52 overflow-y-auto py-1">
-                      {filteredTickerSuggestions.map((ticker) => (
-                        <li key={ticker}>
-                          <button
-                            type="button"
-                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-800 hover:bg-gray-50"
-                            onMouseDown={(event) => {
-                              event.preventDefault();
-                              setValue("ticker", ticker, {
-                                shouldDirty: true,
-                                shouldValidate: true,
-                              });
-                              setIsTickerFocused(false);
-                            }}
-                          >
-                            <TickerLogo ticker={ticker} />
-                            <span className="font-medium">{ticker}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-              {errors.ticker && (
-                <p className="mt-1 text-xs text-red-600">{errors.ticker.message}</p>
-              )}
-            </div>
-
+          <div className="space-y-4">
             <div>
               <label
                 htmlFor="option_type"
                 className="mb-1 block text-sm font-medium text-gray-700"
               >
-                Option Type <span className="text-red-500">*</span>
+                Strategy <span className="text-red-500">*</span>
               </label>
               <select
                 id="option_type"
                 {...register("option_type")}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-700 focus:outline-none"
               >
-                <option value="PUT">PUT (CSP)</option>
-                <option value="CALL">CALL (CC)</option>
+                <option value="PUT">Cash Secured Put (CSP)</option>
+                <option value="CALL">Covered Call (CC)</option>
               </select>
             </div>
 
-            <div>
-              <label
-                htmlFor="strike"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                Strike <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="strike"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="e.g. 350.00"
-                {...register("strike")}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-700 focus:outline-none"
-              />
-              {errors.strike && (
-                <p className="mt-1 text-xs text-red-600">{errors.strike.message}</p>
-              )}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="ticker"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
+                  Ticker <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 focus-within:border-gray-700">
+                    <TickerLogo ticker={tickerValue} />
+                    <input
+                      id="ticker"
+                      type="text"
+                      placeholder="e.g. AAPL"
+                      autoComplete="off"
+                      {...register("ticker", {
+                        onChange: (event) => {
+                          const nextValue = String(event.target.value || "").toUpperCase();
+                          if (nextValue !== event.target.value) {
+                            event.target.value = nextValue;
+                          }
+                        },
+                      })}
+                      onFocus={() => setIsTickerFocused(true)}
+                      onBlur={() => {
+                        window.setTimeout(() => setIsTickerFocused(false), 120);
+                      }}
+                      className="w-full bg-transparent text-sm uppercase text-gray-900 placeholder:normal-case focus:outline-none"
+                    />
+                  </div>
+                  {isTickerFocused && filteredTickerSuggestions.length > 0 && (
+                    <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
+                      <ul className="max-h-52 overflow-y-auto py-1">
+                        {filteredTickerSuggestions.map((ticker) => (
+                          <li key={ticker}>
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-800 hover:bg-gray-50"
+                              onMouseDown={(event) => {
+                                event.preventDefault();
+                                setValue("ticker", ticker, {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                });
+                                setIsTickerFocused(false);
+                              }}
+                            >
+                              <TickerLogo ticker={ticker} />
+                              <span className="font-medium">{ticker}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+                {errors.ticker && (
+                  <p className="mt-1 text-xs text-red-600">{errors.ticker.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label
+                  htmlFor="strike"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
+                  Strike Price <span className="text-red-500">*</span>
+                </label>
+                <div className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 focus-within:border-gray-700">
+                  <span className="text-sm font-medium text-gray-500">$</span>
+                  <input
+                    id="strike"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="e.g. 350.00"
+                    {...register("strike")}
+                    className="w-full bg-transparent text-sm text-gray-900 placeholder:normal-case focus:outline-none"
+                  />
+                </div>
+                {errors.strike && (
+                  <p className="mt-1 text-xs text-red-600">{errors.strike.message}</p>
+                )}
+              </div>
             </div>
 
-            <div>
-              <label
-                htmlFor="premium"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                Premium (per share) <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="premium"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="e.g. 2.11"
-                {...register("premium")}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-700 focus:outline-none"
-              />
-              {errors.premium && (
-                <p className="mt-1 text-xs text-red-600">{errors.premium.message}</p>
-              )}
-            </div>
-
-            <div>
-              <label
-                htmlFor="expiry"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                Expiry Date <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="expiry"
-                type="date"
-                {...register("expiry")}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-700 focus:outline-none"
-              />
-              {errors.expiry && (
-                <p className="mt-1 text-xs text-red-600">{errors.expiry.message}</p>
-              )}
-            </div>
-
-            <div>
-              <label
-                htmlFor="trade_date"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                Trade Date <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="trade_date"
-                type="date"
-                {...register("trade_date")}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-700 focus:outline-none"
-              />
-              {errors.trade_date && (
-                <p className="mt-1 text-xs text-red-600">{errors.trade_date.message}</p>
-              )}
-            </div>
-
-            <div>
-              <label
-                htmlFor="contracts"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                Contracts <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="contracts"
-                type="number"
-                step="1"
-                min="1"
-                {...register("contracts")}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-700 focus:outline-none"
-              />
-              {errors.contracts && (
-                <p className="mt-1 text-xs text-red-600">{errors.contracts.message}</p>
-              )}
-            </div>
-
-            <div>
-              <label
-                htmlFor="delta"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                Delta
-              </label>
-              <input
-                id="delta"
-                type="number"
-                step="0.01"
-                placeholder="e.g. -0.25"
-                {...register("delta")}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-700 focus:outline-none"
-              />
-              {errors.delta && (
-                <p className="mt-1 text-xs text-red-600">
-                  {(errors.delta as { message?: string }).message}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="premium"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
+                  Premium per Share <span className="text-red-500">*</span>
+                </label>
+                <div className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 focus-within:border-gray-700">
+                  <span className="text-sm font-medium text-gray-500">$</span>
+                  <input
+                    id="premium"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="e.g. 2.11"
+                    {...register("premium")}
+                    className="w-full bg-transparent text-sm text-gray-900 placeholder:normal-case focus:outline-none"
+                  />
+                </div>
+                {errors.premium && (
+                  <p className="mt-1 text-xs text-red-600">{errors.premium.message}</p>
+                )}
+                <p className="mt-1 text-xs text-gray-500">
+                  Total received: ${totalReceived.toFixed(2)}
                 </p>
-              )}
-            </div>
-          </div>
+              </div>
 
-          <div className="mt-4">
-            <label
-              htmlFor="notes"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
-              Notes
-            </label>
-            <textarea
-              id="notes"
-              rows={3}
-              maxLength={500}
-              placeholder="Optional notes (max 500 chars)"
-              {...register("notes")}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-700 focus:outline-none"
-            />
-            {errors.notes && (
-              <p className="mt-1 text-xs text-red-600">{errors.notes.message}</p>
+              <div>
+                <label
+                  htmlFor="contracts"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
+                  Contracts <span className="text-red-500">*</span>
+                </label>
+                <div className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 focus-within:border-gray-700">
+                  <span className="text-sm font-medium text-gray-500">#</span>
+                  <input
+                    id="contracts"
+                    type="number"
+                    step="1"
+                    min="1"
+                    {...register("contracts")}
+                    className="w-full bg-transparent text-sm text-gray-900 placeholder:normal-case focus:outline-none"
+                  />
+                </div>
+                {errors.contracts && (
+                  <p className="mt-1 text-xs text-red-600">{errors.contracts.message}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="trade_date"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
+                  Open Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="trade_date"
+                  type="date"
+                  {...register("trade_date")}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-700 focus:outline-none"
+                />
+                {errors.trade_date && (
+                  <p className="mt-1 text-xs text-red-600">{errors.trade_date.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label
+                  htmlFor="expiry"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
+                  Expiration Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="expiry"
+                  type="date"
+                  {...register("expiry")}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-700 focus:outline-none"
+                />
+                {errors.expiry && (
+                  <p className="mt-1 text-xs text-red-600">{errors.expiry.message}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setShowOptionalFields((v) => !v)}
+                className="w-full rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 hover:bg-purple-100"
+              >
+                {showOptionalFields ? "▲ Hide Optional Fields" : "▼ Show Optional Fields"}
+              </button>
+            </div>
+
+            {showOptionalFields && (
+              <div className="rounded-lg border border-purple-200 bg-purple-50 px-4 py-3">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-purple-800">
+                  Optional Details
+                </p>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      htmlFor="commissionFees"
+                      className="mb-1 block text-sm font-medium text-gray-700"
+                    >
+                      Commission Fees
+                    </label>
+                    <div className="flex items-center gap-2 rounded-lg border border-purple-200 bg-white px-3 py-2 focus-within:border-purple-400">
+                      <span className="text-sm font-medium text-gray-500">$</span>
+                      <input
+                        id="commissionFees"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={commissionFees}
+                        onChange={(e) => setCommissionFees(e.target.value)}
+                        placeholder="e.g. 0.19"
+                        className="w-full bg-transparent text-sm text-gray-900 placeholder:normal-case focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="delta"
+                      className="mb-1 block text-sm font-medium text-gray-700"
+                    >
+                      Delta on Open
+                    </label>
+                    <input
+                      id="delta"
+                      type="number"
+                      step="0.01"
+                      placeholder="e.g. -0.25"
+                      {...register("delta")}
+                      className="w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-purple-400 focus:outline-none"
+                    />
+                    {errors.delta && (
+                      <p className="mt-1 text-xs text-red-600">
+                        {(errors.delta as { message?: string }).message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <label
+                    htmlFor="notes"
+                    className="mb-1 block text-sm font-medium text-gray-700"
+                  >
+                    Notes
+                  </label>
+                  <textarea
+                    id="notes"
+                    rows={3}
+                    maxLength={500}
+                    placeholder="Any notes about this position..."
+                    {...register("notes")}
+                    className="w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-purple-400 focus:outline-none"
+                  />
+                  {errors.notes && (
+                    <p className="mt-1 text-xs text-red-600">{errors.notes.message}</p>
+                  )}
+                </div>
+              </div>
             )}
-          </div>
 
           <div className="mt-6 flex justify-end gap-3">
             <button
