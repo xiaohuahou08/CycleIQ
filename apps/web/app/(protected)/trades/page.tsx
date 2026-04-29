@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   createTrade,
   deleteTrade,
@@ -57,6 +57,14 @@ export default function TradesPage() {
       .catch(() => setAllTrades([]))
       .finally(() => setTradesLoading(false));
   }, [token]);
+
+  const tickerSuggestions = useMemo(
+    () =>
+      Array.from(new Set(allTrades.map((trade) => trade.ticker)))
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b)),
+    [allTrades]
+  );
 
   const onSaveTrade = async (input: CreateTradeInput) => {
     if (!token) return;
@@ -228,6 +236,7 @@ export default function TradesPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onSave={onSaveTrade}
+        tickerSuggestions={tickerSuggestions}
       />
     </>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -30,6 +30,45 @@ const tradeSchema = z.object({
 
 type TradeFormValues = z.infer<typeof tradeSchema>;
 
+const LOGO_URL_BUILDERS = [
+  (ticker: string) => `https://eodhd.com/img/logos/US/${ticker}.png`,
+  (ticker: string) => `https://financialmodelingprep.com/image-stock/${ticker}.png`,
+];
+
+function TickerLogo({ ticker }: { ticker: string }) {
+  const urls = useMemo(
+    () => LOGO_URL_BUILDERS.map((build) => build(ticker)),
+    [ticker]
+  );
+  const [urlIndex, setUrlIndex] = useState(0);
+
+  if (!ticker) {
+    return (
+      <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-gray-100 text-[10px] font-semibold text-gray-500">
+        ?
+      </span>
+    );
+  }
+
+  if (urlIndex >= urls.length) {
+    return (
+      <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-blue-100 text-[10px] font-semibold text-blue-700">
+        {ticker[0]}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={urls[urlIndex]}
+      alt={`${ticker} logo`}
+      className="h-5 w-5 rounded object-cover"
+      onError={() => setUrlIndex((prev) => prev + 1)}
+      loading="lazy"
+    />
+  );
+}
+
 function defaultExpiry(): string {
   const d = new Date();
   d.setDate(d.getDate() + 45);
@@ -44,17 +83,25 @@ interface AddTradeModalProps {
   open: boolean;
   onClose: () => void;
   onSave: (input: CreateTradeInput) => Promise<void>;
+  tickerSuggestions?: string[];
 }
 
 export default function AddTradeModal({
   open,
   onClose,
   onSave,
+  tickerSuggestions = [],
 }: AddTradeModalProps) {
+  const [modalOffset, setModalOffset] = useState({ x: 0, y: 0 });
+  const dragStartRef = useRef<{ x: number; y: number; offsetX: number; offsetY: number } | null>(
+    null
+  );
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<TradeFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -66,9 +113,19 @@ export default function AddTradeModal({
       trade_date: today(),
     },
   });
+  const [isTickerFocused, setIsTickerFocused] = useState(false);
+
+  const tickerValue = (watch("ticker") ?? "").toUpperCase().trim();
+  const filteredTickerSuggestions = useMemo(() => {
+    if (!tickerSuggestions.length) return [];
+    return tickerSuggestions
+      .filter((ticker) => ticker.toUpperCase().includes(tickerValue))
+      .slice(0, 8);
+  }, [tickerSuggestions, tickerValue]);
 
   useEffect(() => {
     if (open) {
+      setModalOffset({ x: 0, y: 0 });
       reset({
         option_type: "PUT",
         contracts: 1,
@@ -82,6 +139,44 @@ export default function AddTradeModal({
       });
     }
   }, [open, reset]);
+
+  useEffect(() => {
+    const onMouseMove = (event: MouseEvent) => {
+      const dragStart = dragStartRef.current;
+      if (!dragStart) return;
+      setModalOffset({
+        x: dragStart.offsetX + (event.clientX - dragStart.x),
+        y: dragStart.offsetY + (event.clientY - dragStart.y),
+      });
+    };
+
+    const onMouseUp = () => {
+      dragStartRef.current = null;
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    };
+  }, []);
+
+  const onDragStart = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    dragStartRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      offsetX: modalOffset.x,
+      offsetY: modalOffset.y,
+    };
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "grabbing";
+  };
 
   const onSubmit = async (values: TradeFormValues) => {
     const input: CreateTradeInput = {
@@ -108,8 +203,16 @@ export default function AddTradeModal({
       aria-modal="true"
       aria-labelledby="add-trade-title"
     >
-      <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+      <div
+        className="relative w-full max-w-lg rounded-2xl bg-white shadow-xl"
+        style={{
+          transform: `translate(${modalOffset.x}px, ${modalOffset.y}px)`,
+        }}
+      >
+        <div
+          className="flex cursor-grab items-center justify-between border-b border-gray-200 px-6 py-4 active:cursor-grabbing"
+          onMouseDown={onDragStart}
+        >
           <h2 id="add-trade-title" className="text-base font-semibold text-gray-900">
             Add Trade
           </h2>
@@ -136,13 +239,52 @@ export default function AddTradeModal({
               >
                 Ticker <span className="text-red-500">*</span>
               </label>
-              <input
-                id="ticker"
-                type="text"
-                placeholder="e.g. AAPL"
-                {...register("ticker")}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm uppercase text-gray-900 placeholder:normal-case focus:border-gray-700 focus:outline-none"
-              />
+              <div className="relative">
+                <input
+                  id="ticker"
+                  type="text"
+                  placeholder="e.g. AAPL"
+                  autoComplete="off"
+                  {...register("ticker", {
+                    onChange: (event) => {
+                      const nextValue = String(event.target.value || "").toUpperCase();
+                      if (nextValue !== event.target.value) {
+                        event.target.value = nextValue;
+                      }
+                    },
+                  })}
+                  onFocus={() => setIsTickerFocused(true)}
+                  onBlur={() => {
+                    window.setTimeout(() => setIsTickerFocused(false), 120);
+                  }}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm uppercase text-gray-900 placeholder:normal-case focus:border-gray-700 focus:outline-none"
+                />
+                {isTickerFocused && filteredTickerSuggestions.length > 0 && (
+                  <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
+                    <ul className="max-h-52 overflow-y-auto py-1">
+                      {filteredTickerSuggestions.map((ticker) => (
+                        <li key={ticker}>
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-800 hover:bg-gray-50"
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              setValue("ticker", ticker, {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                              });
+                              setIsTickerFocused(false);
+                            }}
+                          >
+                            <TickerLogo ticker={ticker} />
+                            <span className="font-medium">{ticker}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
               {errors.ticker && (
                 <p className="mt-1 text-xs text-red-600">{errors.ticker.message}</p>
               )}
