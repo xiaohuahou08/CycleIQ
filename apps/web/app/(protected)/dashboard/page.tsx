@@ -3,49 +3,44 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   createTrade,
-  getMetricsSummary,
+  getDashboardInsights,
   listTrades,
   type CreateTradeInput,
-  type MetricsSummary,
+  type DashboardInsights,
   type Trade,
 } from "@/lib/api/trades";
 import { useProtectedAuth } from "../auth-context";
-import SummaryCards from "./components/SummaryCards";
 import ActivePositionsTable from "./components/ActivePositionsTable";
 import AddTradeModal from "./components/AddTradeModal";
+import DashboardInsights from "./components/DashboardInsights";
 
 export default function DashboardPage() {
   const { token, isAuthLoading } = useProtectedAuth();
-  const [summary, setSummary] = useState<MetricsSummary | null>(null);
-  const [summaryLoading, setSummaryLoading] = useState(false);
-  const [activeTrades, setActiveTrades] = useState<Trade[]>([]);
+  const [allTrades, setAllTrades] = useState<Trade[]>([]);
+  const [insights, setInsights] = useState<DashboardInsights | null>(null);
   const [tradesLoading, setTradesLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const activeTrades = useMemo(
+    () => allTrades.filter((trade) => trade.status === "OPEN"),
+    [allTrades]
+  );
 
   const tickerSuggestions = useMemo(
     () =>
-      Array.from(new Set(activeTrades.map((trade) => trade.ticker)))
+      Array.from(new Set(allTrades.map((trade) => trade.ticker)))
         .filter(Boolean)
         .sort((a, b) => a.localeCompare(b)),
-    [activeTrades]
+    [allTrades]
   );
 
   const loadData = useCallback(async (accessToken: string) => {
-    setSummaryLoading(true);
     setTradesLoading(true);
 
     await Promise.allSettled([
-      getMetricsSummary(accessToken)
-        .then(setSummary)
-        .catch(() => setSummary(null))
-        .finally(() => setSummaryLoading(false)),
-
-      listTrades(accessToken, { status: "OPEN" })
-        .then(setActiveTrades)
-        .catch(() => setActiveTrades([]))
-        .finally(() => setTradesLoading(false)),
-    ]);
+      listTrades(accessToken).then(setAllTrades).catch(() => setAllTrades([])),
+      getDashboardInsights(accessToken).then(setInsights).catch(() => setInsights(null)),
+    ]).finally(() => setTradesLoading(false));
   }, []);
 
   useEffect(() => {
@@ -99,7 +94,7 @@ export default function DashboardPage() {
         )}
 
         <div className="mt-6">
-          <SummaryCards summary={summary} loading={summaryLoading} />
+          <DashboardInsights insights={insights} loading={tradesLoading} />
         </div>
 
         <div className="mt-6">

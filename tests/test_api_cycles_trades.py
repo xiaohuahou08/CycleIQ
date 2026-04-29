@@ -114,3 +114,43 @@ def test_invalid_trade_status(client):
         headers=h,
     )
     assert r.status_code == 400
+
+
+def test_dashboard_insights_api(client):
+    h = auth_headers("33333333-3333-3333-3333-333333333333")
+    trades = [
+        {
+            "ticker": "UNH",
+            "option_type": "PUT",
+            "strike": 360,
+            "expiry": "2026-05-07",
+            "trade_date": "2026-04-27",
+            "premium": 1.2,
+            "contracts": 2,
+            "status": "OPEN",
+        },
+        {
+            "ticker": "HIMS",
+            "option_type": "PUT",
+            "strike": 28,
+            "expiry": "2026-05-07",
+            "trade_date": "2026-04-28",
+            "premium": 1.5,
+            "contracts": 3,
+            "status": "CLOSED",
+        },
+    ]
+    for payload in trades:
+        r = client.post("/api/trades", json=payload, headers=h)
+        assert r.status_code == 201
+
+    r_insights = client.get("/api/dashboard/insights", headers=h)
+    assert r_insights.status_code == 200
+    body = r_insights.get_json()
+
+    assert "kpis" in body
+    assert "charts" in body
+    assert body["kpis"]["active_trades"] == 1
+    assert body["kpis"]["total_premium"] == pytest.approx(690.0)
+    assert body["kpis"]["realized_pnl"] == pytest.approx(450.0)
+    assert isinstance(body["charts"]["daily_premium_income"], list)

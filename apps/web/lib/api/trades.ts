@@ -45,6 +45,31 @@ export interface MetricsSummary {
   win_rate: number;
 }
 
+export interface DashboardSeriesPoint {
+  label: string;
+  value: number;
+}
+
+export interface DashboardInsights {
+  kpis: {
+    total_capital_invested: number;
+    total_premium: number;
+    realized_pnl: number;
+    avg_annual_roi: number;
+    active_trades: number;
+    win_rate: number;
+    avg_premium_per_active_day: number;
+    active_days: number;
+    yearly_income: number;
+    daily_avg_income: number;
+  };
+  charts: {
+    daily_premium_income: DashboardSeriesPoint[];
+    weekly_premium_income: DashboardSeriesPoint[];
+    monthly_premium_income: DashboardSeriesPoint[];
+  };
+}
+
 export interface CycleTransitionInput {
   event: "expire_otm" | "assigned" | "roll";
   params?: Record<string, unknown>;
@@ -87,6 +112,14 @@ async function realGetMetricsSummary(token: string): Promise<MetricsSummary> {
   });
   if (!res.ok) throw new Error(await getErrorMessage(res, "Failed to load metrics"));
   return res.json() as Promise<MetricsSummary>;
+}
+
+async function realGetDashboardInsights(token: string): Promise<DashboardInsights> {
+  const res = await fetch(`${API_BASE}/api/dashboard/insights`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error(await getErrorMessage(res, "Failed to load dashboard insights"));
+  return res.json() as Promise<DashboardInsights>;
 }
 
 async function realCreateTrade(token: string, input: CreateTradeInput): Promise<Trade> {
@@ -143,6 +176,10 @@ export async function listTrades(
 
 export async function getMetricsSummary(_token: string): Promise<MetricsSummary> {
   return realGetMetricsSummary(_token);
+}
+
+export async function getDashboardInsights(_token: string): Promise<DashboardInsights> {
+  return realGetDashboardInsights(_token);
 }
 
 export async function createTrade(
