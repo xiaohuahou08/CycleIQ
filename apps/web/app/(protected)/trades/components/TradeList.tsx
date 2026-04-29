@@ -54,6 +54,15 @@ function getDte(expiry: string): number {
   return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 }
 
+function isExpiredEligible(trade: Trade): boolean {
+  if (trade.status !== "OPEN") return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const expiry = new Date(trade.expiry);
+  expiry.setHours(0, 0, 0, 0);
+  return expiry <= today;
+}
+
 function startOfWeekMonday(input: Date): Date {
   const d = new Date(input);
   const day = d.getDay();
@@ -245,16 +254,18 @@ function TradeRow({
               >
                 Buy to Close
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onAction("expire");
-                }}
-                className="block w-full px-3 py-2 hover:bg-gray-50"
-              >
-                Expire
-              </button>
+              {isExpiredEligible(trade) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onAction("expire");
+                  }}
+                  className="block w-full px-3 py-2 hover:bg-gray-50"
+                >
+                  Expire
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {

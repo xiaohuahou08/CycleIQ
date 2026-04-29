@@ -98,6 +98,9 @@ interface AddTradeModalProps {
   onClose: () => void;
   onSave: (input: CreateTradeInput) => Promise<void>;
   tickerSuggestions?: string[];
+  initialValues?: Partial<CreateTradeInput>;
+  title?: string;
+  submitLabel?: string;
 }
 
 export default function AddTradeModal({
@@ -105,6 +108,9 @@ export default function AddTradeModal({
   onClose,
   onSave,
   tickerSuggestions = [],
+  initialValues,
+  title = "Add Trade",
+  submitLabel = "Save Trade",
 }: AddTradeModalProps) {
   const [showOptionalFields, setShowOptionalFields] = useState(true);
   const [commissionFees, setCommissionFees] = useState<string>("");
@@ -155,18 +161,18 @@ export default function AddTradeModal({
       setShowOptionalFields(true);
       setCommissionFees("");
       reset({
-        option_type: "PUT",
-        contracts: 1,
-        expiry: defaultExpiry(),
-        trade_date: today(),
-        ticker: "",
-        strike: undefined,
-        premium: undefined,
-        delta: undefined,
-        notes: "",
+        option_type: initialValues?.option_type ?? "PUT",
+        contracts: initialValues?.contracts ?? 1,
+        expiry: initialValues?.expiry ?? defaultExpiry(),
+        trade_date: initialValues?.trade_date ?? today(),
+        ticker: initialValues?.ticker ?? "",
+        strike: initialValues?.strike,
+        premium: initialValues?.premium,
+        delta: initialValues?.delta,
+        notes: initialValues?.notes ?? "",
       });
     }
-  }, [open, reset]);
+  }, [open, reset, initialValues]);
 
   useEffect(() => {
     const onMouseMove = (event: MouseEvent) => {
@@ -224,7 +230,7 @@ export default function AddTradeModal({
       trade_date: values.trade_date,
       premium: values.premium,
       contracts: values.contracts,
-      status: "OPEN",
+      status: initialValues?.status ?? "OPEN",
       delta: values.delta === "" ? undefined : (values.delta as number | undefined),
       notes: notesToSubmit,
     };
@@ -251,7 +257,7 @@ export default function AddTradeModal({
           onMouseDown={onDragStart}
         >
           <h2 id="add-trade-title" className="text-base font-semibold text-gray-900">
-            Add Trade
+            {title}
           </h2>
           <button
             type="button"
@@ -562,7 +568,7 @@ export default function AddTradeModal({
               disabled={isSubmitting}
               className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSubmitting ? "Saving…" : "Save Trade"}
+              {isSubmitting ? "Saving…" : submitLabel}
             </button>
           </div>
         </form>

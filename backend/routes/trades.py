@@ -6,7 +6,7 @@ from flask import request, jsonify
 
 from backend.auth.supabase import require_auth
 from backend.models import db
-from backend.models.trade import ALLOWED_TRADE_STATUSES, Trade
+from backend.models.trade import ALLOWED_EXPIRE_TYPES, ALLOWED_TRADE_STATUSES, Trade
 from backend.models.wheel_cycle import WheelCycle
 
 
@@ -132,8 +132,58 @@ def register_trades_routes(trades_bp):
             if st not in ALLOWED_TRADE_STATUSES:
                 return jsonify({"error": f"Invalid status; allowed: {sorted(ALLOWED_TRADE_STATUSES)}"}), 400
             trade.status = st
+            if st != "EXPIRED":
+                trade.expired_at = None
+                trade.expire_type = None
 
         trade.updated_at = datetime.now(timezone.utc)
+        db.session.commit()
+        return jsonify(trade.to_api_dict())
+
+    @trades_bp.route("/<trade_id>/expire", methods=["PATCH"])
+    @require_auth
+    def expire_trade(user_id: str, trade_id: str):
+        trade = Trade.query.filter_by(id=trade_id, user_id=user_id).first_or_404()
+        data = request.get_json() or {}
+
+        if trade.status != "OPEN":
+            return jsonify({"error": "Only OPEN trades can be marked as expired"}), 400
+
+        try:
+            expired_at = date.fromisoformat(str(data.get("expired_at") or date.today().isoformat()))
+        except ValueError:
+            return jsonify({"error": "Invalid expired_at date format; use YYYY-MM-DD"}), 400
+
+        expire_type_raw = data.get("expire_type", "expired_worthless")
+        expire_type = str(expire_type_raw).upper()
+        if expire_type not in ALLOWED_EXPIRE_TYPES:
+            return jsonify(
+                {"error": f"Invalid expire_type; allowed: {sorted(ALLOWED_EXPIRE_TYPES)}"}
+            ), 400
+
+        if trade.expiry > expired_at:
+            return jsonify({"error": "Trade cannot be expired before its expiry date"}), 400
+
+        trade.status = "EXPIRED"
+        trade.expired_at = expired_at
+        trade.expire_type = expire_type
+        trade.updated_at = datetime.now(timezone.utc)
+
+        if trade.cycle_id:
+            cycle = WheelCycle.query.filter_by(id=trade.cycle_id, user_id=user_id).first()
+            if cycle:
+                from backend.services.cycle_fsm import append_transition, apply_api_event, replay_cycle
+                from cycleiq.wheel_fsm import InvalidTransitionError
+
+                try:
+                    fsm_cycle = replay_cycle(cycle.ticker, cycle.transition_log)
+                    transition = apply_api_event(fsm_cycle, "expire_otm", {})
+                    cycle.transition_log = append_transition(cycle.transition_log, transition)
+                    cycle.state = fsm_cycle.state.value
+                except (InvalidTransitionError, ValueError, KeyError, TypeError):
+                    # Keep trade expiry update even if cycle transition is not applicable.
+                    pass
+
         db.session.commit()
         return jsonify(trade.to_api_dict())
 

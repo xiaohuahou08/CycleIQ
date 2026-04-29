@@ -20,6 +20,8 @@ export interface Trade {
   contracts: number;
   delta?: number;
   status: TradeStatus;
+  expired_at?: string | null;
+  expire_type?: "EXPIRED_WORTHLESS" | "EXPIRED_ITM" | null;
   notes?: string;
 }
 
@@ -73,6 +75,11 @@ export interface DashboardInsights {
 export interface CycleTransitionInput {
   event: "expire_otm" | "assigned" | "roll";
   params?: Record<string, unknown>;
+}
+
+export interface ExpireTradeInput {
+  expired_at: string;
+  expire_type?: "expired_worthless" | "expired_itm";
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -207,4 +214,18 @@ export async function postCycleTransition(
   input: CycleTransitionInput
 ): Promise<void> {
   return realPostCycleTransition(_token, cycleId, input);
+}
+
+export async function expireTrade(
+  _token: string,
+  id: string,
+  input: ExpireTradeInput
+): Promise<Trade> {
+  const res = await fetch(`${API_BASE}/api/trades/${id}/expire`, {
+    method: "PATCH",
+    headers: authHeaders(_token),
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(await getErrorMessage(res, "Failed to expire trade"));
+  return res.json() as Promise<Trade>;
 }

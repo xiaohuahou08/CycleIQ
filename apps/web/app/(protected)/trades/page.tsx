@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   createTrade,
   deleteTrade,
+  expireTrade,
   listTrades,
   postCycleTransition,
   updateTrade,
@@ -39,6 +40,7 @@ export default function TradesPage() {
   const [allTrades, setAllTrades] = useState<Trade[]>([]);
   const [tradesLoading, setTradesLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     ticker: "",
@@ -82,22 +84,29 @@ export default function TradesPage() {
     }
   };
 
+  const onSaveEditedTrade = async (input: CreateTradeInput) => {
+    if (!token || !editingTrade) return;
+    setSaveError(null);
+    try {
+      const updated = await updateTrade(token, editingTrade.id, input);
+      setAllTrades((prev) => prev.map((t) => (t.id === editingTrade.id ? updated : t)));
+      setModalOpen(false);
+      setEditingTrade(null);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to update trade.");
+    }
+  };
+
   const onDeleteTrade = async (id: string) => {
     if (!token) return;
     setAllTrades((prev) => prev.filter((t) => t.id !== id));
     await deleteTrade(token, id);
   };
 
-  const onEditTrade = async (trade: Trade) => {
-    if (!token) return;
-    const notes = window.prompt("Edit notes", trade.notes ?? "");
-    if (notes === null) return;
-    try {
-      const updated = await updateTrade(token, trade.id, { notes });
-      setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Failed to update trade.");
-    }
+  const onEditTrade = (trade: Trade) => {
+    setSaveError(null);
+    setEditingTrade(trade);
+    setModalOpen(true);
   };
 
   const onAction = async (
@@ -113,10 +122,24 @@ export default function TradesPage() {
       }
 
       if (action === "expire") {
-        if (trade.cycle_id) {
-          await postCycleTransition(token, trade.cycle_id, { event: "expire_otm" });
+        const defaultExpiredAt = new Date().toISOString().slice(0, 10);
+        const expiredAtInput = window.prompt("Expired at (YYYY-MM-DD)", defaultExpiredAt);
+        if (expiredAtInput === null) return;
+        const expireTypeInput = window.prompt(
+          "Expire type: expired_worthless or expired_itm",
+          "expired_worthless"
+        );
+        if (expireTypeInput === null) return;
+        const normalizedType = expireTypeInput.trim().toLowerCase();
+        if (normalizedType !== "expired_worthless" && normalizedType !== "expired_itm") {
+          setSaveError("Invalid expire type. Use expired_worthless or expired_itm.");
+          return;
         }
-        const updated = await updateTrade(token, trade.id, { status: "EXPIRED" });
+
+        const updated = await expireTrade(token, trade.id, {
+          expired_at: expiredAtInput,
+          expire_type: normalizedType,
+        });
         setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
         return;
       }
@@ -195,6 +218,7 @@ export default function TradesPage() {
             type="button"
             onClick={() => {
               setSaveError(null);
+              setEditingTrade(null);
               setModalOpen(true);
             }}
             className="shrink-0 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
@@ -223,6 +247,7 @@ export default function TradesPage() {
             loading={tradesLoading}
             onAddTrade={() => {
               setSaveError(null);
+              setEditingTrade(null);
               setModalOpen(true);
             }}
             onDeleteTrade={onDeleteTrade}
@@ -234,9 +259,30 @@ export default function TradesPage() {
 
       <AddTradeModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSave={onSaveTrade}
+        onClose={() => {
+          setModalOpen(false);
+          setEditingTrade(null);
+        }}
+        onSave={editingTrade ? onSaveEditedTrade : onSaveTrade}
         tickerSuggestions={tickerSuggestions}
+        initialValues={
+          editingTrade
+            ? {
+                ticker: editingTrade.ticker,
+                option_type: editingTrade.option_type,
+                strike: editingTrade.strike,
+                expiry: editingTrade.expiry,
+                trade_date: editingTrade.trade_date,
+                premium: editingTrade.premium,
+                contracts: editingTrade.contracts,
+                delta: editingTrade.delta,
+                status: editingTrade.status,
+                notes: editingTrade.notes,
+              }
+            : undefined
+        }
+        title={editingTrade ? "Edit Trade" : "Add Trade"}
+        submitLabel={editingTrade ? "Update Trade" : "Save Trade"}
       />
     </>
   );

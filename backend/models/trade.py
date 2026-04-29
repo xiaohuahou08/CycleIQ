@@ -11,6 +11,7 @@ from backend.models import db
 ALLOWED_TRADE_STATUSES = frozenset(
     {"OPEN", "CLOSED", "ASSIGNED", "CALLED_AWAY", "EXPIRED", "ROLLED"}
 )
+ALLOWED_EXPIRE_TYPES = frozenset({"EXPIRED_WORTHLESS", "EXPIRED_ITM"})
 
 
 class Trade(db.Model):
@@ -31,6 +32,8 @@ class Trade(db.Model):
     delta: Mapped[float | None] = mapped_column(Numeric(5, 3), nullable=True)
     contracts: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="OPEN")
+    expired_at: Mapped[date | None] = mapped_column(Date, nullable=True)
+    expire_type: Mapped[str | None] = mapped_column(String(30), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
@@ -64,6 +67,8 @@ class Trade(db.Model):
             "delta": float(self.delta) if self.delta is not None else None,
             "contracts": self.contracts,
             "status": self.status,
+            "expired_at": self.expired_at.isoformat() if self.expired_at else None,
+            "expire_type": self.expire_type,
             "notes": self.notes,
             "cycle_id": self.cycle_id,
             "created_at": self.created_at.isoformat().replace("+00:00", "Z")
