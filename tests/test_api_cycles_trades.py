@@ -74,12 +74,14 @@ def test_trade_crud_and_user_scope(client):
         "expiry": "2026-06-20",
         "trade_date": "2026-04-01",
         "premium": 3.25,
+        "commission_fee": 0.19,
         "contracts": 1,
         "status": "OPEN",
     }
     r = client.post("/api/trades", json=payload, headers=h)
     assert r.status_code == 201
     tid = r.get_json()["id"]
+    assert r.get_json()["commission_fee"] == pytest.approx(0.19)
 
     r_list = client.get("/api/trades", headers=h)
     assert r_list.status_code == 200

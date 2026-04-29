@@ -17,6 +17,7 @@ export interface Trade {
   expiry: string;
   trade_date: string;
   premium: number;
+  commission_fee?: number | null;
   contracts: number;
   delta?: number;
   status: TradeStatus;
@@ -32,6 +33,7 @@ export interface CreateTradeInput {
   expiry: string;
   trade_date: string;
   premium: number;
+  commission_fee?: number;
   contracts: number;
   delta?: number;
   status: TradeStatus;

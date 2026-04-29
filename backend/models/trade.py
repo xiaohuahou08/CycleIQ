@@ -29,6 +29,7 @@ class Trade(db.Model):
     expiry: Mapped[date] = mapped_column(Date, nullable=False)
     trade_date: Mapped[date] = mapped_column(Date, nullable=False)
     premium: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    commission_fee: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     delta: Mapped[float | None] = mapped_column(Numeric(5, 3), nullable=True)
     contracts: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="OPEN")
@@ -64,6 +65,7 @@ class Trade(db.Model):
             "expiry": self.expiry.isoformat(),
             "trade_date": self.trade_date.isoformat(),
             "premium": float(self.premium),
+            "commission_fee": float(self.commission_fee) if self.commission_fee is not None else None,
             "delta": float(self.delta) if self.delta is not None else None,
             "contracts": self.contracts,
             "status": self.status,

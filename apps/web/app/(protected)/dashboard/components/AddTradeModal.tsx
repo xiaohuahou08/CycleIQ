@@ -157,7 +157,11 @@ export default function AddTradeModal({
   useEffect(() => {
     if (open) {
       setShowOptionalFields(true);
-      setCommissionFees("");
+      setCommissionFees(
+        initialValues?.commission_fee !== undefined && initialValues?.commission_fee !== null
+          ? String(initialValues.commission_fee)
+          : ""
+      );
       reset({
         option_type: initialValues?.option_type ?? "PUT",
         contracts: initialValues?.contracts ?? 1,
@@ -173,15 +177,7 @@ export default function AddTradeModal({
   }, [open, reset, initialValues]);
 
   const onSubmit = async (values: TradeFormValues) => {
-    const commissionNumber = commissionFees.trim() ? Number(commissionFees) : null;
-
-    let notesToSubmit: string | undefined = values.notes || undefined;
-    if (commissionNumber !== null && Number.isFinite(commissionNumber) && commissionNumber > 0) {
-      const line = `Commission Fees: $${commissionNumber.toFixed(2)}`;
-      notesToSubmit = notesToSubmit ? `${notesToSubmit}\n${line}` : line;
-      notesToSubmit = notesToSubmit.slice(0, 500);
-    }
-
+    const commissionNumber = commissionFees.trim() ? Number(commissionFees) : undefined;
     const input: CreateTradeInput = {
       ticker: values.ticker.toUpperCase().trim(),
       option_type: values.option_type,
@@ -189,10 +185,14 @@ export default function AddTradeModal({
       expiry: values.expiry,
       trade_date: values.trade_date,
       premium: values.premium,
+      commission_fee:
+        commissionNumber !== undefined && Number.isFinite(commissionNumber)
+          ? commissionNumber
+          : undefined,
       contracts: values.contracts,
       status: initialValues?.status ?? "OPEN",
       delta: values.delta === "" ? undefined : (values.delta as number | undefined),
-      notes: notesToSubmit,
+      notes: values.notes || undefined,
     };
     await onSave(input);
   };

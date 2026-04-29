@@ -275,6 +275,7 @@ export default function TradesPage() {
                 expiry: editingTrade.expiry,
                 trade_date: editingTrade.trade_date,
                 premium: editingTrade.premium,
+                commission_fee: editingTrade.commission_fee ?? undefined,
                 contracts: editingTrade.contracts,
                 delta: editingTrade.delta,
                 status: editingTrade.status,
@@ -298,12 +299,17 @@ export default function TradesPage() {
               expired_at: input.expired_at,
               expire_type: input.expire_type,
             });
+            const mergedNotes = input.notes
+              ? [updated.notes?.trim(), input.notes.trim()].filter(Boolean).join("\n")
+              : undefined;
+            const needFollowupUpdate =
+              mergedNotes !== undefined || input.commission_fee !== undefined;
 
-            if (input.notes) {
-              const mergedNotes = [updated.notes?.trim(), input.notes.trim()]
-                .filter(Boolean)
-                .join("\n");
-              const notesUpdated = await updateTrade(token, updated.id, { notes: mergedNotes });
+            if (needFollowupUpdate) {
+              const notesUpdated = await updateTrade(token, updated.id, {
+                notes: mergedNotes,
+                commission_fee: input.commission_fee,
+              });
               setAllTrades((prev) =>
                 prev.map((t) => (t.id === notesUpdated.id ? notesUpdated : t))
               );

@@ -68,6 +68,9 @@ def register_trades_routes(trades_bp):
             expiry=expiry,
             trade_date=trade_date,
             premium=float(data["premium"]),
+            commission_fee=float(data["commission_fee"])
+            if data.get("commission_fee") is not None
+            else None,
             delta=float(data["delta"]) if data.get("delta") is not None else None,
             contracts=int(data.get("contracts", 1)),
             status=status,
@@ -100,6 +103,10 @@ def register_trades_routes(trades_bp):
             trade.strike = float(data["strike"])
         if "premium" in data:
             trade.premium = float(data["premium"])
+        if "commission_fee" in data:
+            trade.commission_fee = (
+                float(data["commission_fee"]) if data["commission_fee"] is not None else None
+            )
         if "contracts" in data:
             trade.contracts = int(data["contracts"])
         if "delta" in data:

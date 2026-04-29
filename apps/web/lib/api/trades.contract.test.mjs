@@ -34,6 +34,7 @@ const mockTrades = [
     expiry: "2026-05-08",
     trade_date: "2026-04-29",
     premium: 1.0,
+    commission_fee: 0.19,
     contracts: 1,
     status: "EXPIRED",
     expired_at: "2026-05-08",
@@ -54,6 +55,9 @@ test("mock trade fixtures match frontend trade contract", () => {
     assert.match(trade.expiry, /^\d{4}-\d{2}-\d{2}$/);
     assert.match(trade.trade_date, /^\d{4}-\d{2}-\d{2}$/);
     assert.equal(typeof trade.premium, "number");
+    if (trade.commission_fee !== undefined && trade.commission_fee !== null) {
+      assert.equal(typeof trade.commission_fee, "number");
+    }
     assert.equal(typeof trade.contracts, "number");
     assert.ok(["OPEN", "CLOSED", "EXPIRED", "ASSIGNED", "CALLED_AWAY", "ROLLED"].includes(trade.status));
     if (trade.expired_at !== undefined && trade.expired_at !== null) {

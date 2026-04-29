@@ -16,6 +16,7 @@ interface ExpireTradeModalProps {
   onConfirm: (input: {
     expired_at: string;
     expire_type: "expired_worthless";
+    commission_fee?: number;
     notes?: string;
   }) => Promise<void>;
 }
@@ -57,18 +58,11 @@ export default function ExpireTradeModal({
     setIsSubmitting(true);
     try {
       const feeValue = Number(fees || 0);
-      const extraNotes: string[] = [];
-      if (Number.isFinite(feeValue) && feeValue > 0) {
-        extraNotes.push(`Expire Fees: $${feeValue.toFixed(2)}`);
-      }
-      if (notes.trim()) {
-        extraNotes.push(notes.trim());
-      }
-
       await onConfirm({
         expired_at: actionDate,
         expire_type: "expired_worthless",
-        notes: extraNotes.length ? extraNotes.join("\n") : undefined,
+        commission_fee: Number.isFinite(feeValue) && feeValue > 0 ? feeValue : undefined,
+        notes: notes.trim() ? notes.trim() : undefined,
       });
     } finally {
       setIsSubmitting(false);
