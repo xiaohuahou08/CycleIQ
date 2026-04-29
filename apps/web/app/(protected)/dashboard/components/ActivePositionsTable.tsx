@@ -43,9 +43,18 @@ export default function ActivePositionsTable({
     <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
         <h2 className="text-sm font-semibold text-gray-900">Active Positions</h2>
-        {trades.length > 5 && (
-          <span className="text-xs text-gray-500">{trades.length} total</span>
-        )}
+        <div className="flex items-center gap-3">
+          {trades.length > 5 && (
+            <span className="text-xs text-gray-500">{trades.length} total</span>
+          )}
+          <button
+            type="button"
+            onClick={onAddTrade}
+            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + Add Trade
+          </button>
+        </div>
       </div>
 
       {loading ? (
