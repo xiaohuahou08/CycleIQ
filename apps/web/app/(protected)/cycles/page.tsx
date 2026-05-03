@@ -24,6 +24,13 @@ function fmtDate(iso: string): string {
   }).format(new Date(y, (m ?? 1) - 1, d ?? 1));
 }
 
+function fmtMoney(value: number): string {
+  return value.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 function stateBadgeStyle(state: string): string {
   if (state === "IDLE") return "bg-gray-100 text-gray-700";
   if (state === "CSP_OPEN") return "bg-blue-100 text-blue-700";
@@ -75,12 +82,22 @@ function CycleWheel({ state }: { state: string }) {
   );
 }
 
+function MoneyIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-3.5 w-3.5 text-gray-400" fill="none" aria-hidden="true">
+      <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M10 6.5v7M12 8.2c0-.8-.9-1.4-2-1.4s-2 .6-2 1.4.9 1.3 2 1.3 2 .5 2 1.4-.9 1.4-2 1.4-2-.6-2-1.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export default function CyclesPage() {
   const { token, isAuthLoading } = useProtectedAuth();
   const [cycles, setCycles] = useState<CycleSummary[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [openCycleIds, setOpenCycleIds] = useState<Record<string, boolean>>({});
+  const [selectedWheelId, setSelectedWheelId] = useState<string | null>(null);
   const [viewTab, setViewTab] = useState<"WHEELS" | "CC_COST_BASIS" | "CSP_PREMIUM" | "DTE_TIMELINE">(
     "WHEELS"
   );
@@ -240,6 +257,20 @@ export default function CyclesPage() {
     return { tickersTracked, totalCcPremium, avgReduction };
   }, [ccCostBasisRows]);
 
+  const selectedWheel = useMemo(
+    () => visibleCycles.find((cycle) => cycle.id === selectedWheelId) ?? null,
+    [selectedWheelId, visibleCycles]
+  );
+  const selectedWheelLegs = useMemo(
+    () =>
+      selectedWheel
+        ? (tradesByCycle[selectedWheel.id] ?? [])
+            .slice()
+            .sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime())
+        : [],
+    [selectedWheel, tradesByCycle]
+  );
+
   if (isAuthLoading) return null;
 
   return (
@@ -248,7 +279,7 @@ export default function CyclesPage() {
         <div className="rounded-2xl border border-gray-200/80 bg-white/95 p-6 shadow-sm backdrop-blur">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900">Visualization</h1>
+              <h1 className="text-2xl font-semibold text-gray-900">Cycle</h1>
               <p className="mt-1 text-sm text-gray-500">
                 {viewTab === "CC_COST_BASIS"
                   ? "See how covered call premium reduces your cost basis"
@@ -428,6 +459,143 @@ export default function CyclesPage() {
           <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-12 text-center text-sm text-gray-500">
             {viewTab === "CSP_PREMIUM" ? "CSP Premium view is coming next." : "DTE Timeline view is coming next."}
           </div>
+        ) : selectedWheel ? (
+          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <div className="flex h-[58px] items-center justify-between border-b border-gray-200 bg-[#f5f8f8] px-5">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedWheelId(null)}
+                  className="rounded-full p-1 text-gray-500 hover:bg-white hover:text-gray-700"
+                  title="Back"
+                >
+                  ←
+                </button>
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-xs text-emerald-700">
+                  ↺
+                </span>
+                <div>
+                  <p className="text-[26px] font-semibold leading-none text-gray-900">
+                    {selectedWheel.ticker} Wheel
+                  </p>
+                  <p className="text-xs font-medium text-gray-500">
+                    {(tradesByCycle[selectedWheel.id] ?? []).length} legs ·{" "}
+                    {(tradesByCycle[selectedWheel.id] ?? []).filter((t) => t.option_type === "PUT").length} CSP
+                    {" · "}
+                    {Math.max(
+                      0,
+                      Math.ceil(
+                        ((tradesByCycle[selectedWheel.id] ?? [])
+                          .filter((t) => t.status === "OPEN")
+                          .map((t) => new Date(t.expiry).getTime())
+                          .sort((a, b) => a - b)[0] - NOW_TS) /
+                          (1000 * 60 * 60 * 24)
+                      )
+                    ) || 0}
+                    d
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-5 text-xs text-gray-500">
+                <span className="inline-flex items-center gap-1">
+                  <MoneyIcon />
+                  <span>
+                    $
+                    {fmtMoney(
+                      (tradesByCycle[selectedWheel.id] ?? []).reduce(
+                        (sum, t) => sum + t.premium * t.contracts * 100,
+                        0
+                      )
+                    )}
+                  </span>
+                </span>
+                <span>
+                  {Math.max(
+                    0,
+                    Math.ceil(
+                      ((tradesByCycle[selectedWheel.id] ?? [])
+                        .filter((t) => t.status === "OPEN")
+                        .map((t) => new Date(t.expiry).getTime())
+                        .sort((a, b) => a - b)[0] - NOW_TS) /
+                        (1000 * 60 * 60 * 24)
+                    )
+                  ) || 0}d
+                </span>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${stateBadgeStyle(selectedWheel.state)}`}
+                >
+                  {selectedWheel.state === "EXIT" ? "Completed" : "Active"}
+                </span>
+              </div>
+            </div>
+            <div className="relative h-[455px] bg-[#fcfdfd]">
+              <div className="absolute left-1/2 top-[60%] h-[230px] w-[230px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-gray-200" />
+              <div className="absolute left-1/2 top-[60%] h-[90px] w-[90px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-300 bg-emerald-50 text-center shadow-sm">
+                <div className="mt-5 text-sm font-semibold text-gray-900">{selectedWheel.ticker}</div>
+                <div className="text-xs font-medium text-emerald-700">
+                  +$
+                  {(tradesByCycle[selectedWheel.id] ?? [])
+                    .reduce((sum, t) => sum + t.premium * t.contracts * 100, 0)
+                    .toFixed(2)}
+                </div>
+              </div>
+              <svg className="pointer-events-none absolute inset-0 h-full w-full">
+                {selectedWheelLegs.map((_, idx) => {
+                  const count = selectedWheelLegs.length;
+                  const step = count > 1 ? 24 / (count - 1) : 0;
+                  const xPct = 38 + idx * step;
+                  return (
+                    <line
+                      key={`line-${idx}`}
+                      x1={`${xPct}%`}
+                      y1="150"
+                      x2="50%"
+                      y2="292"
+                      stroke="#d1d5db"
+                      strokeDasharray="4 4"
+                      strokeWidth="1"
+                    />
+                  );
+                })}
+              </svg>
+              {selectedWheelLegs.map((trade, idx) => {
+                const count = selectedWheelLegs.length;
+                const step = count > 1 ? 24 / (count - 1) : 0;
+                const xPct = 38 + idx * step;
+                return (
+                  <div
+                    key={trade.id}
+                    className="absolute top-[70px]"
+                    style={{ left: `${xPct}%`, transform: "translateX(-50%)" }}
+                  >
+                    <div
+                      className={`relative w-[176px] rounded-xl border bg-white px-3 py-2 shadow-sm ${
+                        trade.option_type === "PUT" ? "border-[#c7b8ef]" : "border-[#9fd8ca]"
+                      }`}
+                    >
+                      <span className="absolute -left-2 -top-2 inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-200 bg-white text-[9px] font-semibold text-gray-500">
+                        {idx + 1}
+                      </span>
+                      <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-500">
+                        {trade.option_type === "PUT" ? "Cash Secured Put" : "Covered Call"}
+                      </p>
+                      <p className="mt-1 text-[30px] font-semibold leading-none text-gray-900">
+                        ${trade.strike.toFixed(0)}
+                      </p>
+                      <p className="text-[11px] font-medium text-emerald-700">
+                        +${(trade.premium * trade.contracts * 100).toFixed(2)}
+                      </p>
+                      <p className="text-[10px] text-gray-500">{fmtDate(trade.expiry)}</p>
+                      <span className="mt-1 inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
+                        {trade.status}
+                      </span>
+                    </div>
+                    {idx < count - 1 && <span className="absolute -right-5 top-[52px] text-emerald-600">→</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         ) : (
           <>
             <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
@@ -511,43 +679,89 @@ export default function CyclesPage() {
                   );
                   const openCount = linkedTrades.filter((trade) => trade.status === "OPEN").length;
                   const expanded = openCycleIds[cycle.id] ?? false;
+                  const sortedLegs = linkedTrades
+                    .slice()
+                    .sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime());
+                  const nearestOpenExpiry = linkedTrades
+                    .filter((trade) => trade.status === "OPEN")
+                    .map((trade) => new Date(trade.expiry).getTime())
+                    .filter((ts) => Number.isFinite(ts))
+                    .sort((a, b) => a - b)[0];
+                  const dte =
+                    nearestOpenExpiry != null
+                      ? Math.max(0, Math.ceil((nearestOpenExpiry - NOW_TS) / (1000 * 60 * 60 * 24)))
+                      : null;
 
                   return (
                     <div
                       key={cycle.id}
                       className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
                     >
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setOpenCycleIds((prev) => ({ ...prev, [cycle.id]: !expanded }))
-                        }
-                        className="flex w-full items-center justify-between px-5 py-4 text-left hover:bg-gray-50"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-lg">{expanded ? "▼" : "▶"}</span>
-                          <CycleWheel state={cycle.state} />
+                      <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-xs text-emerald-700">
+                            ↺
+                          </span>
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="text-base font-semibold text-gray-900">{cycle.ticker}</span>
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-xs font-medium ${stateBadgeStyle(cycle.state)}`}
-                              >
-                                {cycle.state}
+                              <span className="text-lg font-semibold text-gray-900">{cycle.ticker}</span>
+                              <span className="text-xs text-gray-500">
+                                {linkedTrades.length} legs · {openCount} open
                               </span>
                             </div>
-                            <p className="mt-1 text-xs text-gray-500">
-                              Updated {fmtDateTime(cycle.updated_at)}
-                            </p>
                           </div>
                         </div>
-
                         <div className="flex items-center gap-5 text-xs text-gray-500">
-                          <span>{linkedTrades.length} trades</span>
-                          <span>{openCount} open</span>
-                          <span className="font-medium text-green-700">+${totalPremium.toFixed(0)}</span>
+                          <span>${Math.abs(totalPremium).toFixed(0)}</span>
+                          <span>{dte != null ? `${dte}d` : "-"}</span>
+                          <span>{fmtDate(cycle.updated_at?.slice(0, 10) ?? cycle.created_at?.slice(0, 10) ?? "1970-01-01")}</span>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${stateBadgeStyle(cycle.state)}`}
+                          >
+                            {tab === "COMPLETED" ? "Completed" : "Active"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedWheelId(cycle.id)}
+                            className="rounded-full border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                          >
+                            View Wheel
+                          </button>
                         </div>
-                      </button>
+                      </div>
+
+                      <div className="overflow-x-auto px-4 py-3">
+                        <div className="flex min-w-max items-center gap-2">
+                          {sortedLegs.map((trade, index) => (
+                            <div key={trade.id} className="flex items-center gap-2">
+                              <div
+                                className={`w-40 rounded-xl border px-3 py-2 ${
+                                  trade.option_type === "PUT"
+                                    ? "border-violet-200 bg-violet-50/50"
+                                    : "border-emerald-200 bg-emerald-50/50"
+                                }`}
+                              >
+                                <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-500">
+                                  {trade.option_type === "PUT" ? "Cash Secured Put" : "Covered Call"}
+                                </p>
+                                <p className="mt-1 text-2xl font-semibold text-gray-900">
+                                  ${trade.strike.toFixed(2)}
+                                </p>
+                                <p className="text-[11px] font-medium text-emerald-700">
+                                  +${(trade.premium * trade.contracts * 100).toFixed(0)}
+                                </p>
+                                <p className="mt-1 text-[10px] text-gray-500">{fmtDate(trade.expiry)}</p>
+                                <span className="mt-1 inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-600">
+                                  {trade.status}
+                                </span>
+                              </div>
+                              {index < sortedLegs.length - 1 && (
+                                <span className="text-gray-400">→</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
 
                       {expanded && (
                         <div className="border-t border-gray-100 px-5 py-4">
