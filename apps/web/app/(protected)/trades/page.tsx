@@ -16,6 +16,7 @@ import { useProtectedAuth } from "../auth-context";
 import AddTradeModal from "../dashboard/components/AddTradeModal";
 import AssignTradeModal from "./components/AssignTradeModal";
 import ExpireTradeModal from "./components/ExpireTradeModal";
+import RollTradeModal from "./components/RollTradeModal";
 import TradeFilters, { type FilterState } from "./components/TradeFilters";
 import TradeList from "./components/TradeList";
 
@@ -45,6 +46,7 @@ export default function TradesPage() {
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [expiringTrade, setExpiringTrade] = useState<Trade | null>(null);
   const [assigningTrade, setAssigningTrade] = useState<Trade | null>(null);
+  const [rollingTrade, setRollingTrade] = useState<Trade | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [scopeTab, setScopeTab] = useState<"ALL" | "OPEN" | "CLOSED">("ALL");
@@ -150,41 +152,7 @@ export default function TradesPage() {
       }
 
       if (action === "roll") {
-        const defaultExpiry = trade.expiry;
-        const defaultStrike = trade.strike.toString();
-        const defaultPremium = trade.premium.toString();
-        const strikeInput = window.prompt("New strike", defaultStrike);
-        if (strikeInput === null) return;
-        const expiryInput = window.prompt("New expiry (YYYY-MM-DD)", defaultExpiry);
-        if (expiryInput === null) return;
-        const premiumInput = window.prompt("Net premium", defaultPremium);
-        if (premiumInput === null) return;
-
-        const newStrike = Number(strikeInput);
-        const netPremium = Number(premiumInput);
-        if (!Number.isFinite(newStrike) || !Number.isFinite(netPremium)) {
-          setSaveError("Invalid roll params.");
-          return;
-        }
-
-        if (trade.cycle_id) {
-          await postCycleTransition(token, trade.cycle_id, {
-            event: "roll",
-            params: {
-              new_strike: newStrike,
-              new_expiry: expiryInput,
-              net_premium: netPremium,
-            },
-          });
-        }
-        const updated = await updateTrade(token, trade.id, {
-          status: "ROLLED",
-          strike: newStrike,
-          expiry: expiryInput,
-          premium: netPremium,
-        });
-        setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
-        setSaveSuccess("Trade rolled successfully.");
+        setRollingTrade(trade);
         return;
       }
 
@@ -380,6 +348,50 @@ export default function TradesPage() {
             );
           } catch (err) {
             setSaveError(err instanceof Error ? err.message : "Failed to assign trade.");
+            throw err;
+          }
+        }}
+      />
+
+      <RollTradeModal
+        open={Boolean(rollingTrade)}
+        trade={rollingTrade}
+        onClose={() => setRollingTrade(null)}
+        onConfirm={async (input) => {
+          if (!token || !rollingTrade) return;
+          setSaveError(null);
+          try {
+            const netPremiumPerShare = input.new_premium_per_share - input.buyback_cost_per_share;
+
+            if (rollingTrade.cycle_id) {
+              await postCycleTransition(token, rollingTrade.cycle_id, {
+                event: "roll",
+                params: {
+                  new_strike: input.new_strike,
+                  new_expiry: input.new_expiry,
+                  net_premium: netPremiumPerShare,
+                },
+              });
+            }
+
+            const mergedNotes = input.notes?.trim()
+              ? [rollingTrade.notes?.trim(), input.notes.trim()].filter(Boolean).join("\n")
+              : undefined;
+
+            const updated = await updateTrade(token, rollingTrade.id, {
+              status: "ROLLED",
+              trade_date: input.trade_date,
+              strike: input.new_strike,
+              expiry: input.new_expiry,
+              premium: netPremiumPerShare,
+              ...(Number.isFinite(input.fees) ? { commission_fee: input.fees } : {}),
+              ...(mergedNotes ? { notes: mergedNotes } : {}),
+            });
+            setAllTrades((prev) => prev.map((t) => (t.id === rollingTrade.id ? updated : t)));
+            setRollingTrade(null);
+            setSaveSuccess("Trade rolled successfully.");
+          } catch (err) {
+            setSaveError(err instanceof Error ? err.message : "Failed to roll trade.");
             throw err;
           }
         }}

@@ -529,7 +529,7 @@ export default function CyclesPage() {
               </div>
             </div>
             <div className="relative h-[455px] bg-[#fcfdfd]">
-              <div className="absolute left-1/2 top-[60%] h-[230px] w-[230px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-gray-200" />
+              <div className="absolute left-1/2 top-[60%] h-[230px] w-[230px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-[#e9eeef]" />
               <div className="absolute left-1/2 top-[60%] h-[90px] w-[90px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-300 bg-emerald-50 text-center shadow-sm">
                 <div className="mt-5 text-sm font-semibold text-gray-900">{selectedWheel.ticker}</div>
                 <div className="text-xs font-medium text-emerald-700">
@@ -542,26 +542,27 @@ export default function CyclesPage() {
               <svg className="pointer-events-none absolute inset-0 h-full w-full">
                 {selectedWheelLegs.map((_, idx) => {
                   const count = selectedWheelLegs.length;
-                  const step = count > 1 ? 24 / (count - 1) : 0;
-                  const xPct = 38 + idx * step;
+                  const step = count > 1 ? 22 / (count - 1) : 0;
+                  const xPct = 39 + idx * step;
                   return (
                     <line
                       key={`line-${idx}`}
                       x1={`${xPct}%`}
-                      y1="150"
+                      y1="154"
                       x2="50%"
-                      y2="292"
-                      stroke="#d1d5db"
-                      strokeDasharray="4 4"
-                      strokeWidth="1"
+                      y2="286"
+                      stroke="#e3e8ea"
+                      strokeDasharray="3 5"
+                      strokeWidth="0.8"
+                      strokeLinecap="round"
                     />
                   );
                 })}
               </svg>
               {selectedWheelLegs.map((trade, idx) => {
                 const count = selectedWheelLegs.length;
-                const step = count > 1 ? 24 / (count - 1) : 0;
-                const xPct = 38 + idx * step;
+                const step = count > 1 ? 22 / (count - 1) : 0;
+                const xPct = 39 + idx * step;
                 return (
                   <div
                     key={trade.id}
