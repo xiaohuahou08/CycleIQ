@@ -47,6 +47,7 @@ export default function TradesPage() {
   const [assigningTrade, setAssigningTrade] = useState<Trade | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [scopeTab, setScopeTab] = useState<"ALL" | "OPEN" | "CLOSED">("ALL");
   const [filters, setFilters] = useState<FilterState>({
     ticker: "",
     type: "ALL",
@@ -197,29 +198,76 @@ export default function TradesPage() {
     }
   };
 
-  if (isAuthLoading) return null;
+  const scopedTrades = useMemo(() => {
+    if (scopeTab === "OPEN") return allTrades.filter((trade) => trade.status === "OPEN");
+    if (scopeTab === "CLOSED") return allTrades.filter((trade) => trade.status !== "OPEN");
+    return allTrades;
+  }, [allTrades, scopeTab]);
+  const filtered = applyFilters(scopedTrades, filters);
+  const openCount = allTrades.filter((trade) => trade.status === "OPEN").length;
+  const closedCount = allTrades.length - openCount;
 
-  const filtered = applyFilters(allTrades, filters);
+  if (isAuthLoading) return null;
   return (
     <>
-      <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Trades</h1>
-            <p className="mt-1 text-sm text-gray-500">All your wheel strategy trades</p>
+      <main className="flex-1 bg-gray-100/80 px-4 py-6 sm:px-6 lg:px-8">
+        <div className="rounded-2xl border border-gray-200/80 bg-white/95 p-5 shadow-sm backdrop-blur">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900">Trades</h1>
+              <p className="mt-1 text-sm text-gray-500">All your wheel strategy trades</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSaveError(null);
+                setSaveSuccess(null);
+                setEditingTrade(null);
+                setModalOpen(true);
+              }}
+              className="shrink-0 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
+            >
+              + Add Trade
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setSaveError(null);
-              setSaveSuccess(null);
-              setEditingTrade(null);
-              setModalOpen(true);
-            }}
-            className="shrink-0 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + Add Trade
-          </button>
+          <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+              <p className="text-xs text-gray-500">All Trades</p>
+              <p className="mt-1 text-2xl font-semibold text-gray-900">{allTrades.length}</p>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+              <p className="text-xs text-gray-500">Open</p>
+              <p className="mt-1 text-2xl font-semibold text-gray-900">{openCount}</p>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+              <p className="text-xs text-gray-500">Closed</p>
+              <p className="mt-1 text-2xl font-semibold text-gray-900">{closedCount}</p>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+              <p className="text-xs text-gray-500">Filtered</p>
+              <p className="mt-1 text-2xl font-semibold text-gray-900">{filtered.length}</p>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(["ALL", "OPEN", "CLOSED"] as const).map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setScopeTab(item)}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                  scopeTab === item
+                    ? "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {item === "ALL"
+                  ? `All (${allTrades.length})`
+                  : item === "OPEN"
+                    ? `Open (${openCount})`
+                    : `Closed (${closedCount})`}
+              </button>
+            ))}
+          </div>
         </div>
 
         {saveError && (
