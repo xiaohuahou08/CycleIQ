@@ -27,6 +27,10 @@ export interface Trade {
   status: TradeStatus;
   expired_at?: string | null;
   expire_type?: "EXPIRED_WORTHLESS" | "EXPIRED_ITM" | null;
+  closed_at?: string | null;
+  assigned_at?: string | null;
+  called_away_at?: string | null;
+  rolled_at?: string | null;
   notes?: string;
 }
 
@@ -46,6 +50,10 @@ export interface CreateTradeInput {
 
 export type UpdateTradeInput = Partial<CreateTradeInput> & {
   fees_on_assignment?: number | null;
+  closed_at?: string | null;
+  assigned_at?: string | null;
+  called_away_at?: string | null;
+  rolled_at?: string | null;
 };
 
 export interface MetricsSummary {
@@ -66,6 +74,8 @@ export interface DashboardInsights {
     total_premium: number;
     realized_pnl: number;
     avg_annual_roi: number;
+    open_premium_annualized_yield: number;
+    realized_annual_roi: number;
     active_trades: number;
     win_rate: number;
     avg_premium_per_active_day: number;

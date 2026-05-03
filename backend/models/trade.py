@@ -37,6 +37,10 @@ class Trade(db.Model):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="OPEN")
     expired_at: Mapped[date | None] = mapped_column(Date, nullable=True)
     expire_type: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    closed_at: Mapped[date | None] = mapped_column(Date, nullable=True)
+    assigned_at: Mapped[date | None] = mapped_column(Date, nullable=True)
+    called_away_at: Mapped[date | None] = mapped_column(Date, nullable=True)
+    rolled_at: Mapped[date | None] = mapped_column(Date, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
@@ -79,6 +83,10 @@ class Trade(db.Model):
             "status": self.status,
             "expired_at": self.expired_at.isoformat() if self.expired_at else None,
             "expire_type": self.expire_type,
+            "closed_at": self.closed_at.isoformat() if self.closed_at else None,
+            "assigned_at": self.assigned_at.isoformat() if self.assigned_at else None,
+            "called_away_at": self.called_away_at.isoformat() if self.called_away_at else None,
+            "rolled_at": self.rolled_at.isoformat() if self.rolled_at else None,
             "notes": self.notes,
             "cycle_id": self.cycle_id,
             "created_at": self.created_at.isoformat().replace("+00:00", "Z")

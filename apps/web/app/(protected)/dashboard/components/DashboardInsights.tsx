@@ -24,29 +24,66 @@ function BarChartCard({
   gradient: string;
 }) {
   const max = Math.max(1, ...points.map((p) => p.value));
+  const recentPoints = points.slice(-6);
+  const top3Keys = new Set(
+    recentPoints
+      .slice()
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 3)
+      .map((p) => `${p.label}-${p.value}`)
+  );
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-      <p className="mb-3 text-sm font-semibold text-gray-900">{title}</p>
-      <div className="flex h-28 items-end gap-2">
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <p className="mb-4 text-base font-semibold text-gray-900">{title}</p>
+      <div className="flex h-44 items-end gap-3">
         {points.length === 0 ? (
-          <p className="text-xs text-gray-400">No data</p>
+          <p className="text-sm text-gray-400">No data</p>
         ) : (
           points.map((p) => {
-            const height = Math.max(8, Math.round((p.value / max) * 92));
+            const height = Math.max(16, Math.round((p.value / max) * 140));
             return (
               <div key={p.label} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                <span className="text-[10px] font-medium text-gray-500">{fmtCurrency(p.value)}</span>
+                <span className="text-xs font-semibold text-gray-700">{fmtCurrency(p.value)}</span>
                 <div
                   className={`w-full rounded-md ${gradient}`}
                   style={{ height: `${height}px` }}
                   title={`${p.label}: ${fmtCurrency(p.value)}`}
                 />
-                <span className="truncate text-[10px] text-gray-400">{p.label}</span>
+                <span className="truncate text-xs text-gray-500">{p.label}</span>
               </div>
             );
           })
         )}
       </div>
+      {recentPoints.length > 0 && (
+        <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50/70 p-3">
+          <div className="space-y-1.5">
+            {recentPoints.map((p) => (
+              <div
+                key={`${title}-${p.label}`}
+                className={`flex items-center justify-between rounded px-2 py-1 text-xs ${
+                  top3Keys.has(`${p.label}-${p.value}`) ? "bg-emerald-50" : ""
+                }`}
+              >
+                <span
+                  className={`truncate ${
+                    top3Keys.has(`${p.label}-${p.value}`) ? "font-medium text-emerald-700" : "text-gray-500"
+                  }`}
+                >
+                  {p.label}
+                </span>
+                <span
+                  className={`font-semibold ${
+                    top3Keys.has(`${p.label}-${p.value}`) ? "text-emerald-700" : "text-gray-800"
+                  }`}
+                >
+                  {fmtCurrency(p.value)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -98,7 +135,7 @@ export default function DashboardInsights({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <StatCard
           label="Total Capital Invested"
           value={fmtCurrency(kpis?.total_capital_invested ?? 0)}
@@ -115,9 +152,14 @@ export default function DashboardInsights({
           sub="From closed trades"
         />
         <StatCard
-          label="Avg. Annual ROI"
-          value={fmtPercent(kpis?.avg_annual_roi ?? 0)}
-          sub="Projected annualized return"
+          label="Open Premium Annualized Yield"
+          value={fmtPercent(kpis?.open_premium_annualized_yield ?? kpis?.avg_annual_roi ?? 0)}
+          sub="Based on open premium and open capital"
+        />
+        <StatCard
+          label="Realized Annual ROI"
+          value={fmtPercent(kpis?.realized_annual_roi ?? 0)}
+          sub="Based on closed premium and holding period"
         />
         <StatCard
           label="Active Trades"
@@ -141,7 +183,7 @@ export default function DashboardInsights({
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4">
         <BarChartCard
           title="Daily Premium Income"
           points={charts?.daily_premium_income ?? []}

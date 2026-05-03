@@ -182,6 +182,38 @@ def register_trades_routes(trades_bp):
                 trade.trade_date = date.fromisoformat(str(data["trade_date"]))
             except ValueError:
                 return jsonify({"error": "Invalid trade_date"}), 400
+        if "closed_at" in data:
+            if data["closed_at"] is None:
+                trade.closed_at = None
+            else:
+                try:
+                    trade.closed_at = date.fromisoformat(str(data["closed_at"]))
+                except ValueError:
+                    return jsonify({"error": "Invalid closed_at"}), 400
+        if "assigned_at" in data:
+            if data["assigned_at"] is None:
+                trade.assigned_at = None
+            else:
+                try:
+                    trade.assigned_at = date.fromisoformat(str(data["assigned_at"]))
+                except ValueError:
+                    return jsonify({"error": "Invalid assigned_at"}), 400
+        if "called_away_at" in data:
+            if data["called_away_at"] is None:
+                trade.called_away_at = None
+            else:
+                try:
+                    trade.called_away_at = date.fromisoformat(str(data["called_away_at"]))
+                except ValueError:
+                    return jsonify({"error": "Invalid called_away_at"}), 400
+        if "rolled_at" in data:
+            if data["rolled_at"] is None:
+                trade.rolled_at = None
+            else:
+                try:
+                    trade.rolled_at = date.fromisoformat(str(data["rolled_at"]))
+                except ValueError:
+                    return jsonify({"error": "Invalid rolled_at"}), 400
 
         if "status" in data and data["status"] is not None:
             st = str(data["status"]).upper()

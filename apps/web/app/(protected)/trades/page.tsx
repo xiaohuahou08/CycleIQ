@@ -20,6 +20,10 @@ import RollTradeModal from "./components/RollTradeModal";
 import TradeFilters, { type FilterState } from "./components/TradeFilters";
 import TradeList from "./components/TradeList";
 
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function applyFilters(trades: Trade[], f: FilterState): Trade[] {
   return trades.filter((t) => {
     if (f.ticker && t.ticker !== f.ticker) return false;
@@ -135,7 +139,10 @@ export default function TradesPage() {
     if (!token) return;
     try {
       if (action === "buy_to_close") {
-        const updated = await updateTrade(token, trade.id, { status: "CLOSED" });
+        const updated = await updateTrade(token, trade.id, {
+          status: "CLOSED",
+          closed_at: todayIso(),
+        });
         setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
         setSaveSuccess("Trade closed successfully.");
         return;
@@ -179,63 +186,19 @@ export default function TradesPage() {
   return (
     <>
       <main className="flex-1 bg-gray-100/80 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="rounded-2xl border border-gray-200/80 bg-white/95 p-5 shadow-sm backdrop-blur">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-900">Trades</h1>
-              <p className="mt-1 text-sm text-gray-500">All your wheel strategy trades</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setSaveError(null);
-                setSaveSuccess(null);
-                setEditingTrade(null);
-                setModalOpen(true);
-              }}
-              className="shrink-0 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
-            >
-              + Add Trade
-            </button>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-              <p className="text-xs text-gray-500">All Trades</p>
-              <p className="mt-1 text-2xl font-semibold text-gray-900">{allTrades.length}</p>
-            </div>
-            <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-              <p className="text-xs text-gray-500">Open</p>
-              <p className="mt-1 text-2xl font-semibold text-gray-900">{openCount}</p>
-            </div>
-            <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-              <p className="text-xs text-gray-500">Closed</p>
-              <p className="mt-1 text-2xl font-semibold text-gray-900">{closedCount}</p>
-            </div>
-            <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-              <p className="text-xs text-gray-500">Filtered</p>
-              <p className="mt-1 text-2xl font-semibold text-gray-900">{filtered.length}</p>
-            </div>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {(["ALL", "OPEN", "CLOSED"] as const).map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setScopeTab(item)}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                  scopeTab === item
-                    ? "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                {item === "ALL"
-                  ? `All (${allTrades.length})`
-                  : item === "OPEN"
-                    ? `Open (${openCount})`
-                    : `Closed (${closedCount})`}
-              </button>
-            ))}
-          </div>
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              setSaveError(null);
+              setSaveSuccess(null);
+              setEditingTrade(null);
+              setModalOpen(true);
+            }}
+            className="shrink-0 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + Add Trade
+          </button>
         </div>
 
         {saveError && (
@@ -324,8 +287,10 @@ export default function TradesPage() {
               assigningTrade.option_type === "CALL" ? "CALLED_AWAY" : "ASSIGNED";
             const updated = await updateTrade(token, assigningTrade.id, {
               status: terminalStatus,
-              trade_date: input.trade_date,
               strike: input.assignment_price,
+              ...(assigningTrade.option_type === "CALL"
+                ? { called_away_at: input.trade_date }
+                : { assigned_at: input.trade_date }),
               ...(input.fees_on_assignment !== undefined
                 ? { fees_on_assignment: input.fees_on_assignment }
                 : {}),
@@ -380,10 +345,10 @@ export default function TradesPage() {
 
             const updated = await updateTrade(token, rollingTrade.id, {
               status: "ROLLED",
-              trade_date: input.trade_date,
               strike: input.new_strike,
               expiry: input.new_expiry,
               premium: netPremiumPerShare,
+              rolled_at: input.trade_date,
               ...(Number.isFinite(input.fees) ? { commission_fee: input.fees } : {}),
               ...(mergedNotes ? { notes: mergedNotes } : {}),
             });
