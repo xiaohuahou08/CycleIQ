@@ -24,6 +24,7 @@ from backend.models.wheel_cycle import WheelCycle
 def app():
     os.environ["SUPABASE_JWT_SECRET"] = "unit_test_jwt_secret"
     application = create_app(config_class=TestingConfig)
+    application.config["SUPABASE_JWT_SECRET"] = os.environ["SUPABASE_JWT_SECRET"]
     with application.app_context():
         db.create_all()
     yield application
@@ -37,7 +38,12 @@ def client(app):
 
 
 def auth_headers(user_id: str = "00000000-0000-0000-0000-000000000099") -> dict[str, str]:
-    token = jwt.encode({"sub": user_id}, "unit_test_jwt_secret", algorithm="HS256")
+    secret = os.environ.get("SUPABASE_JWT_SECRET", "unit_test_jwt_secret")
+    token = jwt.encode(
+        {"sub": user_id, "aud": "authenticated"},
+        secret,
+        algorithm="HS256",
+    )
     return {"Authorization": f"Bearer {token}"}
 
 
