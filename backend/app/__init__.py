@@ -53,4 +53,6 @@ def create_app(config_object=Config):
     return app
 
 
+# Compatibility entrypoint for WSGI servers configured as `backend.app:app`.
 app = create_app()
+

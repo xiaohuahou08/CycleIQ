@@ -6,3 +6,4 @@ try:
 except ModuleNotFoundError:
     # Local CLI path when running from backend/ directory
     from app import app
+
