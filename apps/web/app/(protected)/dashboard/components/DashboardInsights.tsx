@@ -25,13 +25,6 @@ function BarChartCard({
 }) {
   const max = Math.max(1, ...points.map((p) => p.value));
   const recentPoints = points.slice(-6);
-  const top3Keys = new Set(
-    recentPoints
-      .slice()
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 3)
-      .map((p) => `${p.label}-${p.value}`)
-  );
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
       <p className="mb-4 text-base font-semibold text-gray-900">{title}</p>
@@ -61,22 +54,12 @@ function BarChartCard({
             {recentPoints.map((p) => (
               <div
                 key={`${title}-${p.label}`}
-                className={`flex items-center justify-between rounded px-2 py-1 text-xs ${
-                  top3Keys.has(`${p.label}-${p.value}`) ? "bg-emerald-50" : ""
-                }`}
+                className="flex items-center justify-between rounded px-2 py-1 text-xs"
               >
-                <span
-                  className={`truncate ${
-                    top3Keys.has(`${p.label}-${p.value}`) ? "font-medium text-emerald-700" : "text-gray-500"
-                  }`}
-                >
+                <span className="truncate text-gray-500">
                   {p.label}
                 </span>
-                <span
-                  className={`font-semibold ${
-                    top3Keys.has(`${p.label}-${p.value}`) ? "text-emerald-700" : "text-gray-800"
-                  }`}
-                >
+                <span className="font-semibold text-gray-800">
                   {fmtCurrency(p.value)}
                 </span>
               </div>
