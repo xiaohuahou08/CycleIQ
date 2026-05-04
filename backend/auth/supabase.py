@@ -28,8 +28,14 @@ def _verify_token(token: str) -> dict:
     """Decode and verify a Supabase Auth JWT.
 
     Raises ``jwt.InvalidTokenError`` (or a subclass) on failure.
+    Raises ``ValueError`` if ``SUPABASE_JWT_SECRET`` is missing (misconfiguration).
     """
-    secret = current_app.config["SUPABASE_JWT_SECRET"]
+    secret = current_app.config.get("SUPABASE_JWT_SECRET") or ""
+    if not secret.strip():
+        raise ValueError(
+            "SUPABASE_JWT_SECRET is not set; add it in Render (or .env) from "
+            "Supabase Dashboard → Settings → API → JWT Settings → JWT Secret"
+        )
     return jwt.decode(
         token,
         secret,
@@ -54,10 +60,17 @@ def require_auth(f):
         token = auth_header.split(" ", 1)[1]
         try:
             payload = _verify_token(token)
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 503
         except jwt.ExpiredSignatureError:
             return jsonify({"error": "Token expired"}), 401
         except jwt.InvalidTokenError:
-            return jsonify({"error": "Invalid token"}), 401
+            return jsonify(
+                {
+                    "error": "Invalid token",
+                    "hint": "Check SUPABASE_JWT_SECRET matches Supabase JWT Secret (same project as the frontend).",
+                }
+            ), 401
 
         g.user_id = uuid.UUID(payload["sub"])
         return f(str(g.user_id), *args, **kwargs)
