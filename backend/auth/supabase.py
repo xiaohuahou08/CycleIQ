@@ -1,47 +1,82 @@
 """Supabase Auth JWT verification helpers.
 
-Supabase Auth issues HS256 JWTs signed with the project's JWT secret
-(SUPABASE_JWT_SECRET).  The ``require_auth`` decorator verifies the token and
-stores the caller's user UUID in ``flask.g.user_id`` for use by route handlers.
+Supports:
 
-Usage::
+- **HS256** (legacy): verify with ``SUPABASE_JWT_SECRET`` (Dashboard → JWT Secret).
+- **ES256** (current Supabase): verify using JWKS at
+  ``{iss}/.well-known/jwks.json`` where ``iss`` comes from the token
+  (typically ``https://<ref>.supabase.co/auth/v1``).
 
-    from backend.auth.supabase import require_auth
-    from flask import g
-
-    @app.get("/api/cycles")
-    @require_auth
-    def list_cycles():
-        ...
+The ``require_auth`` decorator sets ``flask.g.user_id`` and passes ``user_id``
+into route handlers.
 """
 
 from __future__ import annotations
 
 import uuid
 from functools import wraps
+from typing import Any
 
 import jwt
+from jwt import PyJWKClient
 from flask import current_app, g, jsonify, request
 
+_jwks_clients: dict[str, PyJWKClient] = {}
 
-def _verify_token(token: str) -> dict:
+
+def _jwks_client(url: str) -> PyJWKClient:
+    if url not in _jwks_clients:
+        _jwks_clients[url] = PyJWKClient(url)
+    return _jwks_clients[url]
+
+
+def _verify_token(token: str) -> dict[str, Any]:
     """Decode and verify a Supabase Auth JWT.
 
     Raises ``jwt.InvalidTokenError`` (or a subclass) on failure.
-    Raises ``ValueError`` if ``SUPABASE_JWT_SECRET`` is missing (misconfiguration).
+    Raises ``ValueError`` on server misconfiguration.
     """
-    secret = current_app.config.get("SUPABASE_JWT_SECRET") or ""
-    if not secret.strip():
-        raise ValueError(
-            "SUPABASE_JWT_SECRET is not set; add it in Render (or .env) from "
-            "Supabase Dashboard → Settings → API → JWT Settings → JWT Secret"
+    header = jwt.get_unverified_header(token)
+    alg = (header.get("alg") or "HS256").upper()
+
+    if alg == "HS256":
+        secret = (current_app.config.get("SUPABASE_JWT_SECRET") or "").strip()
+        if not secret:
+            raise ValueError(
+                "SUPABASE_JWT_SECRET is not set; add it in Render (or .env) from "
+                "Supabase Dashboard → Settings → API → JWT Settings → JWT Secret"
+            )
+        return jwt.decode(
+            token,
+            secret,
+            algorithms=["HS256"],
+            audience="authenticated",
         )
-    return jwt.decode(
-        token,
-        secret,
-        algorithms=["HS256"],
-        audience="authenticated",
-    )
+
+    if alg in ("ES256", "RS256"):
+        unverified = jwt.decode(
+            token,
+            options={
+                "verify_signature": False,
+                "verify_aud": False,
+                "verify_exp": True,
+            },
+        )
+        issuer = unverified.get("iss")
+        if not issuer or not isinstance(issuer, str):
+            raise jwt.InvalidTokenError("Token missing iss claim")
+        jwks_url = f"{issuer.rstrip('/')}/.well-known/jwks.json"
+        jwk_client = _jwks_client(jwks_url)
+        signing_key = jwk_client.get_signing_key_from_jwt(token)
+        return jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=[alg],
+            audience="authenticated",
+            issuer=issuer,
+        )
+
+    raise jwt.InvalidTokenError(f"Unsupported JWT algorithm: {alg}")
 
 
 def require_auth(f):
@@ -68,7 +103,10 @@ def require_auth(f):
             return jsonify(
                 {
                     "error": "Invalid token",
-                    "hint": "Check SUPABASE_JWT_SECRET matches Supabase JWT Secret (same project as the frontend).",
+                    "hint": (
+                        "HS256: set SUPABASE_JWT_SECRET to the Supabase JWT secret. "
+                        "ES256/RS256: ensure the token is from Supabase and JWKS is reachable."
+                    ),
                 }
             ), 401
 
