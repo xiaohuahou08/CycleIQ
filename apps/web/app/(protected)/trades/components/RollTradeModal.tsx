@@ -57,6 +57,7 @@ export default function RollTradeModal({
 
   useEffect(() => {
     if (!open || !trade) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRollDate(todayIso());
     setNewExpiry(trade.expiry);
     setNewStrike(trade.strike.toFixed(2));

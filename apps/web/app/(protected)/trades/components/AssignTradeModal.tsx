@@ -50,6 +50,7 @@ export default function AssignTradeModal({
 
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActionDate(todayIso());
     setAssignmentPrice(
       trade ? (Number.isFinite(trade.strike) ? String(trade.strike) : "")

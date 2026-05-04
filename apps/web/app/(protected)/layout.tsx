@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Sidebar from "@/app/components/Sidebar";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { ProtectedAuthProvider } from "./auth-context";
@@ -10,7 +10,6 @@ export default function ProtectedLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const router = useRouter();
-  const pathname = usePathname();
   const [email, setEmail] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -46,13 +45,9 @@ export default function ProtectedLayout({
     router.refresh();
   };
 
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [pathname]);
-
   const contextValue = useMemo(
     () => ({ email, token, isAuthLoading, onLogout }),
-    [email, token, isAuthLoading]
+    [email, token, isAuthLoading, onLogout]
   );
 
   if (isAuthLoading) {

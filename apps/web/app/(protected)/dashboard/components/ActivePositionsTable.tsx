@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Trade, TradeStatus } from "@/lib/api/trades";
 
 const statusStyles: Record<TradeStatus, string> = {
@@ -39,10 +39,6 @@ const LOGO_URL_BUILDERS = [
 function TickerLogo({ ticker }: { ticker: string }) {
   const urls = useMemo(() => LOGO_URL_BUILDERS.map((build) => build(ticker)), [ticker]);
   const [urlIndex, setUrlIndex] = useState(0);
-
-  useEffect(() => {
-    setUrlIndex(0);
-  }, [ticker]);
 
   if (urlIndex >= urls.length) {
     return (
@@ -114,7 +110,7 @@ export default function ActivePositionsTable({
                 <tr key={trade.id} className="hover:bg-gray-50">
                   <td className="px-5 py-3 font-medium text-gray-900">
                     <div className="flex items-center gap-2">
-                      <TickerLogo ticker={trade.ticker} />
+                      <TickerLogo key={trade.ticker} ticker={trade.ticker} />
                       <span>{trade.ticker}</span>
                     </div>
                   </td>

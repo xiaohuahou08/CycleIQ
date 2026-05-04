@@ -53,7 +53,6 @@ export default function TradesPage() {
   const [rollingTrade, setRollingTrade] = useState<Trade | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
-  const [scopeTab, setScopeTab] = useState<"ALL" | "OPEN" | "CLOSED">("ALL");
   const [filters, setFilters] = useState<FilterState>({
     ticker: "",
     type: "ALL",
@@ -65,7 +64,6 @@ export default function TradesPage() {
 
   useEffect(() => {
     if (!token) return;
-    setTradesLoading(true);
     listTrades(token)
       .then((trades) => setAllTrades(trades))
       .catch(() => setAllTrades([]))
@@ -173,14 +171,7 @@ export default function TradesPage() {
     }
   };
 
-  const scopedTrades = useMemo(() => {
-    if (scopeTab === "OPEN") return allTrades.filter((trade) => trade.status === "OPEN");
-    if (scopeTab === "CLOSED") return allTrades.filter((trade) => trade.status !== "OPEN");
-    return allTrades;
-  }, [allTrades, scopeTab]);
-  const filtered = applyFilters(scopedTrades, filters);
-  const openCount = allTrades.filter((trade) => trade.status === "OPEN").length;
-  const closedCount = allTrades.length - openCount;
+  const filtered = applyFilters(allTrades, filters);
 
   if (isAuthLoading) return null;
   return (

@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -55,10 +51,6 @@ function TickerLogo({ ticker }: { ticker: string }) {
     [ticker]
   );
   const [urlIndex, setUrlIndex] = useState(0);
-
-  useEffect(() => {
-    setUrlIndex(0);
-  }, [ticker]);
 
   if (!ticker) {
     return (
@@ -235,7 +227,7 @@ export default function AddTradeModal({
                 </label>
                 <div className="relative">
                   <div className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 focus-within:border-gray-700">
-                    <TickerLogo ticker={tickerValue} />
+                    <TickerLogo key={tickerValue} ticker={tickerValue} />
                     <input
                       id="ticker"
                       type="text"
@@ -273,7 +265,7 @@ export default function AddTradeModal({
                                 setIsTickerFocused(false);
                               }}
                             >
-                              <TickerLogo ticker={ticker} />
+                              <TickerLogo key={ticker} ticker={ticker} />
                               <span className="font-medium">{ticker}</span>
                             </button>
                           </li>

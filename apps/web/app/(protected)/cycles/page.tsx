@@ -4,17 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { listCycles, listTrades, type CycleSummary, type Trade } from "@/lib/api/trades";
 import { useProtectedAuth } from "../auth-context";
 
-function fmtDateTime(iso: string | null): string {
-  if (!iso) return "-";
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(iso));
-}
-
 function fmtDate(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
   return new Intl.DateTimeFormat("en-US", {
@@ -40,47 +29,7 @@ function stateBadgeStyle(state: string): string {
   return "bg-slate-100 text-slate-700";
 }
 
-const WHEEL_STEPS = ["IDLE", "CSP_OPEN", "STOCK_HELD", "CC_OPEN", "EXIT"] as const;
 const NOW_TS = Date.now();
-
-function wheelProgressIndex(state: string): number {
-  const idx = WHEEL_STEPS.indexOf(state as (typeof WHEEL_STEPS)[number]);
-  return idx >= 0 ? idx : 0;
-}
-
-function CycleWheel({ state }: { state: string }) {
-  const activeIndex = wheelProgressIndex(state);
-  const size = 54;
-  const center = size / 2;
-  const radius = 20;
-
-  return (
-    <div className="relative h-14 w-14 shrink-0 rounded-full border border-gray-200 bg-white">
-      <svg viewBox={`0 0 ${size} ${size}`} className="h-full w-full">
-        <circle cx={center} cy={center} r={radius} fill="none" stroke="#e5e7eb" strokeWidth="3" />
-        {WHEEL_STEPS.map((step, index) => {
-          const angle = (Math.PI * 2 * index) / WHEEL_STEPS.length - Math.PI / 2;
-          const x = center + radius * Math.cos(angle);
-          const y = center + radius * Math.sin(angle);
-          const isActive = index <= activeIndex;
-          const isCurrent = step === state;
-          return (
-            <circle
-              key={step}
-              cx={x}
-              cy={y}
-              r={isCurrent ? 4.5 : 3.5}
-              fill={isActive ? "#2563eb" : "#d1d5db"}
-            />
-          );
-        })}
-      </svg>
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[9px] font-semibold text-gray-500">
-        Wheel
-      </div>
-    </div>
-  );
-}
 
 function MoneyIcon() {
   return (
@@ -143,7 +92,6 @@ export default function CyclesPage() {
 
   useEffect(() => {
     if (!token) return;
-    setLoading(true);
     Promise.all([listCycles(token), listTrades(token)])
       .then(([cycleRows, tradeRows]) => {
         setCycles(cycleRows);
@@ -213,14 +161,8 @@ export default function CyclesPage() {
     return ranged.slice().sort((a, b) => {
       if (sortBy === "TICKER") return a.ticker.localeCompare(b.ticker);
       if (sortBy === "PREMIUM") {
-        const aPremium = (tradesByCycle[a.id] ?? []).reduce(
-          (sum, t) => sum + t.premium * t.contracts * 100,
-          0
-        );
-        const bPremium = (tradesByCycle[b.id] ?? []).reduce(
-          (sum, t) => sum + t.premium * t.contracts * 100,
-          0
-        );
+        const aPremium = a.trades.reduce((sum, t) => sum + t.premium * t.contracts * 100, 0);
+        const bPremium = b.trades.reduce((sum, t) => sum + t.premium * t.contracts * 100, 0);
         return bPremium - aPremium;
       }
       return (

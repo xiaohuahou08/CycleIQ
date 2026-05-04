@@ -29,6 +29,7 @@ export function TradeModalShell({
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setModalOffset({ x: 0, y: 0 });
     }
   }, [open]);

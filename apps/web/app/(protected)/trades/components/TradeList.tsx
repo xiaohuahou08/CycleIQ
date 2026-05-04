@@ -128,10 +128,6 @@ function formatWeekLabel(weekKey: string): string {
 function TickerLogo({ ticker }: { ticker: string }) {
   const [urlIndex, setUrlIndex] = useState(0);
 
-  useEffect(() => {
-    setUrlIndex(0);
-  }, [ticker]);
-
   if (urlIndex >= LOGO_URL_BUILDERS.length) {
     return (
       <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-blue-100 text-[10px] font-semibold text-blue-700">
@@ -201,7 +197,7 @@ function TradeRow({
       >
         <td className="px-4 py-3 text-sm font-medium text-gray-900">
           <div className="flex items-center gap-2">
-            <TickerLogo ticker={trade.ticker} />
+            <TickerLogo key={trade.ticker} ticker={trade.ticker} />
             <span>{trade.ticker}</span>
           </div>
         </td>
