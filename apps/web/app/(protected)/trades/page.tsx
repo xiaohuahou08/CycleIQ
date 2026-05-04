@@ -177,28 +177,13 @@ export default function TradesPage() {
   return (
     <>
       <main className="flex-1 bg-gray-100/80 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => {
-              setSaveError(null);
-              setSaveSuccess(null);
-              setEditingTrade(null);
-              setModalOpen(true);
-            }}
-            className="shrink-0 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + Add Trade
-          </button>
-        </div>
-
         {saveError && (
-          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {saveError}
           </div>
         )}
         {saveSuccess && (
-          <div className="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          <div className="mt-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
             {saveSuccess}
           </div>
         )}
@@ -208,6 +193,12 @@ export default function TradesPage() {
             onFilterChange={setFilters}
             totalCount={allTrades.length}
             filteredCount={filtered.length}
+            onAddTrade={() => {
+              setSaveError(null);
+              setSaveSuccess(null);
+              setEditingTrade(null);
+              setModalOpen(true);
+            }}
           />
         </div>
 

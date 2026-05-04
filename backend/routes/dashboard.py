@@ -129,11 +129,20 @@ def register_dashboard_routes(dashboard_bp):
         else:
             elapsed_days = 1
 
-        active_days = len({t.trade_date for t in open_trades})
-        active_days = max(1, active_days)
-        avg_premium_per_active_day = (
-            sum(_premium_total(t) for t in open_trades) / active_days if open_trades else 0.0
-        )
+        # Premium-weighted average DTE (days to expiry) for open legs, then
+        # open premium / weighted DTE = implied $/day at that horizon (not calendar "active days").
+        open_premium_total = sum(_premium_total(t) for t in open_trades)
+        if open_trades and open_premium_total > 0:
+            weighted_open_dte = (
+                sum(
+                    _premium_total(t) * _days_between(t.expiry, today) for t in open_trades
+                )
+                / open_premium_total
+            )
+            avg_premium_per_active_day = open_premium_total / weighted_open_dte
+        else:
+            weighted_open_dte = 0.0
+            avg_premium_per_active_day = 0.0
         daily_avg = total_premium / elapsed_days
         yearly_income = daily_avg * 365
 
@@ -192,7 +201,7 @@ def register_dashboard_routes(dashboard_bp):
                     "active_trades": active_trades,
                     "win_rate": round(win_rate, 1),
                     "avg_premium_per_active_day": round(avg_premium_per_active_day, 2),
-                    "active_days": active_days,
+                    "weighted_open_dte": round(weighted_open_dte, 2),
                     "yearly_income": round(yearly_income, 2),
                     "daily_avg_income": round(daily_avg, 2),
                 },

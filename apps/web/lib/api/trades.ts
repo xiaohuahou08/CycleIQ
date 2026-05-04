@@ -79,7 +79,8 @@ export interface DashboardInsights {
     active_trades: number;
     win_rate: number;
     avg_premium_per_active_day: number;
-    active_days: number;
+    /** Premium-weighted average DTE (days) for open positions. */
+    weighted_open_dte: number;
     yearly_income: number;
     daily_avg_income: number;
   };

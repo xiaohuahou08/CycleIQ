@@ -155,9 +155,13 @@ export default function DashboardInsights({
           sub="Based on strategy outcomes"
         />
         <StatCard
-          label="Avg Premium / Active Days"
+          label="Avg Premium / Weighted DTE"
           value={fmtCurrency(kpis?.avg_premium_per_active_day ?? 0)}
-          sub={`From ${kpis?.active_days ?? 0} active days`}
+          sub={
+            (kpis?.weighted_open_dte ?? 0) > 0
+              ? `Premium-weighted avg DTE: ${(kpis?.weighted_open_dte ?? 0).toFixed(1)} days`
+              : "No open positions"
+          }
         />
         <StatCard
           label="Yearly Income"
