@@ -12,7 +12,8 @@ from backend.services.cycle_fsm import append_transition, apply_api_event, repla
 from backend.services.trade_cost_basis import apply_stock_cost_basis
 from cycleiq.wheel_fsm import InvalidTransitionError
 
-AUTO_ATTACH_CYCLE_STATES = frozenset({"IDLE", "CSP_OPEN", "STOCK_HELD", "CC_OPEN"})
+AUTO_ATTACH_PUT_STATES = frozenset({"IDLE"})
+AUTO_ATTACH_CALL_STATES = frozenset({"STOCK_HELD", "CC_OPEN"})
 
 
 def register_trades_routes(trades_bp):
@@ -56,7 +57,17 @@ def register_trades_routes(trades_bp):
                 .order_by(WheelCycle.updated_at.desc())
                 .first()
             )
-            if existing_cycle and existing_cycle.state in AUTO_ATTACH_CYCLE_STATES:
+            should_attach_existing = (
+                existing_cycle is not None
+                and (
+                    (str(data.get("option_type", "")).upper() == "PUT" and existing_cycle.state in AUTO_ATTACH_PUT_STATES)
+                    or (
+                        str(data.get("option_type", "")).upper() == "CALL"
+                        and existing_cycle.state in AUTO_ATTACH_CALL_STATES
+                    )
+                )
+            )
+            if should_attach_existing:
                 cycle_id = existing_cycle.id
             else:
                 new_cycle = WheelCycle(

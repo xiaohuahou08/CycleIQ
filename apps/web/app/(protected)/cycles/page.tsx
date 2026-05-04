@@ -91,12 +91,47 @@ function MoneyIcon() {
   );
 }
 
+interface WheelSummary extends CycleSummary {
+  source_cycle_id: string;
+  trades: Trade[];
+}
+
+function splitCycleIntoWheels(cycle: CycleSummary, linkedTrades: Trade[]): WheelSummary[] {
+  const sorted = linkedTrades
+    .slice()
+    .sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime());
+  if (sorted.length === 0) {
+    return [{ ...cycle, source_cycle_id: cycle.id, trades: [] }];
+  }
+
+  const putStartIndexes = sorted
+    .map((trade, index) => (trade.option_type === "PUT" ? index : -1))
+    .filter((index) => index >= 0);
+  if (putStartIndexes.length <= 1) {
+    return [{ ...cycle, source_cycle_id: cycle.id, trades: sorted }];
+  }
+
+  return putStartIndexes.map((startIndex, idx) => {
+    const endIndex = putStartIndexes[idx + 1] ?? sorted.length;
+    const wheelTrades = sorted.slice(startIndex, endIndex);
+    const latestTradeDate = wheelTrades[wheelTrades.length - 1]?.trade_date ?? cycle.updated_at;
+    return {
+      ...cycle,
+      id: `${cycle.id}:${idx}`,
+      state: wheelTrades.some((trade) => trade.status === "OPEN") ? "CSP_OPEN" : "EXIT",
+      created_at: wheelTrades[0]?.trade_date ?? cycle.created_at,
+      updated_at: latestTradeDate,
+      source_cycle_id: cycle.id,
+      trades: wheelTrades,
+    };
+  });
+}
+
 export default function CyclesPage() {
   const { token, isAuthLoading } = useProtectedAuth();
   const [cycles, setCycles] = useState<CycleSummary[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
-  const [openCycleIds, setOpenCycleIds] = useState<Record<string, boolean>>({});
   const [selectedWheelId, setSelectedWheelId] = useState<string | null>(null);
   const [viewTab, setViewTab] = useState<"WHEELS" | "CC_COST_BASIS" | "CSP_PREMIUM" | "DTE_TIMELINE">(
     "WHEELS"
@@ -126,16 +161,21 @@ export default function CyclesPage() {
     }, {});
   }, [trades]);
 
+  const wheels = useMemo(
+    () => cycles.flatMap((cycle) => splitCycleIntoWheels(cycle, tradesByCycle[cycle.id] ?? [])),
+    [cycles, tradesByCycle]
+  );
+
   const sortedCycles = useMemo(
     () =>
-      cycles
+      wheels
         .slice()
         .sort(
           (a, b) =>
             new Date(b.updated_at ?? b.created_at ?? 0).getTime() -
             new Date(a.updated_at ?? a.created_at ?? 0).getTime()
         ),
-    [cycles]
+    [wheels]
   );
 
   const activeCycles = useMemo(
@@ -264,11 +304,9 @@ export default function CyclesPage() {
   const selectedWheelLegs = useMemo(
     () =>
       selectedWheel
-        ? (tradesByCycle[selectedWheel.id] ?? [])
-            .slice()
-            .sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime())
+        ? selectedWheel.trades
         : [],
-    [selectedWheel, tradesByCycle]
+    [selectedWheel]
   );
 
   if (isAuthLoading) return null;
@@ -345,7 +383,7 @@ export default function CyclesPage() {
                     .reduce(
                       (sum, cycle) =>
                         sum +
-                        (tradesByCycle[cycle.id] ?? []).reduce(
+                        cycle.trades.reduce(
                           (tradeSum, trade) => tradeSum + trade.premium * trade.contracts * 100,
                           0
                         ),
@@ -479,13 +517,13 @@ export default function CyclesPage() {
                     {selectedWheel.ticker} Wheel
                   </p>
                   <p className="text-xs font-medium text-gray-500">
-                    {(tradesByCycle[selectedWheel.id] ?? []).length} legs ·{" "}
-                    {(tradesByCycle[selectedWheel.id] ?? []).filter((t) => t.option_type === "PUT").length} CSP
+                    {selectedWheel.trades.length} legs ·{" "}
+                    {selectedWheel.trades.filter((t) => t.option_type === "PUT").length} CSP
                     {" · "}
                     {Math.max(
                       0,
                       Math.ceil(
-                        ((tradesByCycle[selectedWheel.id] ?? [])
+                        (selectedWheel.trades
                           .filter((t) => t.status === "OPEN")
                           .map((t) => new Date(t.expiry).getTime())
                           .sort((a, b) => a - b)[0] - NOW_TS) /
@@ -502,7 +540,7 @@ export default function CyclesPage() {
                   <span>
                     $
                     {fmtMoney(
-                      (tradesByCycle[selectedWheel.id] ?? []).reduce(
+                      selectedWheel.trades.reduce(
                         (sum, t) => sum + t.premium * t.contracts * 100,
                         0
                       )
@@ -513,7 +551,7 @@ export default function CyclesPage() {
                   {Math.max(
                     0,
                     Math.ceil(
-                      ((tradesByCycle[selectedWheel.id] ?? [])
+                      (selectedWheel.trades
                         .filter((t) => t.status === "OPEN")
                         .map((t) => new Date(t.expiry).getTime())
                         .sort((a, b) => a - b)[0] - NOW_TS) /
@@ -534,7 +572,7 @@ export default function CyclesPage() {
                 <div className="mt-5 text-sm font-semibold text-gray-900">{selectedWheel.ticker}</div>
                 <div className="text-xs font-medium text-emerald-700">
                   +$
-                  {(tradesByCycle[selectedWheel.id] ?? [])
+                  {selectedWheel.trades
                     .reduce((sum, t) => sum + t.premium * t.contracts * 100, 0)
                     .toFixed(2)}
                 </div>
@@ -673,13 +711,12 @@ export default function CyclesPage() {
                 </div>
               ) : (
                 visibleCycles.map((cycle) => {
-                  const linkedTrades = tradesByCycle[cycle.id] ?? [];
+                  const linkedTrades = cycle.trades;
                   const totalPremium = linkedTrades.reduce(
                     (sum, trade) => sum + trade.premium * trade.contracts * 100,
                     0
                   );
                   const openCount = linkedTrades.filter((trade) => trade.status === "OPEN").length;
-                  const expanded = openCycleIds[cycle.id] ?? false;
                   const sortedLegs = linkedTrades
                     .slice()
                     .sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime());
@@ -764,52 +801,6 @@ export default function CyclesPage() {
                         </div>
                       </div>
 
-                      {expanded && (
-                        <div className="border-t border-gray-100 px-5 py-4">
-                          {linkedTrades.length === 0 ? (
-                            <p className="text-sm text-gray-500">No linked trades in this cycle yet.</p>
-                          ) : (
-                            <div className="overflow-x-auto">
-                              <table className="w-full text-sm">
-                                <thead>
-                                  <tr className="text-left text-xs uppercase tracking-wide text-gray-400">
-                                    <th className="py-2">Date</th>
-                                    <th className="py-2">Type</th>
-                                    <th className="py-2">Strike</th>
-                                    <th className="py-2">Qty</th>
-                                    <th className="py-2">Premium</th>
-                                    <th className="py-2">Commission</th>
-                                    <th className="py-2">Status</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                  {linkedTrades
-                                    .slice()
-                                    .sort(
-                                      (a, b) =>
-                                        new Date(b.trade_date).getTime() - new Date(a.trade_date).getTime()
-                                    )
-                                    .map((trade) => (
-                                      <tr key={trade.id} className="text-gray-700">
-                                        <td className="py-2">{fmtDate(trade.trade_date)}</td>
-                                        <td className="py-2">{trade.option_type}</td>
-                                        <td className="py-2">${trade.strike.toFixed(2)}</td>
-                                        <td className="py-2">{trade.contracts}</td>
-                                        <td className="py-2">${trade.premium.toFixed(2)}</td>
-                                        <td className="py-2">
-                                          {trade.commission_fee != null
-                                            ? `$${trade.commission_fee.toFixed(2)}`
-                                            : "-"}
-                                        </td>
-                                        <td className="py-2">{trade.status}</td>
-                                      </tr>
-                                    ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
                   );
                 })

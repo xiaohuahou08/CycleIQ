@@ -194,6 +194,38 @@ def test_trade_auto_attaches_existing_cycle(client):
     assert cycle_after.get_json()["state"] == "CSP_OPEN"
 
 
+def test_trade_creates_new_cycle_when_latest_ticker_cycle_is_active_put(client):
+    h = auth_headers("88888888-8888-8888-8888-888888888888")
+    first_payload = {
+        "ticker": "UNH",
+        "option_type": "PUT",
+        "strike": 360,
+        "expiry": "2026-06-20",
+        "trade_date": "2026-04-01",
+        "premium": 3.25,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    first = client.post("/api/trades", json=first_payload, headers=h)
+    assert first.status_code == 201
+    first_cycle_id = first.get_json()["cycle_id"]
+    assert first_cycle_id is not None
+
+    second_payload = {
+        "ticker": "UNH",
+        "option_type": "PUT",
+        "strike": 350,
+        "expiry": "2026-06-27",
+        "trade_date": "2026-04-03",
+        "premium": 2.75,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    second = client.post("/api/trades", json=second_payload, headers=h)
+    assert second.status_code == 201
+    assert second.get_json()["cycle_id"] != first_cycle_id
+
+
 def test_trade_auto_creates_cycle_if_existing_is_exit(client, app):
     h = auth_headers("77777777-7777-7777-7777-777777777777")
     with app.app_context():

@@ -197,7 +197,7 @@ export default function DashboardInsights({
         <BarChartCard
           title="Monthly Premium Income"
           points={charts?.monthly_premium_income ?? []}
-          gradient="bg-gradient-to-t from-emerald-600 to-teal-300"
+          gradient="bg-gradient-to-t from-indigo-600 to-blue-300"
         />
       </div>
     </div>
