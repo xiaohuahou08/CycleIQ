@@ -16,4 +16,4 @@ COPY backend/ ./backend/
 EXPOSE 5000
 ENV PORT=5000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "backend.wsgi:app"]
+CMD ["sh", "-c", "cd /app/backend && alembic upgrade heads && cd /app && gunicorn --bind 0.0.0.0:5000 backend.wsgi:app"]

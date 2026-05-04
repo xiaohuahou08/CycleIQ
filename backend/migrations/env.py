@@ -6,14 +6,11 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-# Flask app & models must be importable from here
+# Ensure repository root is importable, then load SQLAlchemy metadata.
 import sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from app import create_app
-from app.database import db
-
-flask_app = create_app()
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+from backend.models import db
 
 config = context.config
 

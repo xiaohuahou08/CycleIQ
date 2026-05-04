@@ -1,4 +1,3 @@
-# Root requirements.txt — delegates to the pinned backend list so that both
-# Docker builds and native Render Python deployments use the same packages.
+# Root requirements.txt — delegate to pinned backend requirements
 -r backend/requirements.txt
 -e .

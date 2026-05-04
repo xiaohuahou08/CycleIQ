@@ -1,34 +1,33 @@
-"""CycleIQ Flask application factory."""
-
+import os
 from datetime import datetime, timezone
-
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_migrate import Migrate
 
 from backend.config import Config
 from backend.models import db
-from backend.routes import cycles_bp, dashboard_bp, metrics_bp, trades_bp
-from backend.routes.cycles import register_cycles_routes
-from backend.routes.dashboard import register_dashboard_routes
-from backend.routes.metrics import register_metrics_routes
+from backend.routes import trades_bp, dashboard_bp, cycles_bp, metrics_bp
 from backend.routes.trades import register_trades_routes
+from backend.routes.dashboard import register_dashboard_routes
+from backend.routes.cycles import register_cycles_routes
+from backend.routes.metrics import register_metrics_routes
 
 migrate = Migrate()
 _ROUTES_REGISTERED = False
 
 
-def create_app(config_object=Config):
-    """Create and configure the Flask application."""
+def create_app(config_class=Config):
     app = Flask(__name__)
-    app.config.from_object(config_object)
+    app.config.from_object(config_class)
 
     CORS(app)
     db.init_app(app)
     migrate.init_app(app, db)
-    # Schema changes are managed by Alembic migrations (flask db upgrade).
-    # Avoid create_all() on startup so app boot is not coupled to DDL calls.
 
+    with app.app_context():
+        db.create_all()
+
+    # Register blueprint routes only once per Python process.
     global _ROUTES_REGISTERED
     if not _ROUTES_REGISTERED:
         register_trades_routes(trades_bp)
@@ -43,16 +42,16 @@ def create_app(config_object=Config):
 
     @app.route("/health", methods=["GET"])
     def health():
-        return jsonify(
-            {
-                "status": "ok",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            }
-        )
+        return jsonify({
+            "status": "ok",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
 
     return app
 
 
-# Compatibility entrypoint for WSGI servers configured as `backend.app:app`.
 app = create_app()
 
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)

@@ -1,9 +1,9 @@
-"""WSGI entry point for production (gunicorn).
+"""WSGI entry point for production (gunicorn)."""
 
-Usage:
-    gunicorn --bind 0.0.0.0:5000 backend.wsgi:app
-"""
+try:
+    # Production/Docker path
+    from backend.app import app
+except ModuleNotFoundError:
+    # Local CLI path when running from backend/ directory
+    from app import app
 
-from backend.app import create_app
-
-app = create_app()

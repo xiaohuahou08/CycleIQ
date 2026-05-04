@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import type { Trade, TradeStatus } from "@/lib/api/trades";
 
 const statusStyles: Record<TradeStatus, string> = {
@@ -26,16 +27,46 @@ function getStrategy(trade: Trade): "CSP" | "CC" {
   return trade.option_type === "PUT" ? "CSP" : "CC";
 }
 
+const LOGO_URL_BUILDERS = [
+  (ticker: string) =>
+    `https://cdn.brandfetch.io/ticker/${encodeURIComponent(
+      ticker
+    )}?theme=light&c=1idEaEn5uowTmWO3jvO`,
+  (ticker: string) => `https://financialmodelingprep.com/image-stock/${ticker}.png`,
+  (ticker: string) => `https://eodhd.com/img/logos/US/${ticker}.png`,
+];
+
+function TickerLogo({ ticker }: { ticker: string }) {
+  const urls = useMemo(() => LOGO_URL_BUILDERS.map((build) => build(ticker)), [ticker]);
+  const [urlIndex, setUrlIndex] = useState(0);
+
+  if (urlIndex >= urls.length) {
+    return (
+      <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-blue-100 text-[10px] font-semibold text-blue-700">
+        {ticker[0]}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={urls[urlIndex]}
+      alt={`${ticker} logo`}
+      className="h-5 w-5 rounded object-cover"
+      onError={() => setUrlIndex((prev) => prev + 1)}
+      loading="lazy"
+    />
+  );
+}
+
 interface ActivePositionsTableProps {
   trades: Trade[];
   loading: boolean;
-  onAddTrade: () => void;
 }
 
 export default function ActivePositionsTable({
   trades,
   loading,
-  onAddTrade,
 }: ActivePositionsTableProps) {
   const displayed = trades.slice(0, 5);
 
@@ -55,20 +86,10 @@ export default function ActivePositionsTable({
           ))}
         </div>
       ) : trades.length === 0 ? (
-        /* Empty state */
         <div className="flex flex-col items-center px-6 py-12 text-center">
           <div className="text-4xl">📋</div>
           <p className="mt-3 text-sm font-medium text-gray-900">No trades yet</p>
-          <p className="mt-1 text-xs text-gray-500">
-            Add your first trade to start tracking your wheel strategy.
-          </p>
-          <button
-            type="button"
-            onClick={onAddTrade}
-            className="mt-4 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + Add Trade
-          </button>
+          <p className="mt-1 text-xs text-gray-500">No active positions at the moment.</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -88,7 +109,10 @@ export default function ActivePositionsTable({
               {displayed.map((trade) => (
                 <tr key={trade.id} className="hover:bg-gray-50">
                   <td className="px-5 py-3 font-medium text-gray-900">
-                    {trade.ticker}
+                    <div className="flex items-center gap-2">
+                      <TickerLogo key={trade.ticker} ticker={trade.ticker} />
+                      <span>{trade.ticker}</span>
+                    </div>
                   </td>
                   <td className="px-5 py-3 text-gray-600">
                     {getStrategy(trade)}
