@@ -51,10 +51,11 @@ export default function TradesPage() {
   const [rollingTrade, setRollingTrade] = useState<Trade | null>(null);
   const [detailTrade, setDetailTrade] = useState<Trade | null>(null);
   const [prices, setPrices] = useState<Record<string, number>>({});
+  const [pricesUpdatedAt, setPricesUpdatedAt] = useState<Date | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>({
-    type: "ALL",
+    type: "PUT",
     status: "OPEN",
     search: "",
   });
@@ -87,7 +88,10 @@ export default function TradesPage() {
     const symbols = tickerSuggestions.join(",");
     fetch(`/api/quote?symbols=${encodeURIComponent(symbols)}`)
       .then((r) => r.json())
-      .then((data: Record<string, number>) => setPrices(data))
+      .then((data: Record<string, number>) => {
+        setPrices(data);
+        setPricesUpdatedAt(new Date());
+      })
       .catch(() => {/* silently ignore — Price column just shows — */});
   }, [tickerSuggestions]);
 
@@ -227,6 +231,17 @@ export default function TradesPage() {
             />
           </div>
         </div>
+
+        {pricesUpdatedAt && (
+          <div className="mt-3 flex items-center gap-1.5 rounded-lg border border-teal-100 bg-teal-50 px-4 py-2 text-[12px] text-teal-700">
+            <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5 shrink-0" aria-hidden>
+              <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4" />
+              <path d="M8 5v3.5l2 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Prices update once per hour. Last updated at{" "}
+            {pricesUpdatedAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}.
+          </div>
+        )}
       </main>
 
       <TradeDetailModal
