@@ -5,15 +5,18 @@ import type { Trade, TradeStatus } from "@/lib/api/trades";
 
 interface TradeRowProps {
   trade: Trade;
+  price?: number;
   onDelete: () => void;
   onEdit: () => void;
   onAction: (action: "buy_to_close" | "expire" | "assign" | "roll") => void;
   rowTint?: boolean;
+  onRowClick: () => void;
 }
 
 interface TradeListProps {
   trades: Trade[];
   loading: boolean;
+  prices: Record<string, number>;
   onAddTrade: () => void;
   onDeleteTrade: (id: string) => void;
   onEditTrade: (trade: Trade) => void;
@@ -21,6 +24,7 @@ interface TradeListProps {
     trade: Trade,
     action: "buy_to_close" | "expire" | "assign" | "roll"
   ) => void;
+  onRowClick: (trade: Trade) => void;
 }
 
 const STATUS_STYLES: Record<TradeStatus, string> = {
@@ -73,14 +77,47 @@ function fmtExpirationRibbon(iso: string): { label: string; accent: boolean } {
   return { label: `${mon} - ${day}`, accent: getDte(iso) <= 7 };
 }
 
+function holdingDays(trade: Trade): number {
+  // For closed/expired/assigned trades: actual days held (open → end date).
+  const endIso =
+    trade.closed_at ??
+    trade.expired_at ??
+    trade.assigned_at ??
+    trade.called_away_at ??
+    trade.rolled_at ??
+    null;
+
+  if (endIso) {
+    const open = parseDateLike(trade.trade_date).getTime();
+    const close = parseDateLike(endIso).getTime();
+    return Math.max(1, Math.round((close - open) / (1000 * 60 * 60 * 24)));
+  }
+
+  // Still OPEN: use full planned duration (trade_date → expiry).
+  // This keeps the annualized ROI stable — it won't inflate as DTE shrinks.
+  const open = parseDateLike(trade.trade_date).getTime();
+  const expiry = parseDateLike(trade.expiry).getTime();
+  return Math.max(1, Math.round((expiry - open) / (1000 * 60 * 60 * 24)));
+}
+
 function annualizedRoiPct(trade: Trade): number | null {
-  const dte = Math.max(1, getDte(trade.expiry));
+  const days = holdingDays(trade);
   const gross = trade.premium * trade.contracts * 100;
   const fee = trade.commission_fee ?? 0;
   const net = gross - fee;
-  const capital = trade.strike * trade.contracts * 100;
+
+  // Capital at risk:
+  // • CSP (PUT)  → full strike notional (cash-secured)
+  // • CC  (CALL) → stock cost basis per share when available, else strike
+  const pricePerShare =
+    trade.option_type === "CALL" && trade.stock_cost_basis_per_share != null
+      ? trade.stock_cost_basis_per_share
+      : trade.strike;
+
+  const capital = pricePerShare * trade.contracts * 100;
   if (capital <= 0) return null;
-  return (net / capital) * (365 / dte) * 100;
+
+  return (net / capital) * (365 / days) * 100;
 }
 
 function fmtRoi(trade: Trade): string {
@@ -111,6 +148,22 @@ function fmtStockCostPerShare(trade: Trade): string {
     })}`;
   }
   return "—";
+}
+
+function computeMoneyness(
+  trade: Trade,
+  price: number
+): { label: string; itm: boolean } {
+  const diff = price - trade.strike; // positive = price above strike
+  const itm =
+    trade.option_type === "PUT"
+      ? diff < 0 // PUT: ITM when price < strike
+      : diff > 0; // CALL: ITM when price > strike
+  const amount = Math.abs(diff);
+  return {
+    label: `${itm ? "ITM" : "OTM"} $${amount.toFixed(2)}`,
+    itm,
+  };
 }
 
 function isExpiredEligible(trade: Trade): boolean {
@@ -212,27 +265,33 @@ function SortChevrons({
   active: boolean;
   dir: "asc" | "desc";
 }) {
+  const upActive = active && dir === "asc";
+  const dnActive = active && dir === "desc";
   return (
     <span className="ml-1 inline-flex h-4 shrink-0 flex-col items-center justify-center gap-[1px] align-middle leading-none">
       <svg
         viewBox="0 0 12 12"
-        fill="none"
+        fill={upActive ? "currentColor" : "none"}
         stroke="currentColor"
-        strokeWidth={1.5}
-        className={`h-2 w-2 ${active && dir === "asc" ? "text-gray-800" : "text-gray-300"}`}
+        strokeWidth={upActive ? 0 : 1.8}
+        className={`h-2 w-2 transition-colors ${
+          upActive ? "text-blue-500" : "text-gray-300"
+        }`}
         aria-hidden
       >
-        <path strokeLinecap="round" strokeLinejoin="round" d="m3 7 3-4 3 4" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="m3 8 3-5 3 5" />
       </svg>
       <svg
         viewBox="0 0 12 12"
-        fill="none"
+        fill={dnActive ? "currentColor" : "none"}
         stroke="currentColor"
-        strokeWidth={1.5}
-        className={`h-2 w-2 ${active && dir === "desc" ? "text-gray-800" : "text-gray-300"}`}
+        strokeWidth={dnActive ? 0 : 1.8}
+        className={`h-2 w-2 transition-colors ${
+          dnActive ? "text-blue-500" : "text-gray-300"
+        }`}
         aria-hidden
       >
-        <path strokeLinecap="round" strokeLinejoin="round" d="m9 5-3 4-3-4" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="m9 4-3 5-3-5" />
       </svg>
     </span>
   );
@@ -262,12 +321,13 @@ function TickerLogo({ ticker }: { ticker: string }) {
 
 function TradeRow({
   trade,
+  price,
   onDelete,
   onEdit,
   onAction,
   rowTint,
+  onRowClick,
 }: TradeRowProps) {
-  const [expanded, setExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(
     null
@@ -309,7 +369,7 @@ function TradeRow({
         className={`cursor-pointer border-b border-gray-100 text-[13px] text-gray-900 transition hover:bg-[#fafbfc]/90 ${
           rowTint ? "bg-[rgba(254,237,229,0.45)] hover:bg-[rgba(254,237,229,0.55)]" : ""
         }`}
-        onClick={() => setExpanded((v) => !v)}
+        onClick={onRowClick}
       >
         <td className="px-4 py-3">
           <div className="flex items-center gap-2.5">
@@ -329,9 +389,20 @@ function TradeRow({
           ${trade.strike.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </td>
         <td className="px-4 py-3 tabular-nums text-gray-800">
-          ${trade.premium.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          {price != null
+            ? `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : <span className="text-gray-300">—</span>}
         </td>
-        <td className="px-4 py-3 text-[13px] text-gray-400">—</td>
+        <td className="px-4 py-3 text-[12px]">
+          {price != null ? (() => {
+            const m = computeMoneyness(trade, price);
+            return (
+              <span className={m.itm ? "font-medium text-red-500" : "text-gray-500"}>
+                {m.label}
+              </span>
+            );
+          })() : <span className="text-gray-300">—</span>}
+        </td>
         <td
           className={`px-4 py-3 text-[13px] font-medium ${
             exp.accent ? "text-[#ea580c]" : "text-gray-800"
@@ -449,56 +520,6 @@ function TradeRow({
         </td>
       </tr>
 
-      {expanded && (
-        <tr
-          className={`border-b border-gray-100 ${
-            rowTint ? "bg-[rgba(254,237,229,0.35)]" : "bg-[#f9fafb]"
-          }`}
-        >
-          <td colSpan={COLS} className="px-4 py-3 text-[13px] text-gray-600">
-            <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
-              <span
-                className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${STATUS_STYLES[trade.status]}`}
-              >
-                {trade.status.replaceAll("_", " ")}
-              </span>
-              {trade.delta != null && (
-                <span>
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
-                    Delta
-                  </span>{" "}
-                  <span className="font-semibold tabular-nums text-gray-800">
-                    {trade.delta.toFixed(2)}
-                  </span>
-                </span>
-              )}
-              <span>
-                <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
-                  Trade date
-                </span>{" "}
-                <span className="font-medium text-gray-800">
-                  {fmtDate(trade.trade_date)}
-                </span>
-              </span>
-              {trade.status === "ASSIGNED" &&
-                trade.option_type === "PUT" &&
-                trade.stock_cost_basis_per_share != null && (
-                  <span>
-                    <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
-                      Cost / sh
-                    </span>{" "}
-                    <span className="font-semibold tabular-nums">
-                      {fmtStockCostPerShare(trade)}
-                    </span>
-                  </span>
-                )}
-            </div>
-            {trade.notes?.trim() && (
-              <p className="mt-2 text-[13px] text-gray-700">{trade.notes}</p>
-            )}
-          </td>
-        </tr>
-      )}
     </>
   );
 }
@@ -509,10 +530,12 @@ const theadBtn =
 export default function TradeList({
   trades,
   loading,
+  prices,
   onAddTrade,
   onDeleteTrade,
   onEditTrade,
   onAction,
+  onRowClick,
 }: TradeListProps) {
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "expiry",
@@ -635,10 +658,12 @@ export default function TradeList({
                 <TradeRow
                   key={trade.id}
                   trade={trade}
+                  price={prices[trade.ticker]}
                   rowTint={rowTint}
                   onDelete={() => onDeleteTrade(trade.id)}
                   onEdit={() => onEditTrade(trade)}
                   onAction={(action) => onAction(trade, action)}
+                  onRowClick={() => onRowClick(trade)}
                 />
               ))}
             </tbody>

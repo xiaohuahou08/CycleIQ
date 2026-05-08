@@ -192,22 +192,6 @@ export default function TradeFilters({
     onFilterChange(next);
   };
 
-  const reset = () => {
-    const blank: FilterState = {
-      type: "ALL",
-      status: "OPEN",
-      search: "",
-    };
-    setFilters(blank);
-    setSuggestOpen(false);
-    onFilterChange(blank);
-  };
-
-  const hasFilters =
-    filters.type !== "ALL" ||
-    filters.status !== "ALL" ||
-    filters.search.trim() !== "";
-
   const toggleCsp = () => {
     apply({ type: filters.type === "PUT" ? "ALL" : "PUT" });
   };
@@ -252,7 +236,7 @@ export default function TradeFilters({
       <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 px-5 py-3">
         <div
           ref={searchWrapRef}
-          className="relative min-w-[min(100%,240px)] flex-[1_1_200px]"
+          className="relative w-36 shrink-0"
         >
           <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-gray-400">
             <IconSearchSm />
@@ -356,17 +340,6 @@ export default function TradeFilters({
         </div>
       </div>
 
-      <div className="border-t border-gray-100 px-5 py-3">
-        {hasFilters && (
-          <button
-            type="button"
-            onClick={reset}
-            className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-600 hover:bg-gray-50"
-          >
-            Clear
-          </button>
-        )}
-      </div>
     </div>
   );
 }

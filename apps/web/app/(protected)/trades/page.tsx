@@ -17,6 +17,7 @@ import AddTradeModal from "../dashboard/components/AddTradeModal";
 import AssignTradeModal from "./components/AssignTradeModal";
 import ExpireTradeModal from "./components/ExpireTradeModal";
 import RollTradeModal from "./components/RollTradeModal";
+import TradeDetailModal from "./components/TradeDetailModal";
 import TradeFilters, { type FilterState } from "./components/TradeFilters";
 import TradeList from "./components/TradeList";
 
@@ -48,6 +49,8 @@ export default function TradesPage() {
   const [expiringTrade, setExpiringTrade] = useState<Trade | null>(null);
   const [assigningTrade, setAssigningTrade] = useState<Trade | null>(null);
   const [rollingTrade, setRollingTrade] = useState<Trade | null>(null);
+  const [detailTrade, setDetailTrade] = useState<Trade | null>(null);
+  const [prices, setPrices] = useState<Record<string, number>>({});
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>({
@@ -77,6 +80,16 @@ export default function TradesPage() {
         .sort((a, b) => a.localeCompare(b)),
     [allTrades]
   );
+
+  // Fetch live prices for all unique tickers whenever the trade list changes.
+  useEffect(() => {
+    if (tickerSuggestions.length === 0) return;
+    const symbols = tickerSuggestions.join(",");
+    fetch(`/api/quote?symbols=${encodeURIComponent(symbols)}`)
+      .then((r) => r.json())
+      .then((data: Record<string, number>) => setPrices(data))
+      .catch(() => {/* silently ignore — Price column just shows — */});
+  }, [tickerSuggestions]);
 
   const onSaveTrade = async (input: CreateTradeInput) => {
     if (!token) return;
@@ -206,13 +219,33 @@ export default function TradesPage() {
                 setEditingTrade(null);
                 setModalOpen(true);
               }}
+              prices={prices}
               onDeleteTrade={onDeleteTrade}
               onEditTrade={onEditTrade}
               onAction={onAction}
+              onRowClick={(trade) => setDetailTrade(trade)}
             />
           </div>
         </div>
       </main>
+
+      <TradeDetailModal
+        trade={detailTrade}
+        allTrades={allTrades}
+        onClose={() => setDetailTrade(null)}
+        onEdit={(t) => {
+          setDetailTrade(null);
+          onEditTrade(t);
+        }}
+        onAction={(t, action) => {
+          setDetailTrade(null);
+          void onAction(t, action);
+        }}
+        onDelete={(id) => {
+          setDetailTrade(null);
+          void onDeleteTrade(id);
+        }}
+      />
 
       <AddTradeModal
         open={modalOpen}
