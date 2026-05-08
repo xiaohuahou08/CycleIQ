@@ -1,12 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Trade, TradeStatus } from "@/lib/api/trades";
 
-interface TradeGroupProps {
-  weekLabel: string;
-  positionCount: number;
+interface TradeRowProps {
+  trade: Trade;
+  onDelete: () => void;
+  onEdit: () => void;
+  onAction: (action: "buy_to_close" | "expire" | "assign" | "roll") => void;
+  rowTint?: boolean;
+}
+
+interface TradeListProps {
   trades: Trade[];
+  loading: boolean;
+  onAddTrade: () => void;
   onDeleteTrade: (id: string) => void;
   onEditTrade: (trade: Trade) => void;
   onAction: (
@@ -16,12 +24,12 @@ interface TradeGroupProps {
 }
 
 const STATUS_STYLES: Record<TradeStatus, string> = {
-  OPEN: "bg-amber-100 text-amber-800",
-  CLOSED: "bg-green-100 text-green-800",
-  EXPIRED: "bg-gray-100 text-gray-500",
-  ASSIGNED: "bg-orange-100 text-orange-800",
-  CALLED_AWAY: "bg-red-100 text-red-800",
-  ROLLED: "bg-blue-100 text-blue-800",
+  OPEN: "bg-amber-50 text-amber-800 ring-amber-100",
+  CLOSED: "bg-emerald-50 text-emerald-800 ring-emerald-100",
+  EXPIRED: "bg-gray-100 text-gray-600 ring-gray-100",
+  ASSIGNED: "bg-orange-50 text-orange-800 ring-orange-100",
+  CALLED_AWAY: "bg-red-50 text-red-800 ring-red-100",
+  ROLLED: "bg-blue-50 text-blue-800 ring-blue-100",
 };
 
 const LOGO_URL_BUILDERS = [
@@ -53,16 +61,43 @@ function getStrategy(t: Trade): string {
   return t.option_type === "PUT" ? "CSP" : "CC";
 }
 
-function getTypeColor(t: Trade): string {
-  return t.option_type === "PUT" ? "text-blue-700" : "text-purple-700";
-}
-
 function getDte(expiry: string): number {
   const diffMs = parseDateLike(expiry).getTime() - Date.now();
   return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 }
 
-/** Net stock cost per share after CSP assignment (backend-computed). */
+function fmtExpirationRibbon(iso: string): { label: string; accent: boolean } {
+  const d = parseDateLike(iso);
+  const mon = new Intl.DateTimeFormat("en-US", { month: "short" }).format(d);
+  const day = d.getDate();
+  return { label: `${mon} - ${day}`, accent: getDte(iso) <= 7 };
+}
+
+function annualizedRoiPct(trade: Trade): number | null {
+  const dte = Math.max(1, getDte(trade.expiry));
+  const gross = trade.premium * trade.contracts * 100;
+  const fee = trade.commission_fee ?? 0;
+  const net = gross - fee;
+  const capital = trade.strike * trade.contracts * 100;
+  if (capital <= 0) return null;
+  return (net / capital) * (365 / dte) * 100;
+}
+
+function fmtRoi(trade: Trade): string {
+  const r = annualizedRoiPct(trade);
+  if (r == null || !Number.isFinite(r)) return "—";
+  const sign = r < 0 ? "−" : "";
+  return `${sign}${Math.abs(r).toFixed(1)}%`;
+}
+
+function fmtPremiumTotal(trade: Trade): string {
+  const v = trade.premium * trade.contracts * 100;
+  return `+$${v.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
 function fmtStockCostPerShare(trade: Trade): string {
   if (
     trade.status === "ASSIGNED" &&
@@ -122,7 +157,85 @@ function formatWeekLabel(weekKey: string): string {
       day: "2-digit",
       ...(withYear ? { year: "numeric" } : {}),
     }).format(date);
-  return `WEEK OF ${fmt(monday).toUpperCase()} - ${fmt(friday, true).toUpperCase()}`;
+  return `Week of ${fmt(monday).toUpperCase()} – ${fmt(friday, true).toUpperCase()}`;
+}
+
+type SortKey =
+  | "ticker"
+  | "strike"
+  | "contracts"
+  | "premium"
+  | "expiry"
+  | "dte"
+  | "roi";
+
+function cmpNum(a: number, b: number): number {
+  return a === b ? 0 : a < b ? -1 : 1;
+}
+
+function compareTrades(a: Trade, b: Trade, key: SortKey, dir: number): number {
+  const roiA = annualizedRoiPct(a);
+  const roiB = annualizedRoiPct(b);
+  switch (key) {
+    case "ticker":
+      return dir * a.ticker.localeCompare(b.ticker);
+    case "strike":
+      return dir * cmpNum(a.strike, b.strike);
+    case "contracts":
+      return dir * cmpNum(a.contracts, b.contracts);
+    case "premium":
+      return dir * cmpNum(a.premium * a.contracts, b.premium * b.contracts);
+    case "expiry":
+      return (
+        dir *
+        cmpNum(
+          parseDateLike(a.expiry).getTime(),
+          parseDateLike(b.expiry).getTime()
+        )
+      );
+    case "dte":
+      return dir * cmpNum(getDte(a.expiry), getDte(b.expiry));
+    case "roi": {
+      const va = roiA ?? -Infinity;
+      const vb = roiB ?? -Infinity;
+      return dir * cmpNum(va, vb);
+    }
+    default:
+      return 0;
+  }
+}
+
+function SortChevrons({
+  active,
+  dir,
+}: {
+  active: boolean;
+  dir: "asc" | "desc";
+}) {
+  return (
+    <span className="ml-1 inline-flex h-4 shrink-0 flex-col items-center justify-center gap-[1px] align-middle leading-none">
+      <svg
+        viewBox="0 0 12 12"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        className={`h-2 w-2 ${active && dir === "asc" ? "text-gray-800" : "text-gray-300"}`}
+        aria-hidden
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="m3 7 3-4 3 4" />
+      </svg>
+      <svg
+        viewBox="0 0 12 12"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        className={`h-2 w-2 ${active && dir === "desc" ? "text-gray-800" : "text-gray-300"}`}
+        aria-hidden
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="m9 5-3 4-3-4" />
+      </svg>
+    </span>
+  );
 }
 
 function TickerLogo({ ticker }: { ticker: string }) {
@@ -130,7 +243,7 @@ function TickerLogo({ ticker }: { ticker: string }) {
 
   if (urlIndex >= LOGO_URL_BUILDERS.length) {
     return (
-      <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-blue-100 text-[10px] font-semibold text-blue-700">
+      <span className="inline-flex h-[20px] w-[20px] items-center justify-center rounded bg-[#e8f4ff] text-[10px] font-bold text-[#1d4ed8]">
         {ticker[0]}
       </span>
     );
@@ -139,8 +252,8 @@ function TickerLogo({ ticker }: { ticker: string }) {
   return (
     <img
       src={LOGO_URL_BUILDERS[urlIndex](ticker)}
-      alt={`${ticker} logo`}
-      className="h-5 w-5 rounded object-cover"
+      alt=""
+      className="h-[20px] w-[20px] rounded object-cover ring-1 ring-gray-100"
       onError={() => setUrlIndex((prev) => prev + 1)}
       loading="lazy"
     />
@@ -152,15 +265,13 @@ function TradeRow({
   onDelete,
   onEdit,
   onAction,
-}: {
-  trade: Trade;
-  onDelete: () => void;
-  onEdit: () => void;
-  onAction: (action: "buy_to_close" | "expire" | "assign" | "roll") => void;
-}) {
+  rowTint,
+}: TradeRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(
+    null
+  );
   const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
 
@@ -189,52 +300,51 @@ function TradeRow({
     };
   }, [menuOpen]);
 
+  const exp = fmtExpirationRibbon(trade.expiry);
+  const COLS = 11;
+
   return (
     <>
       <tr
-        className="group cursor-pointer border-b border-gray-50 hover:bg-gray-50"
+        className={`cursor-pointer border-b border-gray-100 text-[13px] text-gray-900 transition hover:bg-[#fafbfc]/90 ${
+          rowTint ? "bg-[rgba(254,237,229,0.45)] hover:bg-[rgba(254,237,229,0.55)]" : ""
+        }`}
         onClick={() => setExpanded((v) => !v)}
       >
-        <td className="px-4 py-3 text-sm font-medium text-gray-900">
-          <div className="flex items-center gap-2">
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-2.5">
             <TickerLogo key={trade.ticker} ticker={trade.ticker} />
-            <span>{trade.ticker}</span>
+            <span className="text-[13px] font-semibold uppercase tracking-wide">
+              {trade.ticker}
+            </span>
           </div>
         </td>
         <td className="px-4 py-3">
-          <span className={`text-xs font-semibold ${getTypeColor(trade)}`}>
+          <span className="inline-flex rounded-md bg-[#eef0f4] px-2 py-0.5 text-[11px] font-semibold text-gray-700 ring-1 ring-gray-100/80">
             {getStrategy(trade)}
           </span>
         </td>
-        <td className="px-4 py-3 text-sm text-gray-700">
-          ${trade.strike.toFixed(2)}
+        <td className="px-4 py-3 tabular-nums text-gray-800">{trade.contracts}</td>
+        <td className="px-4 py-3 tabular-nums text-gray-800">
+          ${trade.strike.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </td>
-        <td className="px-4 py-3 text-sm text-gray-700">{trade.contracts}</td>
-        <td className="px-4 py-3 text-sm text-gray-700">
-          {fmtDate(trade.expiry)}
+        <td className="px-4 py-3 tabular-nums text-gray-800">
+          ${trade.premium.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </td>
-        <td className="px-4 py-3 text-sm text-gray-500">
-          {getDte(trade.expiry)}d
-        </td>
-        <td className="px-4 py-3 text-sm font-medium text-green-700">
-          +${(trade.premium * trade.contracts * 100).toFixed(0)}
-        </td>
+        <td className="px-4 py-3 text-[13px] text-gray-400">—</td>
         <td
-          className="px-4 py-3 text-right tabular-nums text-sm text-gray-700"
-          title={
-            trade.status === "ASSIGNED" && trade.option_type === "PUT"
-              ? "Net stock cost per share after assignment"
-              : undefined
-          }
+          className={`px-4 py-3 text-[13px] font-medium ${
+            exp.accent ? "text-[#ea580c]" : "text-gray-800"
+          }`}
         >
-          {fmtStockCostPerShare(trade)}
+          {exp.label}
         </td>
-        <td className="px-4 py-3">
-          <span
-            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[trade.status]}`}
-          >
-            {trade.status}
-          </span>
+        <td className="px-4 py-3 tabular-nums text-gray-700">{getDte(trade.expiry)}</td>
+        <td className="px-4 py-3 text-[13px] font-semibold tabular-nums text-[#16a34a]">
+          {fmtPremiumTotal(trade)}
+        </td>
+        <td className="px-4 py-3 text-right text-[13px] font-semibold tabular-nums tracking-tight text-gray-900">
+          {fmtRoi(trade)}
         </td>
         <td className="relative px-4 py-3 text-right">
           <button
@@ -253,15 +363,15 @@ function TradeRow({
               });
               setMenuOpen(true);
             }}
-            className="rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100"
+            className="rounded px-2 py-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
             title="Actions"
           >
-            ⋯
+            <span className="text-[16px] leading-none tracking-tighter">⋯</span>
           </button>
           {menuOpen && menuPos && (
             <div
               ref={menuRef}
-              className="fixed z-[100] w-36 overflow-hidden rounded-md border border-gray-200 bg-white text-left text-sm shadow-xl transition-shadow duration-150 hover:shadow-[0_20px_45px_-12px_rgba(15,23,42,0.45)]"
+              className="fixed z-[100] w-36 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 text-left text-[13px] shadow-xl"
               style={{ top: menuPos.top, left: menuPos.left }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -271,7 +381,7 @@ function TradeRow({
                   setMenuOpen(false);
                   onEdit();
                 }}
-                className="block w-full px-3 py-2 transition-shadow duration-150 hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.16)]"
+                className="block w-full px-3 py-2 text-left hover:bg-gray-50"
               >
                 Edit
               </button>
@@ -281,7 +391,7 @@ function TradeRow({
                   setMenuOpen(false);
                   onAction("buy_to_close");
                 }}
-                className="block w-full px-3 py-2 transition-shadow duration-150 hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.16)]"
+                className="block w-full px-3 py-2 text-left hover:bg-gray-50"
               >
                 Buy to Close
               </button>
@@ -292,7 +402,7 @@ function TradeRow({
                     setMenuOpen(false);
                     onAction("expire");
                   }}
-                  className="block w-full px-3 py-2 transition-shadow duration-150 hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.16)]"
+                  className="block w-full px-3 py-2 text-left hover:bg-gray-50"
                 >
                   Expire
                 </button>
@@ -303,7 +413,7 @@ function TradeRow({
                   setMenuOpen(false);
                   onAction("assign");
                 }}
-                className="block w-full px-3 py-2 transition-shadow duration-150 hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.16)]"
+                className="block w-full px-3 py-2 text-left hover:bg-gray-50"
               >
                 Assign
               </button>
@@ -313,7 +423,7 @@ function TradeRow({
                   setMenuOpen(false);
                   onAction("roll");
                 }}
-                className="block w-full px-3 py-2 transition-shadow duration-150 hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.16)]"
+                className="block w-full px-3 py-2 text-left hover:bg-gray-50"
               >
                 Roll
               </button>
@@ -323,7 +433,7 @@ function TradeRow({
                   setMenuOpen(false);
                   onDelete();
                 }}
-                className="block w-full px-3 py-2 text-red-600 transition-shadow duration-150 hover:bg-red-50 hover:shadow-[inset_0_0_0_1px_rgba(220,38,38,0.24)]"
+                className="block w-full px-3 py-2 text-left text-red-600 hover:bg-red-50"
               >
                 Delete
               </button>
@@ -333,37 +443,51 @@ function TradeRow({
       </tr>
 
       {expanded && (
-        <tr className="border-b border-gray-100 bg-gray-50/50">
-          <td colSpan={10} className="px-4 py-3 text-sm text-gray-600">
-            <div className="grid grid-cols-3 gap-4 sm:grid-cols-4">
-              <div>
-                <span className="text-xs text-gray-400">Contracts</span>
-                <p className="font-medium">{trade.contracts}</p>
-              </div>
-              {trade.delta !== undefined && (
-                <div>
-                  <span className="text-xs text-gray-400">Delta</span>
-                  <p className="font-medium">{trade.delta.toFixed(2)}</p>
-                </div>
+        <tr
+          className={`border-b border-gray-100 ${
+            rowTint ? "bg-[rgba(254,237,229,0.35)]" : "bg-[#f9fafb]"
+          }`}
+        >
+          <td colSpan={COLS} className="px-4 py-3 text-[13px] text-gray-600">
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
+              <span
+                className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${STATUS_STYLES[trade.status]}`}
+              >
+                {trade.status.replaceAll("_", " ")}
+              </span>
+              {trade.delta != null && (
+                <span>
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                    Delta
+                  </span>{" "}
+                  <span className="font-semibold tabular-nums text-gray-800">
+                    {trade.delta.toFixed(2)}
+                  </span>
+                </span>
               )}
-              <div>
-                <span className="text-xs text-gray-400">Trade Date</span>
-                <p className="font-medium">{fmtDate(trade.trade_date)}</p>
-              </div>
+              <span>
+                <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                  Trade date
+                </span>{" "}
+                <span className="font-medium text-gray-800">
+                  {fmtDate(trade.trade_date)}
+                </span>
+              </span>
               {trade.status === "ASSIGNED" &&
                 trade.option_type === "PUT" &&
                 trade.stock_cost_basis_per_share != null && (
-                  <div>
-                    <span className="text-xs text-gray-400">Stock cost / share</span>
-                    <p className="font-medium tabular-nums">{fmtStockCostPerShare(trade)}</p>
-                  </div>
+                  <span>
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                      Cost / sh
+                    </span>{" "}
+                    <span className="font-semibold tabular-nums">
+                      {fmtStockCostPerShare(trade)}
+                    </span>
+                  </span>
                 )}
             </div>
-            {trade.notes && (
-              <div className="mt-2">
-                <span className="text-xs text-gray-400">Notes</span>
-                <p className="mt-0.5 text-gray-700">{trade.notes}</p>
-              </div>
+            {trade.notes?.trim() && (
+              <p className="mt-2 text-[13px] text-gray-700">{trade.notes}</p>
             )}
           </td>
         </tr>
@@ -372,95 +496,8 @@ function TradeRow({
   );
 }
 
-function TradeGroup({
-  weekLabel,
-  positionCount,
-  trades,
-  onDeleteTrade,
-  onEditTrade,
-  onAction,
-}: TradeGroupProps) {
-  const [open, setOpen] = useState(true);
-  const totalPremium = trades.reduce((sum, t) => sum + t.premium * t.contracts * 100, 0);
-  const openCount = trades.filter((t) => t.status === "OPEN").length;
-
-  return (
-    <div className="overflow-visible rounded-xl border border-gray-200 bg-white shadow-sm">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-lg">{open ? "▼" : "▶"}</span>
-          <span className="text-sm font-semibold text-gray-900">{weekLabel}</span>
-          {openCount > 0 && (
-            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
-              {openCount} open
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-4 text-xs text-gray-500">
-          <span>
-            {positionCount} position{positionCount !== 1 ? "s" : ""}
-          </span>
-          <span className="font-medium text-green-700">
-            +${totalPremium.toFixed(0)} total
-          </span>
-        </div>
-      </button>
-
-      {open && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-t border-gray-100 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-400">
-                <th className="px-4 py-2 text-left">Ticker</th>
-                <th className="px-4 py-2 text-left">Strategy</th>
-                <th className="px-4 py-2 text-left">Strike</th>
-                <th className="px-4 py-2 text-left">Qty</th>
-                <th className="px-4 py-2 text-left">Expiry</th>
-                <th className="px-4 py-2 text-left">DTE</th>
-                <th className="px-4 py-2 text-left">Premium</th>
-                <th
-                  className="px-4 py-2 text-right"
-                  title="每股成本：指派后净持股成本（仅 CSP 已指派）"
-                >
-                  Cost / sh
-                </th>
-                <th className="px-4 py-2 text-left">Status</th>
-                <th className="px-4 py-2 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {trades.map((trade) => (
-                <TradeRow
-                  key={trade.id}
-                  trade={trade}
-                  onDelete={() => onDeleteTrade(trade.id)}
-                  onEdit={() => onEditTrade(trade)}
-                  onAction={(action) => onAction(trade, action)}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-interface TradeListProps {
-  trades: Trade[];
-  loading: boolean;
-  onAddTrade: () => void;
-  onDeleteTrade: (id: string) => void;
-  onEditTrade: (trade: Trade) => void;
-  onAction: (
-    trade: Trade,
-    action: "buy_to_close" | "expire" | "assign" | "roll"
-  ) => void;
-}
+const theadBtn =
+  "inline-flex cursor-pointer items-center gap-1 select-none text-left uppercase tracking-[0.08em] hover:text-gray-700";
 
 export default function TradeList({
   trades,
@@ -470,62 +507,136 @@ export default function TradeList({
   onEditTrade,
   onAction,
 }: TradeListProps) {
-  const groups = trades.reduce<Record<string, Trade[]>>((acc, t) => {
-    const weekKey = getWeekKey(t.expiry);
-    if (!acc[weekKey]) acc[weekKey] = [];
-    acc[weekKey].push(t);
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
+    key: "expiry",
+    dir: "asc",
+  });
+
+  const groups = useMemo(() => {
+    const acc: Record<string, Trade[]> = {};
+    const sortedFlat = [...trades].sort((a, b) =>
+      compareTrades(a, b, sort.key, sort.dir === "asc" ? 1 : -1)
+    );
+    for (const t of sortedFlat) {
+      const k = getWeekKey(t.expiry);
+      if (!acc[k]) acc[k] = [];
+      acc[k].push(t);
+    }
     return acc;
-  }, {});
+  }, [trades, sort]);
 
   const sortedWeekKeys = Object.keys(groups).sort(
     (a, b) => parseLocalDateKey(a).getTime() - parseLocalDateKey(b).getTime()
   );
 
+  const toggleSort = (key: SortKey) => {
+    setSort((prev) =>
+      prev.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }
+    );
+  };
+
+  const th = (
+    key: SortKey,
+    align: "left" | "right",
+    label: ReactNode
+  ) => (
+    <th
+      className={`border-b border-gray-200 bg-[#fafbfc] px-4 py-2.5 text-[11px] font-semibold ${
+        align === "right" ? "text-right" : "text-left"
+      }`}
+    >
+      <button type="button" className={`${theadBtn} ${align === "right" ? "ml-auto" : ""}`} onClick={() => toggleSort(key)}>
+        {label}
+        <SortChevrons active={sort.key === key} dir={sort.dir} />
+      </button>
+    </th>
+  );
+
+  const thInactive = (
+    align: "left" | "right",
+    label: ReactNode
+  ) => (
+    <th
+      className={`border-b border-gray-200 bg-[#fafbfc] px-4 py-2.5 text-[11px] font-semibold tracking-[0.08em] uppercase text-[#6b7280] ${
+        align === "right" ? "text-right" : "text-left"
+      }`}
+    >
+      {label}
+    </th>
+  );
+
   if (loading) {
     return (
-      <div className="space-y-4">
-        {Array.from({ length: 2 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-24 animate-pulse rounded-xl border border-gray-200 bg-gray-100"
-          />
-        ))}
+      <div className="space-y-4 px-4 py-8">
+        <div className="h-8 w-full max-w-xl animate-pulse rounded bg-gray-100" />
+        <div className="h-[180px] w-full animate-pulse rounded-none bg-[#fafbfc]" />
       </div>
     );
   }
 
   if (trades.length === 0) {
     return (
-      <div className="flex flex-col items-center rounded-2xl border border-dashed border-gray-300 bg-gray-50 py-16 text-center">
-        <div className="text-5xl">📋</div>
-        <p className="mt-4 text-base font-medium text-gray-900">No trades yet</p>
-        <p className="mt-1 text-sm text-gray-500">
-          Add your first trade to start tracking your wheel strategy.
+      <div className="flex flex-col items-center py-16 text-center">
+        <p className="text-[15px] font-semibold text-gray-900">No positions yet</p>
+        <p className="mt-1 max-w-md text-[13px] text-gray-500">
+          Add a trade to populate this view — same layout as the reference dashboard.
         </p>
         <button
           type="button"
           onClick={onAddTrade}
-          className="mt-5 rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
+          className="mt-5 rounded-lg border border-gray-200 bg-gray-900 px-5 py-2.5 text-[13px] font-medium text-white hover:bg-gray-800"
         >
-          + Add Trade
+          + Add trade
         </button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {sortedWeekKeys.map((weekKey) => (
-        <TradeGroup
-          key={weekKey}
-          weekLabel={formatWeekLabel(weekKey)}
-          positionCount={groups[weekKey].length}
-          trades={groups[weekKey]}
-          onDeleteTrade={onDeleteTrade}
-          onEditTrade={onEditTrade}
-          onAction={onAction}
-        />
-      ))}
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-[13px]">
+        <thead>
+          <tr>
+            {th("ticker", "left", "Ticker")}
+            {thInactive("left", "Strategy")}
+            {th("contracts", "left", "Qty")}
+            {th("strike", "left", "Strike")}
+            {thInactive("left", "Price")}
+            {thInactive("left", "Moneyness")}
+            {th("expiry", "left", "Expiration")}
+            {th("dte", "left", "DTE")}
+            {th("premium", "left", "Premium")}
+            {th("roi", "right", "Roi (ANN.)")}
+            {thInactive("right", "")}
+          </tr>
+        </thead>
+        {sortedWeekKeys.map((weekKey, wi) => {
+          const list = groups[weekKey];
+          const rowTint = wi % 2 === 1;
+          return (
+            <tbody key={weekKey}>
+              <tr className="bg-[#f3f4f6]/90">
+                <td
+                  colSpan={11}
+                  className="border-l-[3px] border-l-[#3b82f6] px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-[#374151]"
+                >
+                  {formatWeekLabel(weekKey)}
+                </td>
+              </tr>
+              {list.map((trade) => (
+                <TradeRow
+                  key={trade.id}
+                  trade={trade}
+                  rowTint={rowTint}
+                  onDelete={() => onDeleteTrade(trade.id)}
+                  onEdit={() => onEditTrade(trade)}
+                  onAction={(action) => onAction(trade, action)}
+                />
+              ))}
+            </tbody>
+          );
+        })}
+      </table>
     </div>
   );
 }

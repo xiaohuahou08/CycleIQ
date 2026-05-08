@@ -26,7 +26,6 @@ function todayIso(): string {
 
 function applyFilters(trades: Trade[], f: FilterState): Trade[] {
   return trades.filter((t) => {
-    if (f.ticker && t.ticker !== f.ticker) return false;
     if (f.type !== "ALL" && t.option_type !== f.type) return false;
     if (f.status !== "ALL" && t.status !== f.status) return false;
     if (f.dateFrom && t.trade_date < f.dateFrom) return false;
@@ -54,12 +53,11 @@ export default function TradesPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>({
-    ticker: "",
     type: "ALL",
     status: "ALL",
+    search: "",
     dateFrom: "",
     dateTo: "",
-    search: "",
   });
 
   useEffect(() => {
@@ -176,23 +174,25 @@ export default function TradesPage() {
   if (isAuthLoading) return null;
   return (
     <>
-      <main className="flex-1 bg-gray-100/80 px-4 py-6 sm:px-6 lg:px-8">
+      <main className="flex-1 bg-[#f4f6f8] px-4 py-6 sm:px-6 lg:px-8">
         {saveError && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
             {saveError}
           </div>
         )}
         {saveSuccess && (
-          <div className="mt-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          <div className="mt-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-[13px] text-green-700">
             {saveSuccess}
           </div>
         )}
 
-        <div className="mt-6">
+        <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06)]">
           <TradeFilters
+            embedded
             onFilterChange={setFilters}
             totalCount={allTrades.length}
             filteredCount={filtered.length}
+            tickerSuggestions={tickerSuggestions}
             onAddTrade={() => {
               setSaveError(null);
               setSaveSuccess(null);
@@ -200,22 +200,21 @@ export default function TradesPage() {
               setModalOpen(true);
             }}
           />
-        </div>
-
-        <div className="mt-4">
-          <TradeList
-            trades={filtered}
-            loading={tradesLoading}
-            onAddTrade={() => {
-              setSaveError(null);
-              setSaveSuccess(null);
-              setEditingTrade(null);
-              setModalOpen(true);
-            }}
-            onDeleteTrade={onDeleteTrade}
-            onEditTrade={onEditTrade}
-            onAction={onAction}
-          />
+          <div className="border-t border-gray-100">
+            <TradeList
+              trades={filtered}
+              loading={tradesLoading}
+              onAddTrade={() => {
+                setSaveError(null);
+                setSaveSuccess(null);
+                setEditingTrade(null);
+                setModalOpen(true);
+              }}
+              onDeleteTrade={onDeleteTrade}
+              onEditTrade={onEditTrade}
+              onAction={onAction}
+            />
+          </div>
         </div>
       </main>
 
