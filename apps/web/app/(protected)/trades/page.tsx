@@ -28,8 +28,6 @@ function applyFilters(trades: Trade[], f: FilterState): Trade[] {
   return trades.filter((t) => {
     if (f.type !== "ALL" && t.option_type !== f.type) return false;
     if (f.status !== "ALL" && t.status !== f.status) return false;
-    if (f.dateFrom && t.trade_date < f.dateFrom) return false;
-    if (f.dateTo && t.trade_date > f.dateTo) return false;
     if (
       f.search &&
       !t.ticker.toLowerCase().includes(f.search.toLowerCase()) &&
@@ -54,10 +52,8 @@ export default function TradesPage() {
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     type: "ALL",
-    status: "ALL",
+    status: "OPEN",
     search: "",
-    dateFrom: "",
-    dateTo: "",
   });
 
   useEffect(() => {

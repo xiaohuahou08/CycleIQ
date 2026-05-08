@@ -6,8 +6,6 @@ export interface FilterState {
   type: string;
   status: string;
   search: string;
-  dateFrom: string;
-  dateTo: string;
 }
 
 const icBase = "h-4 w-4 shrink-0";
@@ -153,10 +151,8 @@ export default function TradeFilters({
 }: TradeFiltersProps) {
   const [filters, setFilters] = useState<FilterState>({
     type: "ALL",
-    status: "ALL",
+    status: "OPEN",
     search: "",
-    dateFrom: "",
-    dateTo: "",
   });
 
   const [suggestOpen, setSuggestOpen] = useState(false);
@@ -199,10 +195,8 @@ export default function TradeFilters({
   const reset = () => {
     const blank: FilterState = {
       type: "ALL",
-      status: "ALL",
+      status: "OPEN",
       search: "",
-      dateFrom: "",
-      dateTo: "",
     };
     setFilters(blank);
     setSuggestOpen(false);
@@ -212,9 +206,7 @@ export default function TradeFilters({
   const hasFilters =
     filters.type !== "ALL" ||
     filters.status !== "ALL" ||
-    filters.search.trim() !== "" ||
-    filters.dateFrom !== "" ||
-    filters.dateTo !== "";
+    filters.search.trim() !== "";
 
   const toggleCsp = () => {
     apply({ type: filters.type === "PUT" ? "ALL" : "PUT" });
@@ -249,7 +241,7 @@ export default function TradeFilters({
             <button
               type="button"
               onClick={onAddTrade}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-[13px] font-medium text-gray-800 shadow-[0_1px_2px_rgba(15,23,42,0.05)] hover:bg-gray-50"
+              className="rounded-lg bg-gray-900 px-3 py-2 text-[13px] font-medium text-white shadow-[0_1px_2px_rgba(15,23,42,0.2)] hover:bg-gray-800"
             >
               + Add trade
             </button>
@@ -257,7 +249,7 @@ export default function TradeFilters({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 border-t border-gray-100 px-5 py-3">
+      <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 px-5 py-3">
         <div
           ref={searchWrapRef}
           className="relative min-w-[min(100%,240px)] flex-[1_1_200px]"
@@ -327,10 +319,8 @@ export default function TradeFilters({
             CC
           </button>
         </div>
-      </div>
-
-      <div className="overflow-x-auto border-t border-gray-100 px-5 pb-4 pt-3">
-        <div className="flex w-full items-center gap-1 rounded-full bg-[#eef0f4] p-1">
+        <div className="min-w-[360px] flex-1 overflow-x-auto">
+          <div className="flex w-max min-w-full items-center gap-1 rounded-full bg-[#eef0f4] p-1">
           {STATUS_ROW.map(({ key, label, Icon }) => {
             const active = filters.status === key;
             return (
@@ -362,31 +352,16 @@ export default function TradeFilters({
             <IconFunnel />
             All
           </button>
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 px-5 py-3 text-[11px] text-gray-500">
-        <span className="font-medium text-gray-500">Trade date</span>
-        <input
-          type="date"
-          title="From date"
-          value={filters.dateFrom}
-          onChange={(e) => apply({ dateFrom: e.target.value })}
-          className="h-9 rounded-lg border border-gray-200 bg-white px-2 text-[12px] text-gray-900 focus:border-gray-300 focus:outline-none"
-        />
-        <span>to</span>
-        <input
-          type="date"
-          title="To date"
-          value={filters.dateTo}
-          onChange={(e) => apply({ dateTo: e.target.value })}
-          className="h-9 rounded-lg border border-gray-200 bg-white px-2 text-[12px] text-gray-900 focus:border-gray-300 focus:outline-none"
-        />
+      <div className="border-t border-gray-100 px-5 py-3">
         {hasFilters && (
           <button
             type="button"
             onClick={reset}
-            className="ml-auto rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-600 hover:bg-gray-50"
+            className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-600 hover:bg-gray-50"
           >
             Clear
           </button>

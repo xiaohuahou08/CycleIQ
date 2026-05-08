@@ -301,7 +301,7 @@ function TradeRow({
   }, [menuOpen]);
 
   const exp = fmtExpirationRibbon(trade.expiry);
-  const COLS = 11;
+  const COLS = 12;
 
   return (
     <>
@@ -342,6 +342,13 @@ function TradeRow({
         <td className="px-4 py-3 tabular-nums text-gray-700">{getDte(trade.expiry)}</td>
         <td className="px-4 py-3 text-[13px] font-semibold tabular-nums text-[#16a34a]">
           {fmtPremiumTotal(trade)}
+        </td>
+        <td className="px-4 py-3">
+          <span
+            className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${STATUS_STYLES[trade.status]}`}
+          >
+            {trade.status.replaceAll("_", " ")}
+          </span>
         </td>
         <td className="px-4 py-3 text-right text-[13px] font-semibold tabular-nums tracking-tight text-gray-900">
           {fmtRoi(trade)}
@@ -497,7 +504,7 @@ function TradeRow({
 }
 
 const theadBtn =
-  "inline-flex cursor-pointer items-center gap-1 select-none text-left uppercase tracking-[0.08em] hover:text-gray-700";
+  "inline-flex cursor-pointer items-center gap-1 select-none text-left uppercase tracking-[0.08em] text-[#6b7280] hover:text-[#4b5563]";
 
 export default function TradeList({
   trades,
@@ -541,7 +548,7 @@ export default function TradeList({
     label: ReactNode
   ) => (
     <th
-      className={`border-b border-gray-200 bg-[#fafbfc] px-4 py-2.5 text-[11px] font-semibold ${
+      className={`border-b border-gray-200 bg-[#fafbfc] px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6b7280] ${
         align === "right" ? "text-right" : "text-left"
       }`}
     >
@@ -606,6 +613,7 @@ export default function TradeList({
             {th("expiry", "left", "Expiration")}
             {th("dte", "left", "DTE")}
             {th("premium", "left", "Premium")}
+            {thInactive("left", "Status")}
             {th("roi", "right", "Roi (ANN.)")}
             {thInactive("right", "")}
           </tr>
@@ -617,7 +625,7 @@ export default function TradeList({
             <tbody key={weekKey}>
               <tr className="bg-[#f3f4f6]/90">
                 <td
-                  colSpan={11}
+                  colSpan={12}
                   className="border-l-[3px] border-l-[#3b82f6] px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-[#374151]"
                 >
                   {formatWeekLabel(weekKey)}
