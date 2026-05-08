@@ -153,17 +153,13 @@ function fmtStockCostPerShare(trade: Trade): string {
 function computeMoneyness(
   trade: Trade,
   price: number
-): { label: string; itm: boolean } {
-  const diff = price - trade.strike; // positive = price above strike
+): { status: "ITM" | "OTM"; amount: number } {
+  const diff = price - trade.strike;
   const itm =
     trade.option_type === "PUT"
-      ? diff < 0 // PUT: ITM when price < strike
-      : diff > 0; // CALL: ITM when price > strike
-  const amount = Math.abs(diff);
-  return {
-    label: `${itm ? "ITM" : "OTM"} $${amount.toFixed(2)}`,
-    itm,
-  };
+      ? diff < 0
+      : diff > 0;
+  return { status: itm ? "ITM" : "OTM", amount: Math.abs(diff) };
 }
 
 function isExpiredEligible(trade: Trade): boolean {
@@ -397,8 +393,13 @@ function TradeRow({
           {price != null ? (() => {
             const m = computeMoneyness(trade, price);
             return (
-              <span className={m.itm ? "font-medium text-red-500" : "text-gray-500"}>
-                {m.label}
+              <span className="inline-flex items-center gap-1.5">
+                <span className={`font-semibold ${m.status === "ITM" ? "text-red-500" : "text-gray-400"}`}>
+                  {m.status}
+                </span>
+                <span className="font-medium text-emerald-600">
+                  ${m.amount.toFixed(2)}
+                </span>
               </span>
             );
           })() : <span className="text-gray-300">—</span>}
