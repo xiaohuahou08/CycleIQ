@@ -57,7 +57,13 @@ function splitCycleIntoWheels(cycle: CycleSummary, linkedTrades: Trade[]): Wheel
     .map((trade, index) => (trade.option_type === "PUT" ? index : -1))
     .filter((index) => index >= 0);
   if (putStartIndexes.length <= 1) {
-    return [{ ...cycle, source_cycle_id: cycle.id, trades: sorted }];
+    const hasOpenTrade = sorted.some((t) => t.status === "OPEN");
+    // Derive completed state from trade statuses so that expiring/closing the last
+    // open leg moves the cycle out of "Active" even when the backend state hasn't
+    // been updated yet. Preserve STOCK_HELD — the user still holds shares.
+    const derivedState =
+      !hasOpenTrade && cycle.state !== "STOCK_HELD" ? "EXIT" : cycle.state;
+    return [{ ...cycle, source_cycle_id: cycle.id, trades: sorted, state: derivedState }];
   }
 
   return putStartIndexes.map((startIndex, idx) => {

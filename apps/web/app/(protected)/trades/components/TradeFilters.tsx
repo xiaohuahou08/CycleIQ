@@ -150,13 +150,20 @@ export default function TradeFilters({
   embedded = false,
 }: TradeFiltersProps) {
   const [filters, setFilters] = useState<FilterState>({
-    type: "ALL",
+    type: "PUT",
     status: "OPEN",
     search: "",
   });
 
   const [suggestOpen, setSuggestOpen] = useState(false);
   const searchWrapRef = useRef<HTMLDivElement>(null);
+
+  // Fire initial filter state on mount so the parent always reflects the default (CSP + OPEN).
+  const onFilterChangeRef = useRef(onFilterChange);
+  onFilterChangeRef.current = onFilterChange;
+  useEffect(() => {
+    onFilterChangeRef.current({ type: "PUT", status: "OPEN", search: "" });
+  }, []);
 
   const matchingTickers = useMemo(() => {
     const raw = filters.search.trim();

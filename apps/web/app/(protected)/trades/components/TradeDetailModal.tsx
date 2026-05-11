@@ -265,7 +265,7 @@ export default function TradeDetailModal({
           .filter((t) => t.cycle_id === trade.cycle_id)
           .sort((a, b) => a.trade_date.localeCompare(b.trade_date))
       : [trade];
-  const showRollHistory = cycleChain.length > 1;
+  const showRollHistory = cycleChain.length > 1 && cycleChain.some((t) => t.status === "ROLLED");
 
   /* metrics */
   const cap = capitalAtRisk(trade);
