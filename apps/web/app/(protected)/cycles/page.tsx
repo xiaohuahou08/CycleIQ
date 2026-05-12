@@ -31,6 +31,39 @@ function stateBadgeStyle(state: string): string {
 
 const NOW_TS = Date.now();
 
+const LOGO_URL_BUILDERS = [
+  (ticker: string) =>
+    `https://cdn.brandfetch.io/ticker/${encodeURIComponent(ticker)}?theme=light&c=1idEaEn5uowTmWO3jvO`,
+  (ticker: string) => `https://financialmodelingprep.com/image-stock/${ticker}.png`,
+  (ticker: string) => `https://eodhd.com/img/logos/US/${ticker}.png`,
+];
+
+function TickerLogo({ ticker, size = "sm" }: { ticker: string; size?: "sm" | "lg" }) {
+  const [urlIndex, setUrlIndex] = useState(0);
+  const dim = size === "lg" ? "h-10 w-10 rounded-xl" : "h-6 w-6 rounded-lg";
+  const fallbackDim = size === "lg" ? "h-10 w-10 rounded-xl text-sm" : "h-6 w-6 rounded-lg text-[10px]";
+
+  if (urlIndex >= LOGO_URL_BUILDERS.length) {
+    return (
+      <span
+        className={`inline-flex items-center justify-center bg-blue-100 font-bold text-blue-700 ${fallbackDim}`}
+      >
+        {ticker[0]}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={LOGO_URL_BUILDERS[urlIndex](ticker)}
+      alt=""
+      className={`object-cover ring-1 ring-gray-100 ${dim}`}
+      onError={() => setUrlIndex((prev) => prev + 1)}
+      loading="lazy"
+    />
+  );
+}
+
 function MoneyIcon() {
   return (
     <svg viewBox="0 0 20 20" className="h-3.5 w-3.5 text-gray-400" fill="none" aria-hidden="true">
@@ -457,9 +490,7 @@ export default function CyclesPage() {
                 >
                   ←
                 </button>
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-xs text-emerald-700">
-                  ↺
-                </span>
+                <TickerLogo ticker={selectedWheel.ticker} size="lg" />
                 <div>
                   <p className="text-[26px] font-semibold leading-none text-gray-900">
                     {selectedWheel.ticker} Wheel
@@ -516,9 +547,10 @@ export default function CyclesPage() {
             </div>
             <div className="relative h-[455px] bg-[#fcfdfd]">
               <div className="absolute left-1/2 top-[60%] h-[230px] w-[230px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-[#e9eeef]" />
-              <div className="absolute left-1/2 top-[60%] h-[90px] w-[90px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-300 bg-emerald-50 text-center shadow-sm">
-                <div className="mt-5 text-sm font-semibold text-gray-900">{selectedWheel.ticker}</div>
-                <div className="text-xs font-medium text-emerald-700">
+              <div className="absolute left-1/2 top-[60%] h-[90px] w-[90px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-300 bg-emerald-50 shadow-sm flex flex-col items-center justify-center gap-0.5">
+                <TickerLogo ticker={selectedWheel.ticker} />
+                <div className="text-[11px] font-semibold text-gray-900">{selectedWheel.ticker}</div>
+                <div className="text-[10px] font-medium text-emerald-700">
                   +$
                   {selectedWheel.trades
                     .reduce((sum, t) => sum + t.premium * t.contracts * 100, 0)
@@ -685,9 +717,7 @@ export default function CyclesPage() {
                     >
                       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-xs text-emerald-700">
-                            ↺
-                          </span>
+                          <TickerLogo ticker={cycle.ticker} />
                           <div>
                             <div className="flex items-center gap-2">
                               <span className="text-lg font-semibold text-gray-900">{cycle.ticker}</span>
