@@ -1,4 +1,5 @@
 import type { Trade, TradeStatus } from "@/lib/api/trades";
+import { formatLocalDate, getDaysUntilExpiry } from "@/lib/date-utils";
 
 const statusStyles: Record<TradeStatus, string> = {
   OPEN: "bg-amber-100 text-amber-800",
@@ -10,16 +11,11 @@ const statusStyles: Record<TradeStatus, string> = {
 };
 
 function fmtDate(iso: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  }).format(new Date(iso));
+  return formatLocalDate(iso);
 }
 
 function getDte(expiry: string): number {
-  const diffMs = new Date(expiry).getTime() - Date.now();
-  return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+  return getDaysUntilExpiry(expiry);
 }
 
 function getStrategy(trade: Trade): "CSP" | "CC" {
