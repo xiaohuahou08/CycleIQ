@@ -1,34 +1,73 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import {
-  getDashboardInsights,
+  createTrade,
+  getMetricsSummary,
   listTrades,
-  type DashboardInsights as DashboardInsightsData,
+  type CreateTradeInput,
+  type MetricsSummary,
   type Trade,
 } from "@/lib/api/trades";
-import { useProtectedAuth } from "../auth-context";
+import SummaryCards from "./components/SummaryCards";
 import ActivePositionsTable from "./components/ActivePositionsTable";
-import DashboardInsights from "./components/DashboardInsights";
+import AddTradeModal from "./components/AddTradeModal";
 
 export default function DashboardPage() {
-  const { token, isAuthLoading } = useProtectedAuth();
-  const [allTrades, setAllTrades] = useState<Trade[]>([]);
-  const [insights, setInsights] = useState<DashboardInsightsData | null>(null);
+  const router = useRouter();
+
+  const [token, setToken] = useState<string | null>(null);
+
+  const [summary, setSummary] = useState<MetricsSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
+  const [activeTrades, setActiveTrades] = useState<Trade[]>([]);
   const [tradesLoading, setTradesLoading] = useState(false);
-  const activeTrades = useMemo(
-    () => allTrades.filter((trade) => trade.status === "OPEN"),
-    [allTrades]
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Get token for API calls
+  useEffect(() => {
+    const loadToken = async () => {
+      try {
+        const supabase = getSupabaseClient();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session) {
+          setToken(session.access_token);
+        }
+      } catch {
+        // Auth already handled in layout
+      }
+    };
+    void loadToken();
+  }, [router]);
+
+  // Load data once we have a token
+  const loadData = useCallback(
+    async (accessToken: string) => {
+      setSummaryLoading(true);
+      setTradesLoading(true);
+
+      await Promise.allSettled([
+        getMetricsSummary(accessToken)
+          .then(setSummary)
+          .catch(() => setSummary(null))
+          .finally(() => setSummaryLoading(false)),
+
+        listTrades(accessToken, { status: "OPEN" })
+          .then(setActiveTrades)
+          .catch(() => setActiveTrades([]))
+          .finally(() => setTradesLoading(false)),
+      ]);
+    },
+    []
   );
-
-  const loadData = useCallback(async (accessToken: string) => {
-    setTradesLoading(true);
-
-    await Promise.allSettled([
-      listTrades(accessToken).then(setAllTrades).catch(() => setAllTrades([])),
-      getDashboardInsights(accessToken).then(setInsights).catch(() => setInsights(null)),
-    ]).finally(() => setTradesLoading(false));
-  }, []);
 
   useEffect(() => {
     if (token) {
@@ -37,19 +76,70 @@ export default function DashboardPage() {
     }
   }, [token, loadData]);
 
-  if (isAuthLoading) return null;
+  const onSaveTrade = async (input: CreateTradeInput) => {
+    if (!token) return;
+    setSaveError(null);
+    try {
+      await createTrade(token, input);
+      setModalOpen(false);
+      void loadData(token);
+    } catch (err) {
+      setSaveError(
+        err instanceof Error ? err.message : "Failed to save trade."
+      );
+    }
+  };
 
   return (
     <>
-      <main className="flex-1 bg-gray-100/80 px-6 py-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <DashboardInsights insights={insights} loading={tradesLoading} />
+          <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Your wheel strategy at a glance
+          </p>
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            setSaveError(null);
+            setModalOpen(true);
+          }}
+          className="shrink-0 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
+        >
+          + Add Trade
+        </button>
+      </div>
 
-        <div className="mt-6">
-          <ActivePositionsTable trades={activeTrades} loading={tradesLoading} />
+      {saveError && (
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {saveError}
         </div>
-      </main>
+      )}
+
+      {/* Summary cards */}
+      <div className="mt-6">
+        <SummaryCards summary={summary} loading={summaryLoading} />
+      </div>
+
+      {/* Active positions */}
+      <div className="mt-6">
+        <ActivePositionsTable
+          trades={activeTrades}
+          loading={tradesLoading}
+          onAddTrade={() => {
+            setSaveError(null);
+            setModalOpen(true);
+          }}
+        />
+      </div>
+
+      {/* Add Trade modal */}
+      <AddTradeModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSave={onSaveTrade}
+      />
     </>
   );
 }

@@ -2,29 +2,13 @@
 
 import { useState } from "react";
 
-export interface FilterState {
+export type FilterState = {
   ticker: string;
-  type: string;
-  status: string;
+  type: "ALL" | "PUT" | "CALL";
+  status: "ALL" | "OPEN" | "CLOSED" | "EXPIRED" | "ASSIGNED";
   dateFrom: string;
   dateTo: string;
   search: string;
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  ALL: "All Status",
-  OPEN: "Open",
-  CLOSED: "Closed",
-  EXPIRED: "Expired",
-  ASSIGNED: "Assigned",
-  CALLED_AWAY: "Called Away",
-  ROLLED: "Rolled",
-};
-
-const TYPE_LABELS: Record<string, string> = {
-  ALL: "All Types",
-  PUT: "CSP (Sell Put)",
-  CALL: "CC (Sell Call)",
 };
 
 interface TradeFiltersProps {
@@ -38,7 +22,7 @@ export default function TradeFilters({
   totalCount,
   filteredCount,
 }: TradeFiltersProps) {
-  const [filters, setFilters] = useState<FilterState>({
+  const [localFilters, setLocalFilters] = useState<FilterState>({
     ticker: "",
     type: "ALL",
     status: "ALL",
@@ -47,121 +31,131 @@ export default function TradeFilters({
     search: "",
   });
 
-  const apply = (patch: Partial<FilterState>) => {
-    const next = { ...filters, ...patch };
-    setFilters(next);
-    onFilterChange(next);
+  const handleFilterChange = (updates: Partial<FilterState>) => {
+    const newFilters = { ...localFilters, ...updates };
+    setLocalFilters(newFilters);
+    onFilterChange(newFilters);
   };
-
-  const reset = () => {
-    const blank: FilterState = {
-      ticker: "",
-      type: "ALL",
-      status: "ALL",
-      dateFrom: "",
-      dateTo: "",
-      search: "",
-    };
-    setFilters(blank);
-    onFilterChange(blank);
-  };
-
-  const hasFilters =
-    filters.ticker !== "" ||
-    filters.type !== "ALL" ||
-    filters.status !== "ALL" ||
-    filters.dateFrom !== "" ||
-    filters.dateTo !== "" ||
-    filters.search !== "";
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[160px] flex-1">
-          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
-            🔍
-          </span>
+    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap gap-4">
+        {/* Search */}
+        <div className="flex-1 min-w-[200px]">
+          <label className="sr-only" htmlFor="search">
+            Search
+          </label>
           <input
             type="text"
-            placeholder="Search ticker or notes…"
-            value={filters.search}
-            onChange={(e) => apply({ search: e.target.value })}
-            className="w-full rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-300 focus:bg-white focus:outline-none"
+            id="search"
+            placeholder="Search ticker or notes..."
+            value={localFilters.search}
+            onChange={(e) => handleFilterChange({ search: e.target.value })}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
           />
         </div>
 
-        <input
-          type="text"
-          placeholder="Ticker"
-          value={filters.ticker}
-          onChange={(e) => apply({ ticker: e.target.value.toUpperCase() })}
-          className="w-20 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm uppercase text-gray-900 placeholder:text-gray-400 focus:border-gray-300 focus:bg-white focus:outline-none"
-        />
-      </div>
+        {/* Ticker */}
+        <div className="w-[200px]">
+          <label className="sr-only" htmlFor="ticker">
+            Ticker
+          </label>
+          <input
+            type="text"
+            id="ticker"
+            placeholder="Ticker"
+            value={localFilters.ticker}
+            onChange={(e) => handleFilterChange({ ticker: e.target.value.toUpperCase() })}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          />
+        </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-2">
-        {Object.entries(TYPE_LABELS).map(([val, label]) => (
-          <button
-            key={val}
-            type="button"
-            onClick={() => apply({ type: val })}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-              filters.type === val
-                ? "bg-violet-100 text-violet-700 ring-1 ring-violet-200"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
+        {/* Type */}
+        <div className="w-[150px]">
+          <label className="sr-only" htmlFor="type">
+            Type
+          </label>
+          <select
+            id="type"
+            value={localFilters.type}
+            onChange={(e) => handleFilterChange({ type: e.target.value as "ALL" | "PUT" | "CALL" })}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
           >
-            {label}
-          </button>
-        ))}
-        {Object.entries(STATUS_LABELS).map(([val, label]) => (
-          <button
-            key={val}
-            type="button"
-            onClick={() => apply({ status: val })}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-              filters.status === val
-                ? "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
+            <option value="ALL">All Types</option>
+            <option value="PUT">PUT</option>
+            <option value="CALL">CALL</option>
+          </select>
+        </div>
+
+        {/* Status */}
+        <div className="w-[150px]">
+          <label className="sr-only" htmlFor="status">
+            Status
+          </label>
+          <select
+            id="status"
+            value={localFilters.status}
+            onChange={(e) => handleFilterChange({ status: e.target.value as "ALL" | "OPEN" | "CLOSED" | "EXPIRED" | "ASSIGNED" })}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
           >
-            {label}
-          </button>
-        ))}
-      </div>
+            <option value="ALL">All Status</option>
+            <option value="OPEN">Open</option>
+            <option value="CLOSED">Closed</option>
+            <option value="EXPIRED">Expired</option>
+            <option value="ASSIGNED">Assigned</option>
+          </select>
+        </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <input
-          type="date"
-          title="From date"
-          value={filters.dateFrom}
-          onChange={(e) => apply({ dateFrom: e.target.value })}
-          className="rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-sm text-gray-900 focus:border-gray-300 focus:bg-white focus:outline-none"
-        />
+        {/* Date Range */}
+        <div className="flex gap-2">
+          <div className="w-[140px]">
+            <label className="sr-only" htmlFor="dateFrom">
+              From
+            </label>
+            <input
+              type="date"
+              id="dateFrom"
+              value={localFilters.dateFrom}
+              onChange={(e) => handleFilterChange({ dateFrom: e.target.value })}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            />
+          </div>
+          <div className="w-[140px]">
+            <label className="sr-only" htmlFor="dateTo">
+              To
+            </label>
+            <input
+              type="date"
+              id="dateTo"
+              value={localFilters.dateTo}
+              onChange={(e) => handleFilterChange({ dateTo: e.target.value })}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            />
+          </div>
+        </div>
 
-        <input
-          type="date"
-          title="To date"
-          value={filters.dateTo}
-          onChange={(e) => apply({ dateTo: e.target.value })}
-          className="rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-sm text-gray-900 focus:border-gray-300 focus:bg-white focus:outline-none"
-        />
-
-        {hasFilters && (
+        {/* Clear filters */}
+        <div className="flex items-center">
           <button
             type="button"
-            onClick={reset}
-            className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-100"
+            onClick={() => handleFilterChange({
+              ticker: "",
+              type: "ALL",
+              status: "ALL",
+              dateFrom: "",
+              dateTo: "",
+              search: "",
+            })}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
           >
             Clear
           </button>
-        )}
+        </div>
       </div>
 
-      <div className="mt-2 text-xs text-gray-400">
-        {filteredCount === totalCount
-          ? `${totalCount} trade${totalCount !== 1 ? "s" : ""}`
-          : `${filteredCount} of ${totalCount} trades shown`}
+      {/* Filter count */}
+      <div className="mt-3 text-sm text-gray-500">
+        Showing {filteredCount} of {totalCount} trades
       </div>
     </div>
   );

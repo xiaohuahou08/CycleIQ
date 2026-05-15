@@ -1,20 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Sidebar from "@/app/components/Sidebar";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { ProtectedAuthProvider } from "./auth-context";
+import Sidebar from "@/components/Sidebar";
+import { UserMenu } from "@/components/auth/UserMenu";
 
 export default function ProtectedLayout({
   children,
-}: Readonly<{ children: React.ReactNode }>) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Auth check
   useEffect(() => {
     const loadUser = async () => {
       try {
@@ -27,8 +29,8 @@ export default function ProtectedLayout({
           router.replace("/login");
           return;
         }
+
         setEmail(session.user.email ?? "");
-        setToken(session.access_token);
       } catch {
         router.replace("/login");
       } finally {
@@ -37,18 +39,6 @@ export default function ProtectedLayout({
     };
     void loadUser();
   }, [router]);
-
-  const onLogout = async () => {
-    const supabase = getSupabaseClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  };
-
-  const contextValue = useMemo(
-    () => ({ email, token, isAuthLoading, onLogout }),
-    [email, token, isAuthLoading, onLogout]
-  );
 
   if (isAuthLoading) {
     return (
@@ -59,39 +49,52 @@ export default function ProtectedLayout({
   }
 
   return (
-    <ProtectedAuthProvider value={contextValue}>
-      <div className="flex h-screen overflow-hidden bg-gray-50">
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 z-40 bg-black/30 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-            aria-hidden="true"
-          />
-        )}
-
+    <div className="flex h-screen overflow-hidden bg-gray-50">
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
         <div
-          className={`fixed inset-y-0 left-0 z-50 transition-transform lg:static lg:translate-x-0 ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
-        >
-          <Sidebar email={email} onLogout={() => void onLogout()} />
-        </div>
+          className="fixed inset-0 z-40 bg-black/30 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
 
-        <div className="flex flex-1 flex-col overflow-auto">
-          <div className="flex items-center border-b border-gray-200 bg-white px-4 py-3 lg:hidden">
+      {/* Sidebar */}
+      <div
+        className={`fixed inset-y-0 left-0 z-50 transition-transform lg:static lg:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <Sidebar email={email} />
+      </div>
+
+      {/* Main content */}
+      <div className="flex flex-1 flex-col overflow-auto">
+        <div className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-gray-200 bg-white px-4">
+          <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
               onClick={() => setSidebarOpen(true)}
-              className="mr-3 rounded-lg p-1.5 text-gray-500 hover:bg-gray-100"
+              className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 lg:hidden"
               aria-label="Open navigation"
             >
               ☰
             </button>
-            <span className="text-sm font-semibold text-gray-900">CycleIQ</span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-gray-900 lg:text-base">
+                CycleIQ
+              </p>
+              <p className="hidden truncate text-xs text-gray-500 sm:block">
+                Wheel Strategy Management
+              </p>
+            </div>
           </div>
-          {children}
+          <UserMenu email={email} />
         </div>
+        <main className="flex-1 px-6 py-8">
+          {children}
+        </main>
       </div>
-    </ProtectedAuthProvider>
+    </div>
   );
 }

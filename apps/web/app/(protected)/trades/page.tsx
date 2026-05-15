@@ -1,28 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import {
   createTrade,
   deleteTrade,
-  expireTrade,
   listTrades,
-  postCycleTransition,
-  updateTrade,
   type CreateTradeInput,
   type Trade,
-  type TradeStatus,
 } from "@/lib/api/trades";
-import { useProtectedAuth } from "../auth-context";
-import AddTradeModal from "../dashboard/components/AddTradeModal";
-import AssignTradeModal from "./components/AssignTradeModal";
-import ExpireTradeModal from "./components/ExpireTradeModal";
-import RollTradeModal from "./components/RollTradeModal";
 import TradeFilters, { type FilterState } from "./components/TradeFilters";
 import TradeList from "./components/TradeList";
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+import AddTradeModal from "../dashboard/components/AddTradeModal";
 
 function applyFilters(trades: Trade[], f: FilterState): Trade[] {
   return trades.filter((t) => {
@@ -35,24 +25,22 @@ function applyFilters(trades: Trade[], f: FilterState): Trade[] {
       f.search &&
       !t.ticker.toLowerCase().includes(f.search.toLowerCase()) &&
       !(t.notes ?? "").toLowerCase().includes(f.search.toLowerCase())
-    ) {
+    )
       return false;
-    }
     return true;
   });
 }
 
 export default function TradesPage() {
-  const { token, isAuthLoading } = useProtectedAuth();
+  const router = useRouter();
+
+  const [token, setToken] = useState<string | null>(null);
+
   const [allTrades, setAllTrades] = useState<Trade[]>([]);
   const [tradesLoading, setTradesLoading] = useState(true);
+
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
-  const [expiringTrade, setExpiringTrade] = useState<Trade | null>(null);
-  const [assigningTrade, setAssigningTrade] = useState<Trade | null>(null);
-  const [rollingTrade, setRollingTrade] = useState<Trade | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     ticker: "",
     type: "ALL",
@@ -63,58 +51,43 @@ export default function TradesPage() {
   });
 
   useEffect(() => {
+    const loadToken = async () => {
+      try {
+        const supabase = getSupabaseClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          setToken(session.access_token);
+        }
+      } catch {
+        // Auth handled in layout
+      }
+    };
+    void loadToken();
+  }, [router]);
+
+  useEffect(() => {
     if (!token) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTradesLoading(true);
     listTrades(token)
       .then((trades) => setAllTrades(trades))
       .catch(() => setAllTrades([]))
       .finally(() => setTradesLoading(false));
   }, [token]);
 
-  useEffect(() => {
-    if (!saveSuccess) return;
-    const timeout = window.setTimeout(() => setSaveSuccess(null), 3000);
-    return () => window.clearTimeout(timeout);
-  }, [saveSuccess]);
-
-  const tickerSuggestions = useMemo(
-    () =>
-      Array.from(new Set(allTrades.map((trade) => trade.ticker)))
-        .filter(Boolean)
-        .sort((a, b) => a.localeCompare(b)),
-    [allTrades]
-  );
-
   const onSaveTrade = async (input: CreateTradeInput) => {
     if (!token) return;
     setSaveError(null);
-    setSaveSuccess(null);
     try {
       await createTrade(token, input);
       setModalOpen(false);
       setTradesLoading(true);
       const trades = await listTrades(token);
       setAllTrades(trades);
-      setSaveSuccess("Trade saved successfully.");
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save trade.");
     } finally {
       setTradesLoading(false);
-    }
-  };
-
-  const onSaveEditedTrade = async (input: CreateTradeInput) => {
-    if (!token || !editingTrade) return;
-    setSaveError(null);
-    setSaveSuccess(null);
-    try {
-      await updateTrade(token, editingTrade.id, input);
-      const trades = await listTrades(token);
-      setAllTrades(trades);
-      setModalOpen(false);
-      setEditingTrade(null);
-      setSaveSuccess("Trade updated successfully.");
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Failed to update trade.");
     }
   };
 
@@ -124,272 +97,47 @@ export default function TradesPage() {
     await deleteTrade(token, id);
   };
 
-  const onEditTrade = (trade: Trade) => {
-    setSaveError(null);
-    setEditingTrade(trade);
-    setModalOpen(true);
-  };
-
-  const onAction = async (
-    trade: Trade,
-    action: "buy_to_close" | "expire" | "assign" | "roll"
-  ) => {
-    if (!token) return;
-    try {
-      if (action === "buy_to_close") {
-        const updated = await updateTrade(token, trade.id, {
-          status: "CLOSED",
-          closed_at: todayIso(),
-        });
-        setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
-        setSaveSuccess("Trade closed successfully.");
-        return;
-      }
-
-      if (action === "expire") {
-        setExpiringTrade(trade);
-        return;
-      }
-
-      if (action === "assign") {
-        setAssigningTrade(trade);
-        return;
-      }
-
-      if (action === "roll") {
-        setRollingTrade(trade);
-        return;
-      }
-
-      const updated = await updateTrade(token, trade.id, { status: "CLOSED" as TradeStatus });
-      setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
-      setSaveSuccess("Trade updated successfully.");
-    } catch (err) {
-      setSaveError(
-        err instanceof Error ? err.message : "Failed to apply trade action."
-      );
-    }
-  };
-
   const filtered = applyFilters(allTrades, filters);
 
-  if (isAuthLoading) return null;
   return (
     <>
-      <main className="flex-1 bg-gray-100/80 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => {
-              setSaveError(null);
-              setSaveSuccess(null);
-              setEditingTrade(null);
-              setModalOpen(true);
-            }}
-            className="shrink-0 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + Add Trade
-          </button>
-        </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
+        <button
+          type="button"
+          onClick={() => { setSaveError(null); setModalOpen(true); }}
+          className="shrink-0 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
+        >
+          + Add Trade
+        </button>
+      </div>
 
-        {saveError && (
-          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {saveError}
-          </div>
-        )}
-        {saveSuccess && (
-          <div className="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-            {saveSuccess}
-          </div>
-        )}
-
-        <div className="mt-6">
-          <TradeFilters
-            onFilterChange={setFilters}
-            totalCount={allTrades.length}
-            filteredCount={filtered.length}
-          />
+      {saveError && (
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {saveError}
         </div>
+      )}
 
-        <div className="mt-4">
-          <TradeList
-            trades={filtered}
-            loading={tradesLoading}
-            onAddTrade={() => {
-              setSaveError(null);
-              setSaveSuccess(null);
-              setEditingTrade(null);
-              setModalOpen(true);
-            }}
-            onDeleteTrade={onDeleteTrade}
-            onEditTrade={onEditTrade}
-            onAction={onAction}
-          />
-        </div>
-      </main>
+      <div className="mt-6">
+        <TradeFilters
+          onFilterChange={setFilters}
+          totalCount={allTrades.length}
+          filteredCount={filtered.length}
+        />
+      </div>
+
+      <div className="mt-4">
+        <TradeList
+          trades={filtered}
+          loading={tradesLoading}
+          onAddTrade={() => { setSaveError(null); setModalOpen(true); }}
+          onDeleteTrade={onDeleteTrade}
+        />
+      </div>
 
       <AddTradeModal
         open={modalOpen}
-        onClose={() => {
-          setModalOpen(false);
-          setEditingTrade(null);
-        }}
-        onSave={editingTrade ? onSaveEditedTrade : onSaveTrade}
-        tickerSuggestions={tickerSuggestions}
-        initialValues={
-          editingTrade
-            ? {
-                ticker: editingTrade.ticker,
-                option_type: editingTrade.option_type,
-                strike: editingTrade.strike,
-                expiry: editingTrade.expiry,
-                trade_date: editingTrade.trade_date,
-                premium: editingTrade.premium,
-                commission_fee: editingTrade.commission_fee ?? undefined,
-                contracts: editingTrade.contracts,
-                delta: editingTrade.delta,
-                status: editingTrade.status,
-                notes: editingTrade.notes,
-              }
-            : undefined
-        }
-        title={editingTrade ? "Edit Trade" : "Add Trade"}
-        submitLabel={editingTrade ? "Update Trade" : "Save Trade"}
-      />
-
-      <AssignTradeModal
-        open={Boolean(assigningTrade)}
-        trade={assigningTrade}
-        onClose={() => setAssigningTrade(null)}
-        onConfirm={async (input) => {
-          if (!token || !assigningTrade) return;
-          setSaveError(null);
-          try {
-            if (assigningTrade.cycle_id) {
-              await postCycleTransition(token, assigningTrade.cycle_id, {
-                event: "assigned",
-                params: {
-                  shares: assigningTrade.contracts * 100,
-                  assignment_price: input.assignment_price,
-                },
-              });
-            }
-            const terminalStatus =
-              assigningTrade.option_type === "CALL" ? "CALLED_AWAY" : "ASSIGNED";
-            const updated = await updateTrade(token, assigningTrade.id, {
-              status: terminalStatus,
-              strike: input.assignment_price,
-              ...(assigningTrade.option_type === "CALL"
-                ? { called_away_at: input.trade_date }
-                : { assigned_at: input.trade_date }),
-              ...(input.fees_on_assignment !== undefined
-                ? { fees_on_assignment: input.fees_on_assignment }
-                : {}),
-              ...(input.notes?.trim()
-                ? {
-                    notes: [assigningTrade.notes?.trim(), input.notes.trim()]
-                      .filter(Boolean)
-                      .join("\n"),
-                  }
-                : {}),
-            });
-            setAllTrades((prev) =>
-              prev.map((t) => (t.id === assigningTrade.id ? updated : t))
-            );
-            setAssigningTrade(null);
-            setSaveSuccess(
-              assigningTrade.option_type === "CALL"
-                ? "Position marked called away successfully."
-                : "Trade assigned successfully."
-            );
-          } catch (err) {
-            setSaveError(err instanceof Error ? err.message : "Failed to assign trade.");
-            throw err;
-          }
-        }}
-      />
-
-      <RollTradeModal
-        open={Boolean(rollingTrade)}
-        trade={rollingTrade}
-        onClose={() => setRollingTrade(null)}
-        onConfirm={async (input) => {
-          if (!token || !rollingTrade) return;
-          setSaveError(null);
-          try {
-            const netPremiumPerShare = input.new_premium_per_share - input.buyback_cost_per_share;
-
-            if (rollingTrade.cycle_id) {
-              await postCycleTransition(token, rollingTrade.cycle_id, {
-                event: "roll",
-                params: {
-                  new_strike: input.new_strike,
-                  new_expiry: input.new_expiry,
-                  net_premium: netPremiumPerShare,
-                },
-              });
-            }
-
-            const mergedNotes = input.notes?.trim()
-              ? [rollingTrade.notes?.trim(), input.notes.trim()].filter(Boolean).join("\n")
-              : undefined;
-
-            const updated = await updateTrade(token, rollingTrade.id, {
-              status: "ROLLED",
-              strike: input.new_strike,
-              expiry: input.new_expiry,
-              premium: netPremiumPerShare,
-              rolled_at: input.trade_date,
-              ...(Number.isFinite(input.fees) ? { commission_fee: input.fees } : {}),
-              ...(mergedNotes ? { notes: mergedNotes } : {}),
-            });
-            setAllTrades((prev) => prev.map((t) => (t.id === rollingTrade.id ? updated : t)));
-            setRollingTrade(null);
-            setSaveSuccess("Trade rolled successfully.");
-          } catch (err) {
-            setSaveError(err instanceof Error ? err.message : "Failed to roll trade.");
-            throw err;
-          }
-        }}
-      />
-
-      <ExpireTradeModal
-        open={Boolean(expiringTrade)}
-        trade={expiringTrade}
-        onClose={() => setExpiringTrade(null)}
-        onConfirm={async (input) => {
-          if (!token || !expiringTrade) return;
-          setSaveError(null);
-          try {
-            const updated = await expireTrade(token, expiringTrade.id, {
-              expired_at: input.expired_at,
-              expire_type: input.expire_type,
-            });
-            const mergedNotes = input.notes
-              ? [updated.notes?.trim(), input.notes.trim()].filter(Boolean).join("\n")
-              : undefined;
-            const needFollowupUpdate =
-              mergedNotes !== undefined || input.commission_fee !== undefined;
-
-            if (needFollowupUpdate) {
-              const notesUpdated = await updateTrade(token, updated.id, {
-                notes: mergedNotes,
-                commission_fee: input.commission_fee,
-              });
-              setAllTrades((prev) =>
-                prev.map((t) => (t.id === notesUpdated.id ? notesUpdated : t))
-              );
-            } else {
-              setAllTrades((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-            }
-
-            setExpiringTrade(null);
-            setSaveSuccess("Trade expired successfully.");
-          } catch (err) {
-            setSaveError(err instanceof Error ? err.message : "Failed to expire trade.");
-            throw err;
-          }
-        }}
+        onClose={() => setModalOpen(false)}
+        onSave={onSaveTrade}
       />
     </>
   );
