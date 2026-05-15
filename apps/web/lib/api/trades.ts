@@ -4,11 +4,9 @@
  * ─── TEMPORARY MOCK MODE ───────────────────────────────────────────────────
  * SET MOCK_MODE = true  → returns fake data, Flask NOT needed
  * SET MOCK_MODE = false → calls real Flask API at NEXT_PUBLIC_API_URL
- *
- * TODO (xiaohua): Set MOCK_MODE = false once Flask API is deployed.
  * ─────────────────────────────────────────────────────────────────────────
  */
-const MOCK_MODE = true; // <-- 改成 false 即可切换到真实 Flask API
+const MOCK_MODE = false; // <-- 已切换到真实 Flask API
 
 export type TradeStatus =
   | "OPEN"
@@ -50,6 +48,71 @@ export interface MetricsSummary {
   annualized_return: number;
   active_positions: number;
   win_rate: number;
+}
+
+// ─── Backend Trade Interface (format from Flask API) ────────────────────────
+
+interface BackendTrade {
+  id: string;
+  user_id: string;
+  ticker: string;
+  action: string; // "BUY" | "SELL"
+  position_type: string; // "PUT" | "CALL" | "STOCK"
+  strike: number | null;
+  expiry: string | null;
+  premium: number | null;
+  quantity: number;
+  assigned: boolean;
+  status: string;
+  closed_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ─── Data Conversion Helpers ─────────────────────────────────────────────────
+
+function backendTradeToFrontend(backend: BackendTrade): Trade {
+  return {
+    id: backend.id,
+    ticker: backend.ticker,
+    option_type: (backend.position_type as "PUT" | "CALL") || "PUT",
+    strike: backend.strike || 0,
+    expiry: backend.expiry || "",
+    trade_date: backend.created_at?.split("T")[0] || "",
+    premium: backend.premium || 0,
+    contracts: backend.quantity,
+    status: (backend.status.toUpperCase() as TradeStatus) || "OPEN",
+    notes: backend.notes || undefined,
+  };
+}
+
+interface BackendTradeInput {
+  ticker: string;
+  action: string;
+  position_type: string;
+  strike: number;
+  expiry: string;
+  premium: number;
+  quantity: number;
+  assigned: boolean;
+  status: string;
+  notes?: string;
+}
+
+function frontendTradeInputToBackend(input: CreateTradeInput): BackendTradeInput {
+  return {
+    ticker: input.ticker,
+    action: "SELL", // For wheel strategy, we're always selling options first
+    position_type: input.option_type,
+    strike: input.strike,
+    expiry: input.expiry,
+    premium: input.premium,
+    quantity: input.contracts,
+    assigned: false,
+    status: input.status.toLowerCase(),
+    notes: input.notes,
+  };
 }
 
 // ─── Mock helpers ──────────────────────────────────────────────────────────
@@ -157,6 +220,11 @@ function mockCreateTrade(input: CreateTradeInput): Trade {
   return trade;
 }
 
+function mockDeleteTrade(id: string): void {
+  const idx = _mockStore.findIndex((t) => t.id === id);
+  if (idx !== -1) _mockStore.splice(idx, 1);
+}
+
 // ─── Real API helpers ──────────────────────────────────────────────────────
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -170,29 +238,46 @@ function authHeaders(token: string): HeadersInit {
 
 async function realListTrades(token: string, params?: { status?: string }): Promise<Trade[]> {
   const qs = new URLSearchParams();
-  if (params?.status) qs.set("status", params.status);
+  if (params?.status) qs.set("status", params.status.toLowerCase());
   const url = qs.size ? `${API_BASE}/api/trades?${qs}` : `${API_BASE}/api/trades`;
   const res = await fetch(url, { headers: authHeaders(token) });
   if (!res.ok) throw new Error(`Failed to load trades: ${res.status}`);
-  return res.json() as Promise<Trade[]>;
+  const backendTrades: BackendTrade[] = await res.json();
+  return backendTrades.map(backendTradeToFrontend);
 }
 
 async function realGetMetricsSummary(token: string): Promise<MetricsSummary> {
-  const res = await fetch(`${API_BASE}/api/metrics/summary`, {
+  const res = await fetch(`${API_BASE}/api/dashboard/summary`, {
     headers: authHeaders(token),
   });
   if (!res.ok) throw new Error(`Failed to load metrics: ${res.status}`);
-  return res.json() as Promise<MetricsSummary>;
+  const data = await res.json();
+  // 转换后端返回的数据格式到前端期望的格式
+  return {
+    total_premium: data.total_premium || 0,
+    annualized_return: data.annualized_return || 0,
+    active_positions: data.active_positions || data.open_trades || 0,
+    win_rate: data.win_rate || 0,
+  };
 }
 
 async function realCreateTrade(token: string, input: CreateTradeInput): Promise<Trade> {
   const res = await fetch(`${API_BASE}/api/trades`, {
     method: "POST",
     headers: authHeaders(token),
-    body: JSON.stringify(input),
+    body: JSON.stringify(frontendTradeInputToBackend(input)),
   });
   if (!res.ok) throw new Error(`Failed to create trade: ${res.status}`);
-  return res.json() as Promise<Trade>;
+  const backendTrade: BackendTrade = await res.json();
+  return backendTradeToFrontend(backendTrade);
+}
+
+async function realDeleteTrade(token: string, id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/trades/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error(`Failed to delete trade: ${res.status}`);
 }
 
 // ─── Public API (dispatches to mock or real) ───────────────────────────────
@@ -216,4 +301,9 @@ export async function createTrade(
 ): Promise<Trade> {
   if (MOCK_MODE) return mockCreateTrade(input);
   return realCreateTrade(_token, input);
+}
+
+export async function deleteTrade(_token: string, id: string): Promise<void> {
+  if (MOCK_MODE) return mockDeleteTrade(id);
+  return realDeleteTrade(_token, id);
 }
