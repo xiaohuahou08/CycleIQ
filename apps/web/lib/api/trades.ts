@@ -217,3 +217,21 @@ export async function createTrade(
   if (MOCK_MODE) return mockCreateTrade(input);
   return realCreateTrade(_token, input);
 }
+
+function mockDeleteTrade(id: string): void {
+  const idx = _mockStore.findIndex((t) => t.id === id);
+  if (idx !== -1) _mockStore.splice(idx, 1);
+}
+
+async function realDeleteTrade(token: string, id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/trades/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error(`Failed to delete trade: ${res.status}`);
+}
+
+export async function deleteTrade(token: string, id: string): Promise<void> {
+  if (MOCK_MODE) return mockDeleteTrade(id);
+  return realDeleteTrade(token, id);
+}

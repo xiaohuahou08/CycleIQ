@@ -57,6 +57,7 @@ export const config = {
     "/reports/:path*",
     "/settings/:path*",
     "/orders/:path*",
+    "/trades/:path*",
     "/login",
     "/register",
   ],

@@ -4,7 +4,8 @@ export function isProtectedRoute(pathname) {
     pathname.startsWith("/cycles") ||
     pathname.startsWith("/reports") ||
     pathname.startsWith("/settings") ||
-    pathname.startsWith("/orders")
+    pathname.startsWith("/orders") ||
+    pathname.startsWith("/trades")
   );
 }
 
@@ -18,6 +19,7 @@ const ALLOWED_POST_LOGIN_PREFIXES = [
   "/reports",
   "/settings",
   "/orders",
+  "/trades",
 ];
 
 /**
