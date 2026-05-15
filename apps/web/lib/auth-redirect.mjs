@@ -1,6 +1,7 @@
 export function isProtectedRoute(pathname) {
   return (
     pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/trades") ||
     pathname.startsWith("/cycles") ||
     pathname.startsWith("/reports") ||
     pathname.startsWith("/settings") ||
@@ -15,6 +16,7 @@ export function isAuthRoute(pathname) {
 
 const ALLOWED_POST_LOGIN_PREFIXES = [
   "/dashboard",
+  "/trades",
   "/cycles",
   "/reports",
   "/settings",

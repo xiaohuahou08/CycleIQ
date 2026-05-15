@@ -44,5 +44,19 @@ class WheelCycle(db.Model):
         "Trade", back_populates="wheel_cycle", cascade="all, delete-orphan"
     )
 
+    def to_dict(self) -> dict:
+        return {
+            "id": str(self.id),
+            "user_id": str(self.user_id),
+            "ticker": self.ticker,
+            "state": self.state,
+            "capital_committed": (
+                float(self.capital_committed) if self.capital_committed is not None else None
+            ),
+            "total_premium_collected": float(self.total_premium_collected),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
     def __repr__(self) -> str:
         return f"<WheelCycle {self.ticker} [{self.state}]>"
