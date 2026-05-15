@@ -1,71 +1,107 @@
-from datetime import date, datetime, timezone
-from decimal import Decimal
-from flask import request, jsonify
+from __future__ import annotations
 
-from cycleiq.wheel_fsm import (
-    Cycle, CycleEvent, CycleState, CycleMetrics,
-    OptionLeg, StockLeg, OptionType, OptionAction, StockAction,
-)
+from flask import jsonify, request
+
 from backend.auth.supabase import require_auth
+from backend.models import db
+from backend.models.wheel_cycle import WheelCycle
+from backend.services.cycle_fsm import (
+    append_transition,
+    apply_api_event,
+    metrics_to_response,
+    replay_cycle,
+    state_payload,
+)
+from cycleiq.wheel_fsm import InvalidTransitionError
+
+
+ACTIVE_STATES = frozenset({"CSP_OPEN", "STOCK_HELD", "CC_OPEN"})
 
 
 def register_cycles_routes(cycles_bp):
-    @cycles_bp.route("/<ticker>/event", methods=["POST"])
+    @cycles_bp.route("", methods=["POST"])
     @require_auth
-    def apply_event(user_id, ticker: str):
+    def create_cycle(user_id: str):
         data = request.get_json() or {}
-        event_str = data.get("event")
-        option_legs = data.get("option_legs", [])
-        stock_leg = data.get("stock_leg")
+        ticker = (data.get("ticker") or "").strip().upper()
+        if not ticker:
+            return jsonify({"error": "ticker is required"}), 400
+
+        row = WheelCycle(user_id=user_id, ticker=ticker, state="IDLE", transition_log="[]")
+        db.session.add(row)
+        db.session.commit()
+        return jsonify(row.to_dict()), 201
+
+    @cycles_bp.route("", methods=["GET"])
+    @require_auth
+    def list_cycles(user_id: str):
+        status = request.args.get("status")
+        q = WheelCycle.query.filter_by(user_id=user_id)
+        if status == "active":
+            q = q.filter(WheelCycle.state.in_(ACTIVE_STATES))
+        rows = q.order_by(WheelCycle.created_at.desc()).all()
+        return jsonify({"cycles": [r.to_dict() for r in rows], "total": len(rows)})
+
+    @cycles_bp.route("/<cycle_id>", methods=["GET"])
+    @require_auth
+    def get_cycle(user_id: str, cycle_id: str):
+        row = WheelCycle.query.filter_by(id=cycle_id, user_id=user_id).first_or_404()
+        return jsonify(row.to_dict())
+
+    @cycles_bp.route("/<cycle_id>/state", methods=["GET"])
+    @require_auth
+    def get_cycle_state(user_id: str, cycle_id: str):
+        row = WheelCycle.query.filter_by(id=cycle_id, user_id=user_id).first_or_404()
+        try:
+            cycle = replay_cycle(row.ticker, row.transition_log)
+        except (ValueError, KeyError, TypeError) as e:
+            return jsonify({"error": f"Corrupt transition log: {e}"}), 500
+        payload = state_payload(cycle)
+        payload["cycle_id"] = row.id
+        payload["ticker"] = row.ticker
+        return jsonify(payload)
+
+    @cycles_bp.route("/<cycle_id>/transitions", methods=["POST"])
+    @require_auth
+    def post_transition(user_id: str, cycle_id: str):
+        row = WheelCycle.query.filter_by(id=cycle_id, user_id=user_id).first_or_404()
+        data = request.get_json() or {}
+        event_name = data.get("event")
+        params = data.get("params") or {}
+        if not event_name or not isinstance(event_name, str):
+            return jsonify({"error": "event is required"}), 400
 
         try:
-            event = CycleEvent(event_str)
-        except ValueError:
-            return jsonify({"error": f"Unknown event: {event_str}"}), 400
+            cycle = replay_cycle(row.ticker, row.transition_log)
+            transition = apply_api_event(cycle, event_name.strip().lower(), params)
+            row.transition_log = append_transition(row.transition_log, transition)
+            row.state = cycle.state.value
+            db.session.commit()
+        except InvalidTransitionError as e:
+            return jsonify({"error": str(e)}), 400
+        except (ValueError, KeyError, TypeError) as e:
+            return jsonify({"error": str(e)}), 400
 
-        legs = [
-            OptionLeg(
-                type=OptionType(l["type"]),
-                action=OptionAction(l["action"]),
-                strike=Decimal(str(l["strike"])),
-                expiry=date.fromisoformat(l["expiry"]),
-                premium=Decimal(str(l["premium"])),
-                quantity=l.get("quantity", 1),
-                assigned=l.get("assigned", False),
-            )
-            for l in option_legs
-        ]
+        return jsonify(
+            {
+                "from_state": transition.from_state.value,
+                "to_state": transition.to_state.value,
+                "event": transition.event.value,
+                "timestamp": transition.timestamp.isoformat(),
+            }
+        )
 
-        stock = None
-        if stock_leg:
-            stock = StockLeg(
-                action=StockAction(stock_leg["action"]),
-                price=Decimal(str(stock_leg["price"])),
-                quantity=stock_leg.get("quantity", 100),
-            )
-
-        cycle = Cycle(ticker=ticker.upper())
-        transition = cycle.apply_event(event, legs, stock)
-        return jsonify({
-            "from_state": transition.from_state.value,
-            "to_state": transition.to_state.value,
-            "event": transition.event.value,
-            "timestamp": transition.timestamp.isoformat(),
-        })
-
-    @cycles_bp.route("/<ticker>/metrics", methods=["GET"])
+    @cycles_bp.route("/<cycle_id>/metrics", methods=["GET"])
     @require_auth
-    def get_metrics(user_id, ticker: str):
-        # In a full implementation this would load the cycle from DB.
-        # For now return empty metrics structure.
-        return jsonify({
-            "ticker": ticker.upper(),
-            "state": "IDLE",
-            "total_premium_collected": 0.0,
-            "stock_pnl": 0.0,
-            "total_cycle_pnl": 0.0,
-            "days_in_cycle": 0,
-            "annualized_return": 0.0,
-            "win_rate": 0.0,
-            "roll_count": 0,
-        })
+    def get_cycle_metrics(user_id: str, cycle_id: str):
+        row = WheelCycle.query.filter_by(id=cycle_id, user_id=user_id).first_or_404()
+        try:
+            cycle = replay_cycle(row.ticker, row.transition_log)
+            m = cycle.metrics()
+        except (ValueError, KeyError, TypeError) as e:
+            return jsonify({"error": f"Corrupt transition log: {e}"}), 500
+
+        out = metrics_to_response(m)
+        out["ticker"] = row.ticker
+        out["state"] = cycle.state.value
+        return jsonify(out)
