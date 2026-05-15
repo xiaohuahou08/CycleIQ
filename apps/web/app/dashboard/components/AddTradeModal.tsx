@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { CreateTradeInput } from "@/lib/api/trades";
+import { getTodayLocal, getDaysFromToday } from "@/lib/date-utils";
 
 const tradeSchema = z.object({
   ticker: z
@@ -31,13 +32,11 @@ const tradeSchema = z.object({
 type TradeFormValues = z.infer<typeof tradeSchema>;
 
 function defaultExpiry(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 45);
-  return d.toISOString().slice(0, 10);
+  return getDaysFromToday(45);
 }
 
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return getTodayLocal();
 }
 
 interface AddTradeModalProps {
