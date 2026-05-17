@@ -136,19 +136,19 @@ export default function RollTradeModal({
             </span>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-3">
-            <div className="rounded-xl border border-gray-200 bg-white p-3">
+            <div className="rounded-xl border border-gray-200 bg-white p-3 min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Strike</p>
-              <p className="mt-1 text-3xl font-semibold text-gray-900">${trade.strike.toFixed(2)}</p>
+              <p className="mt-1 text-lg font-semibold text-gray-900 truncate">${trade.strike.toFixed(2)}</p>
             </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-3">
+            <div className="rounded-xl border border-gray-200 bg-white p-3 min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Premium</p>
-              <p className="mt-1 text-3xl font-semibold text-emerald-600">
+              <p className="mt-1 text-lg font-semibold text-emerald-600 truncate">
                 +${(trade.premium * trade.contracts * 100).toFixed(2)}
               </p>
             </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-3">
+            <div className="rounded-xl border border-gray-200 bg-white p-3 min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Expires</p>
-              <p className="mt-1 text-3xl font-semibold text-gray-900">{trade.expiry}</p>
+              <p className="mt-1 text-sm font-semibold text-gray-900 truncate">{trade.expiry}</p>
             </div>
           </div>
         </div>
