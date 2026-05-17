@@ -78,6 +78,17 @@ interface WheelSummary extends CycleSummary {
   trades: Trade[];
 }
 
+function deriveWheelState(wheelTrades: Trade[], cycleState: string): string {
+  const hasOpen = wheelTrades.some((t) => t.status === "OPEN");
+  if (hasOpen) return cycleState.startsWith("CC") ? cycleState : "CSP_OPEN";
+  // PUT was assigned → user holds stock, not completed
+  const hasAssigned = wheelTrades.some((t) => t.status === "ASSIGNED" && t.option_type === "PUT");
+  if (hasAssigned) return "STOCK_HELD";
+  // Backend explicitly says stock is held
+  if (cycleState === "STOCK_HELD" || cycleState === "CC_OPEN") return cycleState;
+  return "EXIT";
+}
+
 function splitCycleIntoWheels(cycle: CycleSummary, linkedTrades: Trade[]): WheelSummary[] {
   const sorted = linkedTrades
     .slice()
@@ -86,16 +97,16 @@ function splitCycleIntoWheels(cycle: CycleSummary, linkedTrades: Trade[]): Wheel
     return [{ ...cycle, source_cycle_id: cycle.id, trades: [] }];
   }
 
+  // A new wheel starts only at a PUT that is NOT a roll continuation.
+  // Rolled legs (rolled_from_id set) belong to the same wheel as their parent.
   const putStartIndexes = sorted
-    .map((trade, index) => (trade.option_type === "PUT" ? index : -1))
+    .map((trade, index) =>
+      trade.option_type === "PUT" && !trade.rolled_from_id ? index : -1
+    )
     .filter((index) => index >= 0);
+
   if (putStartIndexes.length <= 1) {
-    const hasOpenTrade = sorted.some((t) => t.status === "OPEN");
-    // Derive completed state from trade statuses so that expiring/closing the last
-    // open leg moves the cycle out of "Active" even when the backend state hasn't
-    // been updated yet. Preserve STOCK_HELD — the user still holds shares.
-    const derivedState =
-      !hasOpenTrade && cycle.state !== "STOCK_HELD" ? "EXIT" : cycle.state;
+    const derivedState = deriveWheelState(sorted, cycle.state);
     return [{ ...cycle, source_cycle_id: cycle.id, trades: sorted, state: derivedState }];
   }
 
@@ -103,10 +114,11 @@ function splitCycleIntoWheels(cycle: CycleSummary, linkedTrades: Trade[]): Wheel
     const endIndex = putStartIndexes[idx + 1] ?? sorted.length;
     const wheelTrades = sorted.slice(startIndex, endIndex);
     const latestTradeDate = wheelTrades[wheelTrades.length - 1]?.trade_date ?? cycle.updated_at;
+    const derivedState = deriveWheelState(wheelTrades, cycle.state);
     return {
       ...cycle,
       id: `${cycle.id}:${idx}`,
-      state: wheelTrades.some((trade) => trade.status === "OPEN") ? "CSP_OPEN" : "EXIT",
+      state: derivedState,
       created_at: wheelTrades[0]?.trade_date ?? cycle.created_at,
       updated_at: latestTradeDate,
       source_cycle_id: cycle.id,
