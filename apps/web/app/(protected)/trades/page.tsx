@@ -390,7 +390,7 @@ export default function TradesPage() {
               premium: input.new_premium_per_share,
               contracts: rollingTrade.contracts,
               status: "OPEN",
-              ...(Number.isFinite(input.fees) && input.fees > 0 ? { commission_fee: input.fees } : {}),
+              ...(input.fees != null && Number.isFinite(input.fees) && input.fees > 0 ? { commission_fee: input.fees } : {}),
               rolled_from_id: rollingTrade.id,
               cycle_id: rollingTrade.cycle_id ?? null,
             } as CreateTradeInput);
