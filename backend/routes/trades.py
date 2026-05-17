@@ -19,8 +19,15 @@ AUTO_ATTACH_CALL_STATES = frozenset({"STOCK_HELD", "CC_OPEN"})
 
 
 def _sum_chain_premium(trade: Trade, user_id: str) -> Decimal:
-    """Walk the rolled_from_id chain upward and sum net premiums from all ROLLED ancestors."""
-    total = Decimal("0")
+    """Walk the rolled_from_id chain and return net prior-roll premium per share.
+
+    Net = sum(premiums) − sum(commission_fees) / shares across all ROLLED ancestors.
+    Commission fees from prior roll legs increase cost basis, so we subtract them
+    from the premium credit before storing in prior_roll_premium_per_share.
+    """
+    total_premium = Decimal("0")
+    total_fees = Decimal("0")
+    shares = Decimal(str(int(trade.contracts) * 100))
     seen = set()
     current_id = trade.rolled_from_id
     while current_id and current_id not in seen:
@@ -28,11 +35,13 @@ def _sum_chain_premium(trade: Trade, user_id: str) -> Decimal:
         ancestor = Trade.query.filter_by(id=current_id, user_id=user_id).first()
         if not ancestor:
             break
-        # Only count premium from legs that were explicitly rolled (not e.g. closed/expired).
         if ancestor.status == "ROLLED":
-            total += Decimal(str(ancestor.premium))
+            total_premium += Decimal(str(ancestor.premium))
+            total_fees += Decimal(str(ancestor.commission_fee or 0))
         current_id = ancestor.rolled_from_id
-    return total
+    if shares <= 0:
+        return Decimal("0")
+    return total_premium - (total_fees / shares)
 
 
 def register_trades_routes(trades_bp):
