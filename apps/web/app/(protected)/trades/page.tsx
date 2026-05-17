@@ -11,6 +11,7 @@ import {
   type CreateTradeInput,
   type Trade,
   type TradeStatus,
+  type UpdateTradeInput,
 } from "@/lib/api/trades";
 import { useProtectedAuth } from "../auth-context";
 import AddTradeModal from "../dashboard/components/AddTradeModal";
@@ -319,6 +320,9 @@ export default function TradesPage() {
               ...(input.fees_on_assignment !== undefined
                 ? { fees_on_assignment: input.fees_on_assignment }
                 : {}),
+              ...(input.prior_roll_premium_per_share !== undefined
+                ? { prior_roll_premium_per_share: input.prior_roll_premium_per_share }
+                : {}),
               ...(input.notes?.trim()
                 ? {
                     notes: [assigningTrade.notes?.trim(), input.notes.trim()]
@@ -368,18 +372,35 @@ export default function TradesPage() {
               ? [rollingTrade.notes?.trim(), input.notes.trim()].filter(Boolean).join("\n")
               : undefined;
 
-            const updated = await updateTrade(token, rollingTrade.id, {
+            // Step 1: mark original trade ROLLED — keep original strike/expiry/premium intact
+            const rolledOriginal = await updateTrade(token, rollingTrade.id, {
               status: "ROLLED",
+              rolled_at: input.trade_date,
+              ...(mergedNotes ? { notes: mergedNotes } : {}),
+            } as UpdateTradeInput);
+
+            // Step 2: create new OPEN trade for the new leg, linked via rolled_from_id.
+            // Always pass cycle_id (null if original had none) so backend doesn't auto-create a new cycle.
+            const newLeg = await createTrade(token, {
+              ticker: rollingTrade.ticker,
+              option_type: rollingTrade.option_type as "PUT" | "CALL",
               strike: input.new_strike,
               expiry: input.new_expiry,
-              premium: netPremiumPerShare,
-              rolled_at: input.trade_date,
-              ...(Number.isFinite(input.fees) ? { commission_fee: input.fees } : {}),
-              ...(mergedNotes ? { notes: mergedNotes } : {}),
-            });
-            setAllTrades((prev) => prev.map((t) => (t.id === rollingTrade.id ? updated : t)));
+              trade_date: input.trade_date,
+              premium: input.new_premium_per_share,
+              contracts: rollingTrade.contracts,
+              status: "OPEN",
+              ...(Number.isFinite(input.fees) && input.fees > 0 ? { commission_fee: input.fees } : {}),
+              rolled_from_id: rollingTrade.id,
+              cycle_id: rollingTrade.cycle_id ?? null,
+            } as CreateTradeInput);
+
+            setAllTrades((prev) => [
+              ...prev.map((t) => (t.id === rollingTrade.id ? rolledOriginal : t)),
+              newLeg,
+            ]);
             setRollingTrade(null);
-            setSaveSuccess("Trade rolled successfully.");
+            setSaveSuccess("Trade rolled successfully. New leg added as OPEN position.");
           } catch (err) {
             setSaveError(err instanceof Error ? err.message : "Failed to roll trade.");
             throw err;

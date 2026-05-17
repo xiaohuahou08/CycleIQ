@@ -13,7 +13,14 @@ from backend.models.trade import Trade
 
 
 def apply_stock_cost_basis(trade: Trade) -> None:
-    """Persist `stock_cost_basis_per_share` for assigned CSP; clear otherwise."""
+    """Persist `stock_cost_basis_per_share` for assigned CSP; clear otherwise.
+
+    Formula (per share):
+        cost_basis = strike − premium_this_leg − prior_roll_premium + (opening_fees + assign_fees) / shares
+
+    `prior_roll_premium_per_share` accumulates net premium collected from any
+    rolls before the final assignment leg (e.g. rolling from $375 → $390 strike).
+    """
     if trade.option_type != "PUT" or trade.status != "ASSIGNED":
         trade.stock_cost_basis_per_share = None
         return
@@ -23,10 +30,11 @@ def apply_stock_cost_basis(trade: Trade) -> None:
         return
     assignment_px = Decimal(str(trade.strike))
     premium_ps = Decimal(str(trade.premium))
+    prior_roll_ps = Decimal(str(trade.prior_roll_premium_per_share or 0))
     opening_fees_total = Decimal(str(trade.commission_fee or 0))
     assign_fees_total = Decimal(str(trade.fees_on_assignment or 0))
     fees_per_share = (opening_fees_total + assign_fees_total) / Decimal(shares)
-    per_share = assignment_px - premium_ps + fees_per_share
+    per_share = assignment_px - premium_ps - prior_roll_ps + fees_per_share
     trade.stock_cost_basis_per_share = float(
         per_share.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
     )

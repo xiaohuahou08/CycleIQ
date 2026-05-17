@@ -9,11 +9,30 @@ from backend.models import db
 from backend.models.trade import ALLOWED_EXPIRE_TYPES, ALLOWED_TRADE_STATUSES, Trade
 from backend.models.wheel_cycle import WheelCycle
 from backend.services.cycle_fsm import append_transition, apply_api_event, replay_cycle
+from decimal import Decimal
+
 from backend.services.trade_cost_basis import apply_stock_cost_basis
 from cycleiq.wheel_fsm import InvalidTransitionError
 
 AUTO_ATTACH_PUT_STATES = frozenset({"IDLE"})
 AUTO_ATTACH_CALL_STATES = frozenset({"STOCK_HELD", "CC_OPEN"})
+
+
+def _sum_chain_premium(trade: Trade, user_id: str) -> Decimal:
+    """Walk the rolled_from_id chain upward and sum net premiums from all ROLLED ancestors."""
+    total = Decimal("0")
+    seen = set()
+    current_id = trade.rolled_from_id
+    while current_id and current_id not in seen:
+        seen.add(current_id)
+        ancestor = Trade.query.filter_by(id=current_id, user_id=user_id).first()
+        if not ancestor:
+            break
+        # Only count premium from legs that were explicitly rolled (not e.g. closed/expired).
+        if ancestor.status == "ROLLED":
+            total += Decimal(str(ancestor.premium))
+        current_id = ancestor.rolled_from_id
+    return total
 
 
 def register_trades_routes(trades_bp):
@@ -46,11 +65,16 @@ def register_trades_routes(trades_bp):
                 return jsonify({"error": f"Missing required field: {field}"}), 400
 
         ticker = str(data["ticker"]).strip().upper()
+        # If caller explicitly passes cycle_id=null (e.g. when creating a rolled leg that has no parent cycle),
+        # honour it and skip auto-attach so all legs in a roll chain share the same cycle state.
+        cycle_id_explicitly_null = "cycle_id" in data and data["cycle_id"] is None
         cycle_id = data.get("cycle_id")
         if cycle_id:
             exists = WheelCycle.query.filter_by(id=cycle_id, user_id=user_id).first()
             if not exists:
                 return jsonify({"error": "cycle_id not found"}), 400
+        elif cycle_id_explicitly_null:
+            cycle_id = None  # caller opted out of auto-attach
         else:
             existing_cycle = (
                 WheelCycle.query.filter_by(user_id=user_id, ticker=ticker)
@@ -94,6 +118,12 @@ def register_trades_routes(trades_bp):
         if status not in ALLOWED_TRADE_STATUSES:
             return jsonify({"error": f"Invalid status; allowed: {sorted(ALLOWED_TRADE_STATUSES)}"}), 400
 
+        rolled_from_id = data.get("rolled_from_id")
+        if rolled_from_id:
+            parent = Trade.query.filter_by(id=rolled_from_id, user_id=user_id).first()
+            if not parent:
+                return jsonify({"error": "rolled_from_id not found"}), 400
+
         trade = Trade(
             user_id=user_id,
             cycle_id=cycle_id,
@@ -110,6 +140,7 @@ def register_trades_routes(trades_bp):
             contracts=int(data.get("contracts", 1)),
             status=status,
             notes=data.get("notes"),
+            rolled_from_id=rolled_from_id or None,
         )
         db.session.add(trade)
 
@@ -167,6 +198,21 @@ def register_trades_routes(trades_bp):
         if "fees_on_assignment" in data:
             fv = data["fees_on_assignment"]
             trade.fees_on_assignment = float(fv) if fv is not None else None
+        if "prior_roll_premium_per_share" in data:
+            pv = data["prior_roll_premium_per_share"]
+            trade.prior_roll_premium_per_share = float(pv) if pv is not None else None
+        if "rolled_from_id" in data:
+            rfid = data["rolled_from_id"]
+            if rfid is None:
+                trade.rolled_from_id = None
+            else:
+                parent = Trade.query.filter_by(id=rfid, user_id=user_id).first()
+                if not parent:
+                    return jsonify({"error": "rolled_from_id not found"}), 400
+                trade.rolled_from_id = rfid
+                # Inherit cycle_id from parent chain if this trade has none.
+                if trade.cycle_id is None and parent.cycle_id:
+                    trade.cycle_id = parent.cycle_id
         if "contracts" in data:
             trade.contracts = int(data["contracts"])
         if "delta" in data:
@@ -234,6 +280,13 @@ def register_trades_routes(trades_bp):
             if st != "EXPIRED":
                 trade.expired_at = None
                 trade.expire_type = None
+
+            # On assignment, auto-accumulate roll premiums from the rolled_from_id chain
+            # (only if caller didn't supply prior_roll_premium_per_share explicitly).
+            if st == "ASSIGNED" and trade.option_type == "PUT" and "prior_roll_premium_per_share" not in data:
+                chain_premium = _sum_chain_premium(trade, user_id)
+                if chain_premium > 0:
+                    trade.prior_roll_premium_per_share = float(chain_premium)
 
         trade.updated_at = datetime.now(timezone.utc)
         apply_stock_cost_basis(trade)

@@ -22,6 +22,10 @@ export interface Trade {
   fees_on_assignment?: number | null;
   /** CSP assigned: approximate net stock cost/share (stored). */
   stock_cost_basis_per_share?: number | null;
+  /** Net premium/share collected from prior rolls (e.g. 375→390) — reduces cost basis. */
+  prior_roll_premium_per_share?: number | null;
+  /** ID of the preceding ROLLED trade in a roll chain (self-referential). */
+  rolled_from_id?: string | null;
   contracts: number;
   delta?: number;
   status: TradeStatus;
@@ -46,10 +50,14 @@ export interface CreateTradeInput {
   delta?: number;
   status: TradeStatus;
   notes?: string;
+  rolled_from_id?: string | null;
+  cycle_id?: string | null;
 }
 
 export type UpdateTradeInput = Partial<CreateTradeInput> & {
   fees_on_assignment?: number | null;
+  prior_roll_premium_per_share?: number | null;
+  rolled_from_id?: string | null;
   closed_at?: string | null;
   assigned_at?: string | null;
   called_away_at?: string | null;

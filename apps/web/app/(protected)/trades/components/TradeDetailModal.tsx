@@ -258,14 +258,20 @@ export default function TradeDetailModal({
 
   if (!trade) return null;
 
-  /* roll history */
-  const cycleChain =
-    trade.cycle_id
-      ? allTrades
-          .filter((t) => t.cycle_id === trade.cycle_id)
-          .sort((a, b) => a.trade_date.localeCompare(b.trade_date))
-      : [trade];
-  const showRollHistory = cycleChain.length > 1 && cycleChain.some((t) => t.status === "ROLLED");
+  /* roll history — walk rolled_from_id chain backwards to build ancestor list */
+  const rollChain = React.useMemo(() => {
+    const chain: Trade[] = [trade];
+    const byId = new Map(allTrades.map((t) => [t.id, t]));
+    let cur = trade.rolled_from_id ? byId.get(trade.rolled_from_id) : undefined;
+    const seen = new Set<string>([trade.id]);
+    while (cur && !seen.has(cur.id)) {
+      seen.add(cur.id);
+      chain.unshift(cur);
+      cur = cur.rolled_from_id ? byId.get(cur.rolled_from_id) : undefined;
+    }
+    return chain;
+  }, [trade, allTrades]);
+  const showRollHistory = rollChain.length > 1;
 
   /* metrics */
   const cap = capitalAtRisk(trade);
@@ -449,13 +455,19 @@ export default function TradeDetailModal({
                   <IcRefresh />
                   Roll History
                 </div>
-                {cycleChain.map((t, i) => {
-                  const isLast = i === cycleChain.length - 1;
+                {rollChain.map((t, i) => {
+                  const isLast = i === rollChain.length - 1;
                   const label = i === 0 ? "Original" : isLast ? "Current" : `Roll ${i}`;
                   return (
                     <RollItem key={t.id} trade={t} label={label} isLast={isLast} />
                   );
                 })}
+                {trade.status === "ASSIGNED" && trade.prior_roll_premium_per_share != null && (
+                  <div className="mt-2 rounded-lg border border-orange-100 bg-orange-50 px-3 py-2 text-[12px] text-orange-800">
+                    <span className="font-semibold">Accumulated roll premium:</span>{" "}
+                    ${trade.prior_roll_premium_per_share.toFixed(4)}/share — already deducted from stock cost basis.
+                  </div>
+                )}
               </div>
             )}
 

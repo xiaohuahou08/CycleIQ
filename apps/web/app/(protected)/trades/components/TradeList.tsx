@@ -357,7 +357,7 @@ function TradeRow({
   }, [menuOpen]);
 
   const exp = fmtExpirationRibbon(trade.expiry);
-  const COLS = 12;
+  const COLS = 13;
 
   return (
     <>
@@ -390,7 +390,7 @@ function TradeRow({
             : <span className="text-gray-300">—</span>}
         </td>
         <td className="px-4 py-3 text-[12px]">
-          {price != null ? (() => {
+          {trade.status === "OPEN" && price != null ? (() => {
             const m = computeMoneyness(trade, price);
             return (
               <span className="inline-flex items-center gap-1.5">
@@ -411,9 +411,20 @@ function TradeRow({
         >
           {exp.label}
         </td>
-        <td className="px-4 py-3 tabular-nums text-gray-700">{getDte(trade.expiry)}</td>
+        <td className="px-4 py-3 tabular-nums text-gray-700">
+          {trade.status === "OPEN" ? getDte(trade.expiry) : <span className="text-gray-300">—</span>}
+        </td>
         <td className="px-4 py-3 text-[13px] font-semibold tabular-nums text-[#16a34a]">
           {fmtPremiumTotal(trade)}
+        </td>
+        <td className="px-4 py-3 tabular-nums text-[13px] text-gray-800">
+          {trade.status === "ASSIGNED" && trade.option_type === "PUT" && trade.stock_cost_basis_per_share != null ? (
+            <span className="font-medium text-orange-700">
+              {fmtStockCostPerShare(trade)}
+            </span>
+          ) : (
+            <span className="text-gray-300">—</span>
+          )}
         </td>
         <td className="px-4 py-3">
           <span
@@ -637,6 +648,7 @@ export default function TradeList({
             {th("expiry", "left", "Expiration")}
             {th("dte", "left", "DTE")}
             {th("premium", "left", "Premium")}
+            {thInactive("left", "Stock Cost")}
             {thInactive("left", "Status")}
             {th("roi", "right", "Roi (ANN.)")}
             {thInactive("right", "")}
@@ -649,7 +661,7 @@ export default function TradeList({
             <tbody key={weekKey}>
               <tr className="bg-[#f3f4f6]/90">
                 <td
-                  colSpan={12}
+                  colSpan={13}
                   className="border-l-[3px] border-l-[#3b82f6] px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-[#374151]"
                 >
                   {formatWeekLabel(weekKey)}
