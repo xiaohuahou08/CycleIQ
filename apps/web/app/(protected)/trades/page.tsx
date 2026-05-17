@@ -380,7 +380,8 @@ export default function TradesPage() {
             } as UpdateTradeInput);
 
             // Step 2: create new OPEN trade for the new leg, linked via rolled_from_id.
-            // Always pass cycle_id (null if original had none) so backend doesn't auto-create a new cycle.
+            // If the original had a cycle, pass it so the new leg joins the same cycle.
+            // If no cycle, omit cycle_id so the backend auto-creates one for the new leg.
             const newLeg = await createTrade(token, {
               ticker: rollingTrade.ticker,
               option_type: rollingTrade.option_type as "PUT" | "CALL",
@@ -392,11 +393,24 @@ export default function TradesPage() {
               status: "OPEN",
               ...(input.fees != null && Number.isFinite(input.fees) && input.fees > 0 ? { commission_fee: input.fees } : {}),
               rolled_from_id: rollingTrade.id,
-              cycle_id: rollingTrade.cycle_id ?? null,
+              ...(rollingTrade.cycle_id ? { cycle_id: rollingTrade.cycle_id } : {}),
             } as CreateTradeInput);
 
+            // If the original had no cycle and the new leg got one, back-fill the ROLLED trade
+            // so both legs share the same cycle and appear together on the cycles page.
+            let finalRolled = rolledOriginal;
+            if (!rollingTrade.cycle_id && newLeg.cycle_id) {
+              try {
+                finalRolled = await updateTrade(token, rolledOriginal.id, {
+                  cycle_id: newLeg.cycle_id,
+                } as UpdateTradeInput);
+              } catch {
+                // non-fatal: cycles page may not show both legs together, but data is intact
+              }
+            }
+
             setAllTrades((prev) => [
-              ...prev.map((t) => (t.id === rollingTrade.id ? rolledOriginal : t)),
+              ...prev.map((t) => (t.id === rollingTrade.id ? finalRolled : t)),
               newLeg,
             ]);
             setRollingTrade(null);
