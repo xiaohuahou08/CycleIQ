@@ -112,15 +112,31 @@ def register_dashboard_routes(dashboard_bp):
         closed_trades = [t for t in trades if t.status != "OPEN"]
 
         total_premium = sum(_premium_total(t) for t in trades)
-        total_capital_invested = sum(float(t.strike) * int(t.contracts) * 100 for t in open_trades)
-        realized_statuses = {"CLOSED", "EXPIRED", "ROLLED", "CALLED_AWAY"}
-        realized_trades = [t for t in closed_trades if t.status in realized_statuses]
+        def _capital_at_risk(t: Trade) -> float:
+            """Capital deployed per trade — use stock cost basis for CC if available."""
+            if t.option_type == "CALL" and getattr(t, "stock_cost_basis_per_share", None) is not None:
+                return float(t.stock_cost_basis_per_share) * int(t.contracts) * 100
+            return float(t.strike) * int(t.contracts) * 100
+
+        total_capital_invested = sum(_capital_at_risk(t) for t in open_trades)
+
+        # ROLLED = intermediate leg (premium realized, but position not yet terminal).
+        # Include in P&L (premium was collected) but exclude from win-rate denominator.
+        pnl_statuses = {"CLOSED", "EXPIRED", "ROLLED", "CALLED_AWAY"}
+        realized_trades = [t for t in closed_trades if t.status in pnl_statuses]
         realized_pnl = sum(_realized_cashflow(t) for t in realized_trades)
         active_trades = len(open_trades)
 
-        profitable_statuses = {"EXPIRED", "CLOSED", "ROLLED", "CALLED_AWAY"}
-        profitable_count = len([t for t in realized_trades if t.status in profitable_statuses])
-        win_rate = (profitable_count / len(realized_trades) * 100.0) if realized_trades else 0.0
+        # Win rate: terminal outcomes only (ROLLED is not terminal — a new leg follows it).
+        # Win = expired worthless, called away at target, or closed at a net profit.
+        terminal_statuses = {"CLOSED", "EXPIRED", "ASSIGNED", "CALLED_AWAY"}
+        terminal_trades = [t for t in closed_trades if t.status in terminal_statuses]
+        wins = [
+            t for t in terminal_trades
+            if t.status in ("EXPIRED", "CALLED_AWAY")
+            or (t.status == "CLOSED" and _realized_cashflow(t) > 0)
+        ]
+        win_rate = (len(wins) / len(terminal_trades) * 100.0) if terminal_trades else 0.0
 
         today = datetime.utcnow().date()
         if trades:
@@ -156,9 +172,7 @@ def register_dashboard_routes(dashboard_bp):
         else:
             open_premium_annualized_yield = 0.0
 
-        closed_capital_invested = sum(
-            float(t.strike) * int(t.contracts) * 100 for t in realized_trades
-        )
+        closed_capital_invested = sum(_capital_at_risk(t) for t in realized_trades)
         if realized_trades and closed_capital_invested > 0:
             avg_closed_holding_days = (
                 sum(_days_between(_completion_date(t), t.trade_date) for t in realized_trades)
