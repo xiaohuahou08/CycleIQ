@@ -136,10 +136,12 @@ export default function AssignTradeModal({
     }
   };
 
+  const modalTitle = trade?.option_type === "CALL" ? "Call Away" : "Mark as Assigned";
+
   return (
     <TradeModalShell
       open={open}
-      title="Mark as Assigned"
+      title={modalTitle}
       subtitle={subtitle}
       headerIcon={<PackageIcon />}
       onClose={onClose}
@@ -204,7 +206,7 @@ export default function AssignTradeModal({
             htmlFor="assign_price"
             className="mb-1 block text-sm font-medium text-gray-700"
           >
-            Assignment Price
+            {trade.option_type === "CALL" ? "Call Away Price" : "Assignment Price"}
           </label>
           <div className="relative">
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
@@ -354,7 +356,7 @@ export default function AssignTradeModal({
         <ModalActionButtons
           onCancel={onClose}
           onSubmit={handleSubmit}
-          submitLabel="Mark Assigned"
+          submitLabel={trade.option_type === "CALL" ? "Mark Called Away" : "Mark Assigned"}
           submittingLabel="Saving..."
           isSubmitting={isSubmitting}
           submitTone="blue"

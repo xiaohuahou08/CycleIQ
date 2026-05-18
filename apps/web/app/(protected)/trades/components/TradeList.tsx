@@ -475,48 +475,52 @@ function TradeRow({
               >
                 Edit
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onAction("buy_to_close");
-                }}
-                className="block w-full px-3 py-2 text-left hover:bg-gray-50"
-              >
-                Buy to Close
-              </button>
-              {isExpiredEligible(trade) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onAction("expire");
-                  }}
-                  className="block w-full px-3 py-2 text-left hover:bg-gray-50"
-                >
-                  Expire
-                </button>
+              {trade.status !== "ASSIGNED" && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onAction("buy_to_close");
+                    }}
+                    className="block w-full px-3 py-2 text-left hover:bg-gray-50"
+                  >
+                    Buy to Close
+                  </button>
+                  {isExpiredEligible(trade) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onAction("expire");
+                      }}
+                      className="block w-full px-3 py-2 text-left hover:bg-gray-50"
+                    >
+                      Expire
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onAction("assign");
+                    }}
+                    className="block w-full px-3 py-2 text-left hover:bg-gray-50"
+                  >
+                    {trade.option_type === "CALL" ? "Call Away" : "Assign"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onAction("roll");
+                    }}
+                    className="block w-full px-3 py-2 text-left hover:bg-gray-50"
+                  >
+                    Roll
+                  </button>
+                </>
               )}
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onAction("assign");
-                }}
-                className="block w-full px-3 py-2 text-left hover:bg-gray-50"
-              >
-                {trade.option_type === "CALL" ? "Call Away" : "Assign"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onAction("roll");
-                }}
-                className="block w-full px-3 py-2 text-left hover:bg-gray-50"
-              >
-                Roll
-              </button>
               <button
                 type="button"
                 onClick={() => {

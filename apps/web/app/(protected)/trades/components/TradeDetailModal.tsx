@@ -474,13 +474,17 @@ export default function TradeDetailModal({
             {/* ── primary actions ── */}
             <div className="flex flex-wrap justify-center gap-2">
               {(
-                [
-                  { label: "Edit", Icon: IcPencil, onClick: () => { onClose(); onEdit(trade); } },
-                  { label: "Roll", Icon: IcRefresh, onClick: () => { onClose(); onAction(trade, "roll"); } },
-                  { label: "Buy to Close", Icon: IcArrows, onClick: () => { onClose(); onAction(trade, "buy_to_close"); } },
-                  { label: trade.option_type === "CALL" ? "Call Away" : "Assign", Icon: IcCheck, onClick: () => { onClose(); onAction(trade, "assign"); } },
-                  { label: "Expire", Icon: IcExpire, onClick: () => { onClose(); onAction(trade, "expire"); } },
-                ] as const
+                trade.status === "ASSIGNED"
+                  ? [
+                      { label: "Edit", Icon: IcPencil, onClick: () => { onClose(); onEdit(trade); } },
+                    ]
+                  : [
+                      { label: "Edit", Icon: IcPencil, onClick: () => { onClose(); onEdit(trade); } },
+                      { label: "Roll", Icon: IcRefresh, onClick: () => { onClose(); onAction(trade, "roll"); } },
+                      { label: "Buy to Close", Icon: IcArrows, onClick: () => { onClose(); onAction(trade, "buy_to_close"); } },
+                      { label: trade.option_type === "CALL" ? "Call Away" : "Assign", Icon: IcCheck, onClick: () => { onClose(); onAction(trade, "assign"); } },
+                      { label: "Expire", Icon: IcExpire, onClick: () => { onClose(); onAction(trade, "expire"); } },
+                    ]
               ).map(({ label, Icon, onClick }) => (
                 <button
                   key={label}
