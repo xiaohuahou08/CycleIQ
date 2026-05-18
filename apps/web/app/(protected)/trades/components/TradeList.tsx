@@ -505,7 +505,7 @@ function TradeRow({
                 }}
                 className="block w-full px-3 py-2 text-left hover:bg-gray-50"
               >
-                Assign
+                {trade.option_type === "CALL" ? "Call Away" : "Assign"}
               </button>
               <button
                 type="button"

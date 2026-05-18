@@ -36,6 +36,7 @@ class Trade(db.Model):
     fees_on_assignment: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     stock_cost_basis_per_share: Mapped[float | None] = mapped_column(Numeric(14, 4), nullable=True)
     prior_roll_premium_per_share: Mapped[float | None] = mapped_column(Numeric(10, 4), nullable=True)
+    buyback_cost_per_share: Mapped[float | None] = mapped_column(Numeric(10, 4), nullable=True)
     delta: Mapped[float | None] = mapped_column(Numeric(5, 3), nullable=True)
     contracts: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="OPEN")
@@ -84,6 +85,9 @@ class Trade(db.Model):
             else None,
             "prior_roll_premium_per_share": float(self.prior_roll_premium_per_share)
             if self.prior_roll_premium_per_share is not None
+            else None,
+            "buyback_cost_per_share": float(self.buyback_cost_per_share)
+            if self.buyback_cost_per_share is not None
             else None,
             "rolled_from_id": self.rolled_from_id,
             "delta": float(self.delta) if self.delta is not None else None,

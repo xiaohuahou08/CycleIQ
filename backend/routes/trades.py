@@ -36,7 +36,9 @@ def _sum_chain_premium(trade: Trade, user_id: str) -> Decimal:
         if not ancestor:
             break
         if ancestor.status == "ROLLED":
-            total_premium += Decimal(str(ancestor.premium))
+            # Net premium = premium collected − buyback paid to close that leg.
+            buyback = Decimal(str(getattr(ancestor, "buyback_cost_per_share", None) or 0))
+            total_premium += Decimal(str(ancestor.premium)) - buyback
             total_fees += Decimal(str(ancestor.commission_fee or 0))
         current_id = ancestor.rolled_from_id
     if shares <= 0:
@@ -153,26 +155,44 @@ def register_trades_routes(trades_bp):
         )
         db.session.add(trade)
 
-        # Auto-drive cycle state for newly opened CSP trades.
-        if trade.cycle_id and option_type == "PUT" and status == "OPEN":
+        if trade.cycle_id and status == "OPEN":
             cycle = WheelCycle.query.filter_by(id=trade.cycle_id, user_id=user_id).first()
-            if cycle and cycle.state == "IDLE":
-                try:
-                    fsm_cycle = replay_cycle(cycle.ticker, cycle.transition_log)
-                    transition = apply_api_event(
-                        fsm_cycle,
-                        "sell_csp",
-                        {
-                            "strike": float(trade.strike),
-                            "expiry": trade.expiry.isoformat(),
-                            "premium": float(trade.premium),
-                        },
-                    )
-                    cycle.transition_log = append_transition(cycle.transition_log, transition)
-                    cycle.state = fsm_cycle.state.value
-                except (InvalidTransitionError, ValueError, KeyError, TypeError):
-                    # Keep trade creation robust even if cycle FSM replay/transition fails.
-                    pass
+            if cycle:
+                # Auto-drive CSP open: IDLE → CSP_OPEN
+                if option_type == "PUT" and cycle.state == "IDLE":
+                    try:
+                        fsm_cycle = replay_cycle(cycle.ticker, cycle.transition_log)
+                        transition = apply_api_event(
+                            fsm_cycle,
+                            "sell_csp",
+                            {
+                                "strike": float(trade.strike),
+                                "expiry": trade.expiry.isoformat(),
+                                "premium": float(trade.premium),
+                            },
+                        )
+                        cycle.transition_log = append_transition(cycle.transition_log, transition)
+                        cycle.state = fsm_cycle.state.value
+                    except (InvalidTransitionError, ValueError, KeyError, TypeError):
+                        pass
+
+                # Auto-drive CC open: STOCK_HELD → CC_OPEN
+                elif option_type == "CALL" and cycle.state == "STOCK_HELD":
+                    try:
+                        fsm_cycle = replay_cycle(cycle.ticker, cycle.transition_log)
+                        transition = apply_api_event(
+                            fsm_cycle,
+                            "sell_cc",
+                            {
+                                "strike": float(trade.strike),
+                                "expiry": trade.expiry.isoformat(),
+                                "premium": float(trade.premium),
+                            },
+                        )
+                        cycle.transition_log = append_transition(cycle.transition_log, transition)
+                        cycle.state = fsm_cycle.state.value
+                    except (InvalidTransitionError, ValueError, KeyError, TypeError):
+                        pass
 
         db.session.commit()
         return jsonify(trade.to_api_dict()), 201
@@ -210,6 +230,9 @@ def register_trades_routes(trades_bp):
         if "prior_roll_premium_per_share" in data:
             pv = data["prior_roll_premium_per_share"]
             trade.prior_roll_premium_per_share = float(pv) if pv is not None else None
+        if "buyback_cost_per_share" in data:
+            bv = data["buyback_cost_per_share"]
+            trade.buyback_cost_per_share = float(bv) if bv is not None else None
         if "rolled_from_id" in data:
             rfid = data["rolled_from_id"]
             if rfid is None:

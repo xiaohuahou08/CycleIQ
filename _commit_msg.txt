@@ -1,0 +1,15 @@
+feat: CC trades linked to wheel cycle, cost basis adjusted for CC premiums and roll buyback
+
+- TradeList/TradeDetailModal: rename Assign action to Call Away for CC trades
+- AddTradeModal: warn when creating CC without assigned position; auto-link CC to
+  existing wheel cycle (cycle_id passed explicitly); green confirmation banner when cycle found
+- Dashboard insights: effective stock cost basis after expired/closed CC reductions;
+  stock sale P&L when CC is called away; new KPIs total_stock_effective_cost,
+  total_cc_basis_reduction, stock_sale_pnl; new stock position section in DashboardInsights
+- trades/page.tsx: compute assignedCycleByTicker map from ASSIGNED PUT trades
+- routes/trades.py: auto-drive sell_cc FSM (STOCK_HELD to CC_OPEN) when CC created,
+  handle buyback_cost_per_share in update_trade, fix _sum_chain_premium to deduct buyback
+- dashboard.py: _realized_cashflow deducts buyback cost; ROLLED CCs included in
+  CC basis reduction now that net cashflow is correct
+- Migration 0007: add buyback_cost_per_share column to trades
+- Trade model: add buyback_cost_per_share field

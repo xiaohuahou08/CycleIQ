@@ -170,6 +170,53 @@ export default function DashboardInsights({
         />
       </div>
 
+      {/* ── Stock position section (wheel strategy) ── */}
+      {((kpis?.total_stock_effective_cost ?? 0) > 0 ||
+        (kpis?.total_cc_basis_reduction ?? 0) > 0 ||
+        (kpis?.stock_sale_pnl ?? 0) !== 0) && (
+        <div className="rounded-2xl border border-purple-100 bg-purple-50/40 p-4 shadow-sm">
+          <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-purple-600">
+            Stock Positions — Wheel Cost Basis
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {(kpis?.total_stock_effective_cost ?? 0) > 0 && (
+              <div className="rounded-xl border border-purple-100 bg-white px-4 py-3">
+                <p className="text-[11px] font-medium text-gray-400">Effective Stock Cost</p>
+                <p className="mt-1 text-[20px] font-bold tabular-nums text-purple-700">
+                  {fmtCurrency(kpis?.total_stock_effective_cost ?? 0)}
+                </p>
+                <p className="mt-0.5 text-[11px] text-gray-400">
+                  Held shares at adjusted basis
+                </p>
+              </div>
+            )}
+            {(kpis?.total_cc_basis_reduction ?? 0) > 0 && (
+              <div className="rounded-xl border border-emerald-100 bg-white px-4 py-3">
+                <p className="text-[11px] font-medium text-gray-400">CC Basis Reduction</p>
+                <p className="mt-1 text-[20px] font-bold tabular-nums text-emerald-600">
+                  {fmtCurrency(kpis?.total_cc_basis_reduction ?? 0)}
+                </p>
+                <p className="mt-0.5 text-[11px] text-gray-400">
+                  Expired / closed CC premiums credited
+                </p>
+              </div>
+            )}
+            {(kpis?.stock_sale_pnl ?? 0) !== 0 && (
+              <div className="rounded-xl border border-blue-100 bg-white px-4 py-3">
+                <p className="text-[11px] font-medium text-gray-400">Stock Sale P&amp;L</p>
+                <p className={`mt-1 text-[20px] font-bold tabular-nums ${(kpis?.stock_sale_pnl ?? 0) >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                  {(kpis?.stock_sale_pnl ?? 0) >= 0 ? "+" : "−"}
+                  {fmtCurrency(Math.abs(kpis?.stock_sale_pnl ?? 0))}
+                </p>
+                <p className="mt-0.5 text-[11px] text-gray-400">
+                  From shares called away (strike − cost basis)
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-4">
         <BarChartCard
           title="Daily Premium Income"

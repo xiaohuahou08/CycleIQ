@@ -83,6 +83,32 @@ export default function TradesPage() {
     [allTrades]
   );
 
+  // Tickers that have an assigned (stock-held) position, i.e. CSP that was assigned.
+  const assignedTickers = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          allTrades
+            .filter((t) => t.option_type === "PUT" && t.status === "ASSIGNED")
+            .map((t) => t.ticker)
+        )
+      ),
+    [allTrades]
+  );
+
+  // Map ticker → cycle_id for ASSIGNED PUT trades (most recent per ticker).
+  // Used to explicitly link new CC trades to the correct existing wheel.
+  const assignedCycleByTicker = useMemo(() => {
+    const map: Record<string, string> = {};
+    allTrades
+      .filter((t) => t.option_type === "PUT" && t.status === "ASSIGNED" && t.cycle_id)
+      .sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime())
+      .forEach((t) => {
+        if (t.cycle_id) map[t.ticker] = t.cycle_id;
+      });
+    return map;
+  }, [allTrades]);
+
   // Fetch live prices for all unique tickers whenever the trade list changes.
   useEffect(() => {
     if (tickerSuggestions.length === 0) return;
@@ -271,6 +297,8 @@ export default function TradesPage() {
         }}
         onSave={editingTrade ? onSaveEditedTrade : onSaveTrade}
         tickerSuggestions={tickerSuggestions}
+        assignedTickers={assignedTickers}
+        assignedCycleByTicker={editingTrade ? undefined : assignedCycleByTicker}
         initialValues={
           editingTrade
             ? {
@@ -372,10 +400,12 @@ export default function TradesPage() {
               ? [rollingTrade.notes?.trim(), input.notes.trim()].filter(Boolean).join("\n")
               : undefined;
 
-            // Step 1: mark original trade ROLLED — keep original strike/expiry/premium intact
+            // Step 1: mark original trade ROLLED — store buyback cost so net roll cashflow
+            // (original_premium − buyback) is correctly applied to P&L and cost-basis reduction.
             const rolledOriginal = await updateTrade(token, rollingTrade.id, {
               status: "ROLLED",
               rolled_at: input.trade_date,
+              buyback_cost_per_share: input.buyback_cost_per_share,
               ...(mergedNotes ? { notes: mergedNotes } : {}),
             } as UpdateTradeInput);
 

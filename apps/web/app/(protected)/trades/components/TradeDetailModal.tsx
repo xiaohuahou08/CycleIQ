@@ -478,7 +478,7 @@ export default function TradeDetailModal({
                   { label: "Edit", Icon: IcPencil, onClick: () => { onClose(); onEdit(trade); } },
                   { label: "Roll", Icon: IcRefresh, onClick: () => { onClose(); onAction(trade, "roll"); } },
                   { label: "Buy to Close", Icon: IcArrows, onClick: () => { onClose(); onAction(trade, "buy_to_close"); } },
-                  { label: "Assign", Icon: IcCheck, onClick: () => { onClose(); onAction(trade, "assign"); } },
+                  { label: trade.option_type === "CALL" ? "Call Away" : "Assign", Icon: IcCheck, onClick: () => { onClose(); onAction(trade, "assign"); } },
                   { label: "Expire", Icon: IcExpire, onClick: () => { onClose(); onAction(trade, "expire"); } },
                 ] as const
               ).map(({ label, Icon, onClick }) => (

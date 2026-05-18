@@ -24,6 +24,8 @@ export interface Trade {
   stock_cost_basis_per_share?: number | null;
   /** Net premium/share collected from prior rolls (e.g. 375→390) — reduces cost basis. */
   prior_roll_premium_per_share?: number | null;
+  /** Per-share cost paid to buy back the option when rolling; stored on the ROLLED leg. */
+  buyback_cost_per_share?: number | null;
   /** ID of the preceding ROLLED trade in a roll chain (self-referential). */
   rolled_from_id?: string | null;
   contracts: number;
@@ -57,6 +59,7 @@ export interface CreateTradeInput {
 export type UpdateTradeInput = Partial<CreateTradeInput> & {
   fees_on_assignment?: number | null;
   prior_roll_premium_per_share?: number | null;
+  buyback_cost_per_share?: number | null;
   rolled_from_id?: string | null;
   closed_at?: string | null;
   assigned_at?: string | null;
@@ -91,6 +94,12 @@ export interface DashboardInsights {
     weighted_open_dte: number;
     yearly_income: number;
     daily_avg_income: number;
+    /** Total effective holding cost of stock positions after expired/closed CC premium reductions. */
+    total_stock_effective_cost?: number;
+    /** Cumulative CC premium credited against stock holding cost (expired + closed CC legs). */
+    total_cc_basis_reduction?: number;
+    /** Realised P&L from stock sales when CC legs were called away (strike − initial stock basis). */
+    stock_sale_pnl?: number;
   };
   charts: {
     daily_premium_income: DashboardSeriesPoint[];

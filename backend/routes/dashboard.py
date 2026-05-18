@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from datetime import date, datetime
 
 from flask import jsonify
@@ -21,8 +22,9 @@ def register_dashboard_routes(dashboard_bp):
         return commission + assignment_fees
 
     def _realized_cashflow(t: Trade) -> float:
-        # Net premium cashflow after explicit fees.
-        return _premium_total(t) - _fees_total(t)
+        # Net premium cashflow: premium collected − buyback paid (for ROLLED legs) − explicit fees.
+        buyback_total = float(getattr(t, "buyback_cost_per_share", None) or 0) * int(t.contracts) * 100
+        return _premium_total(t) - _fees_total(t) - buyback_total
 
     def _completion_date(t: Trade) -> date:
         if t.status == "EXPIRED" and t.expired_at is not None:
@@ -112,19 +114,101 @@ def register_dashboard_routes(dashboard_bp):
         closed_trades = [t for t in trades if t.status != "OPEN"]
 
         total_premium = sum(_premium_total(t) for t in trades)
+
+        # ── Per-ticker stock position analysis ──────────────────────────────
+        # For each ticker that has an ASSIGNED PUT (stock held after CSP assignment):
+        #  1. Compute effective cost basis = initial basis − realized CC premium reductions
+        #     (EXPIRED and CLOSED/bought-back CCs reduce the holding cost permanently;
+        #      ROLLED CCs are excluded — their net premium is captured when the new leg settles)
+        #  2. Compute stock sale P&L for CALLED_AWAY CCs:
+        #     gain = (callaway_strike − initial_stock_basis) × shares_called
+        # ─────────────────────────────────────────────────────────────────────
+        by_ticker: dict[str, list] = defaultdict(list)
+        for t in trades:
+            by_ticker[t.ticker].append(t)
+
+        # ticker → effective holding cost per share (initial basis − expired/closed CC reductions)
+        ticker_effective_basis: dict[str, float] = {}
+        # stock gain/loss realised when shares were called away via CC assignment
+        extra_stock_sale_pnl = 0.0
+        # aggregate CC premium credited to held stock positions (for KPI display)
+        total_cc_basis_reduction = 0.0
+        # current total effective cost of still-held stock positions
+        total_stock_effective_cost = 0.0
+
+        for ticker, tt in by_ticker.items():
+            assigned_puts = [
+                t for t in tt
+                if t.option_type == "PUT"
+                and t.status == "ASSIGNED"
+                and t.stock_cost_basis_per_share is not None
+            ]
+            if not assigned_puts:
+                continue
+
+            assigned_shares = sum(int(t.contracts) * 100 for t in assigned_puts)
+            if assigned_shares <= 0:
+                continue
+
+            weighted_initial_basis: float = (
+                sum(
+                    float(t.stock_cost_basis_per_share) * int(t.contracts) * 100
+                    for t in assigned_puts
+                )
+                / assigned_shares
+            )
+
+            # EXPIRED, CLOSED (bought-back), and ROLLED CC legs all reduce the stock cost basis.
+            # ROLLED uses net cashflow (premium − buyback) via _realized_cashflow, so the
+            # debit portion of a debit-roll correctly increases the effective basis instead.
+            # CALLED_AWAY is excluded here — those shares were sold, handled in stock_sale_pnl.
+            basis_reducing_ccs = [
+                t for t in tt
+                if t.option_type == "CALL" and t.status in ("EXPIRED", "CLOSED", "ROLLED")
+            ]
+            cc_reduction_net = sum(_realized_cashflow(t) for t in basis_reducing_ccs)
+            cc_reduction_per_share = cc_reduction_net / assigned_shares
+            effective_basis_per_share = max(0.0, weighted_initial_basis - cc_reduction_per_share)
+            ticker_effective_basis[ticker] = effective_basis_per_share
+
+            # Stock sale P&L: when CC is called away, shares are sold at the strike price.
+            # Gain = (callaway_strike − initial_stock_basis) × shares_called
+            # (The CC option premium is already counted in realized_pnl via _realized_cashflow.)
+            called_away_ccs = [t for t in tt if t.option_type == "CALL" and t.status == "CALLED_AWAY"]
+            called_away_shares = sum(int(t.contracts) * 100 for t in called_away_ccs)
+            for cc in called_away_ccs:
+                shares_called = int(cc.contracts) * 100
+                extra_stock_sale_pnl += (float(cc.strike) - weighted_initial_basis) * shares_called
+
+            remaining_shares = assigned_shares - called_away_shares
+            if remaining_shares > 0:
+                total_cc_basis_reduction += cc_reduction_net
+                total_stock_effective_cost += effective_basis_per_share * remaining_shares
+
+        # ── Capital at risk (per trade) ──────────────────────────────────────
         def _capital_at_risk(t: Trade) -> float:
-            """Capital deployed per trade — use stock cost basis for CC if available."""
-            if t.option_type == "CALL" and getattr(t, "stock_cost_basis_per_share", None) is not None:
-                return float(t.stock_cost_basis_per_share) * int(t.contracts) * 100
+            """Capital deployed per trade.
+            • Open CC legs: use effective stock cost basis (initial − expired CC reductions)
+              so that the dashboard reflects the true current holding cost.
+            • All other trades: use strike notional.
+            """
+            if t.option_type == "CALL":
+                eff_basis = ticker_effective_basis.get(t.ticker)
+                if eff_basis is not None:
+                    return eff_basis * int(t.contracts) * 100
+                if getattr(t, "stock_cost_basis_per_share", None) is not None:
+                    return float(t.stock_cost_basis_per_share) * int(t.contracts) * 100
             return float(t.strike) * int(t.contracts) * 100
 
         total_capital_invested = sum(_capital_at_risk(t) for t in open_trades)
 
+        # ── Realized P&L ────────────────────────────────────────────────────
         # ROLLED = intermediate leg (premium realized, but position not yet terminal).
         # Include in P&L (premium was collected) but exclude from win-rate denominator.
         pnl_statuses = {"CLOSED", "EXPIRED", "ROLLED", "CALLED_AWAY"}
         realized_trades = [t for t in closed_trades if t.status in pnl_statuses]
-        realized_pnl = sum(_realized_cashflow(t) for t in realized_trades)
+        # Add stock gain/loss from shares called away (not captured in option premium alone)
+        realized_pnl = sum(_realized_cashflow(t) for t in realized_trades) + extra_stock_sale_pnl
         active_trades = len(open_trades)
 
         # Win rate: terminal outcomes only (ROLLED is not terminal — a new leg follows it).
@@ -218,6 +302,13 @@ def register_dashboard_routes(dashboard_bp):
                     "weighted_open_dte": round(weighted_open_dte, 2),
                     "yearly_income": round(yearly_income, 2),
                     "daily_avg_income": round(daily_avg, 2),
+                    # ── Stock position metrics (wheel strategy) ──────────────
+                    # Effective total cost of held stock after crediting expired/closed CC premiums
+                    "total_stock_effective_cost": round(total_stock_effective_cost, 2),
+                    # Total CC premium credited to reduce stock holding cost
+                    "total_cc_basis_reduction": round(total_cc_basis_reduction, 2),
+                    # P&L purely from stock sales (shares called away via CC assignment)
+                    "stock_sale_pnl": round(extra_stock_sale_pnl, 2),
                 },
                 "charts": {
                     "daily_premium_income": _series(daily_bucket, 7),

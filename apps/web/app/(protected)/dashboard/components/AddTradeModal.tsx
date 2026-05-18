@@ -94,6 +94,10 @@ interface AddTradeModalProps {
   onClose: () => void;
   onSave: (input: CreateTradeInput) => Promise<void>;
   tickerSuggestions?: string[];
+  /** Tickers that have an assigned (stock-held) position — used to warn when opening a CC. */
+  assignedTickers?: string[];
+  /** Ticker → cycle_id map for ASSIGNED positions — used to auto-link new CC trades. */
+  assignedCycleByTicker?: Record<string, string>;
   initialValues?: Partial<CreateTradeInput>;
   title?: string;
   submitLabel?: string;
@@ -104,6 +108,8 @@ export default function AddTradeModal({
   onClose,
   onSave,
   tickerSuggestions = [],
+  assignedTickers = [],
+  assignedCycleByTicker = {},
   initialValues,
   title = "Add Trade",
   submitLabel = "Save Trade",
@@ -130,6 +136,7 @@ export default function AddTradeModal({
   const [isTickerFocused, setIsTickerFocused] = useState(false);
 
   const tickerValue = (watch("ticker") ?? "").toUpperCase().trim();
+  const optionTypeValue = watch("option_type");
   const premiumValue = watch("premium");
   const contractsValue = watch("contracts");
   const totalReceived = (() => {
@@ -170,8 +177,12 @@ export default function AddTradeModal({
 
   const onSubmit = async (values: TradeFormValues) => {
     const commissionNumber = commissionFees.trim() ? Number(commissionFees) : undefined;
+    const ticker = values.ticker.toUpperCase().trim();
+    // For CC trades, explicitly link to the existing assigned wheel cycle if one exists.
+    const linkedCycleId =
+      values.option_type === "CALL" ? (assignedCycleByTicker[ticker] ?? undefined) : undefined;
     const input: CreateTradeInput = {
-      ticker: values.ticker.toUpperCase().trim(),
+      ticker,
       option_type: values.option_type,
       strike: values.strike,
       expiry: values.expiry,
@@ -186,6 +197,7 @@ export default function AddTradeModal({
       delta: values.delta === "" ? undefined : (values.delta as number | undefined),
       // Keep empty string so Edit can explicitly clear notes.
       notes: values.notes?.trim() ?? "",
+      ...(linkedCycleId ? { cycle_id: linkedCycleId } : {}),
     };
     await onSave(input);
   };
@@ -215,6 +227,17 @@ export default function AddTradeModal({
                 <option value="PUT">Cash Secured Put (CSP)</option>
                 <option value="CALL">Covered Call (CC)</option>
               </select>
+              {optionTypeValue === "CALL" && tickerValue && (
+                assignedCycleByTicker[tickerValue] ? (
+                  <p className="mt-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] text-emerald-800">
+                    Will link to the existing wheel cycle for <strong>{tickerValue}</strong> (assigned position found).
+                  </p>
+                ) : assignedTickers.includes(tickerValue) ? null : (
+                  <p className="mt-1.5 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
+                    No assigned position found for <strong>{tickerValue}</strong>. A covered call requires owning the underlying shares (from a prior CSP assignment).
+                  </p>
+                )
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
