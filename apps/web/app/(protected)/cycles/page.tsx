@@ -814,9 +814,11 @@ export default function CyclesPage() {
                                 <p className="mt-1 text-2xl font-semibold text-gray-900">
                                   ${trade.strike.toFixed(2)}
                                 </p>
-                                <p className="text-[11px] font-medium text-emerald-700">
-                                  +${(trade.premium * trade.contracts * 100).toFixed(0)}
-                                </p>
+                                {trade.status === "OPEN" && (
+                                  <p className="text-[11px] font-medium text-emerald-700">
+                                    +${(trade.premium * trade.contracts * 100).toFixed(0)}
+                                  </p>
+                                )}
                                 <p className="mt-1 text-[10px] text-gray-500">{fmtDate(trade.expiry)}</p>
                                 <span className="mt-1 inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-600">
                                   {trade.status}
