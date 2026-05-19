@@ -525,6 +525,7 @@ export default function CyclesPage() {
             {viewTab === "CSP_PREMIUM" ? "CSP Premium view is coming next." : "DTE Timeline view is coming next."}
           </div>
         ) : selectedWheel ? (
+          <>
           <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
             <div className="flex h-[58px] items-center justify-between border-b border-gray-200 bg-[#f5f8f8] px-5">
               <div className="flex items-center gap-2">
@@ -651,8 +652,8 @@ export default function CyclesPage() {
             </div>
           </div>
           {orphanedCCs.length > 0 && (
-            <div className="border-t border-gray-100 px-5 py-4">
-              <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/50 px-5 py-4 shadow-sm">
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
                 Unlinked CC trades for {selectedWheel.ticker} — link to this wheel?
               </p>
               <div className="flex flex-col gap-2">
@@ -687,6 +688,7 @@ export default function CyclesPage() {
               </div>
             </div>
           )}
+          </>
         ) : (
           <>
             <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
