@@ -551,87 +551,66 @@ export default function CyclesPage() {
               const H = 460;
               const cx = W / 2;
               const cy = H * 0.65;
-              const arcR = count <= 1 ? 0 : Math.min(210, 140 + (count - 1) * 20);
+              const arcR = count <= 1 ? 160 : Math.min(210, 140 + (count - 1) * 20);
               const fanDeg = count <= 1 ? 0 : Math.min(160, 50 + (count - 1) * 38);
               const startDeg = -90 - fanDeg / 2;
               const totalNet = legs.reduce((s, t) => s + netLegCashflow(t), 0);
 
               const positions = legs.map((_, i) => {
-                const angleDeg = count === 1 ? -90 : startDeg + (i / (count - 1)) * fanDeg;
+                const angleDeg = count <= 1 ? -90 : startDeg + (i / (count - 1)) * fanDeg;
                 const rad = (angleDeg * Math.PI) / 180;
                 return { x: cx + arcR * Math.cos(rad), y: cy + arcR * Math.sin(rad) };
+              });
+
+              // Pre-compute arrow geometry so it can be reused in both SVG layers
+              const arrows = positions.slice(0, -1).map((posA, i) => {
+                const posB = positions[i + 1]!;
+                const dx = posB.x - posA.x;
+                const dy = posB.y - posA.y;
+                const len = Math.sqrt(dx * dx + dy * dy) || 1;
+                const pad = cardW / 2 + 14;
+                const x1 = posA.x + (dx / len) * pad;
+                const y1 = posA.y + (dy / len) * pad;
+                const x2 = posB.x - (dx / len) * pad;
+                const y2 = posB.y - (dy / len) * pad;
+                const mx = (x1 + x2) / 2;
+                const my = (y1 + y2) / 2;
+                // Perp offset: push label away from center
+                const perpX = -(dy / len);
+                const perpY = dx / len;
+                const sign = (mx - cx) * perpX + (my - cy) * perpY < 0 ? -1 : 1;
+                const labelX = mx + sign * perpX * 28;
+                const labelY = my + sign * perpY * 28;
+                const net = netLegCashflow(legs[i]!);
+                const isDebit = net < 0;
+                const color = isDebit ? "#dc2626" : "#059669";
+                const pillBg = isDebit ? "#fef2f2" : "#f0fdf4";
+                const pillStroke = isDebit ? "#fca5a5" : "#6ee7b7";
+                const labelStr = `${isDebit ? "−" : "+"}$${Math.abs(net).toFixed(0)}`;
+                const pillW = Math.max(52, labelStr.length * 7 + 16);
+                return { x1, y1, x2, y2, labelX, labelY, color, pillBg, pillStroke, labelStr, pillW, i };
               });
 
               return (
                 <div className="overflow-x-auto bg-[#fcfdfd]">
                   <div className="relative mx-auto" style={{ width: W, height: H }}>
-                    <svg
-                      className="pointer-events-none absolute inset-0"
-                      width={W} height={H}
-                    >
-                      {/* Guide ring */}
+
+                    {/* LAYER 1 (behind cards): guide ring + spokes */}
+                    <svg className="pointer-events-none absolute inset-0" style={{ zIndex: 0 }} width={W} height={H}>
                       {arcR > 0 && (
                         <circle cx={cx} cy={cy} r={arcR + 22}
                           fill="none" stroke="#e9eeef" strokeDasharray="4 6" strokeWidth="1" />
                       )}
-                      {/* Spokes: card → center */}
                       {positions.map((pos, i) => (
                         <line key={`sp-${i}`}
                           x1={pos.x} y1={pos.y} x2={cx} y2={cy}
                           stroke="#dde3e6" strokeDasharray="4 5" strokeWidth="1" strokeLinecap="round" />
                       ))}
-                      {/* Arrow + PnL pill between consecutive legs */}
-                      {positions.slice(0, -1).map((posA, i) => {
-                        const posB = positions[i + 1]!;
-                        const dx = posB.x - posA.x;
-                        const dy = posB.y - posA.y;
-                        const len = Math.sqrt(dx * dx + dy * dy) || 1;
-                        const pad = cardW / 2 + 12;
-                        const x1 = posA.x + (dx / len) * pad;
-                        const y1 = posA.y + (dy / len) * pad;
-                        const x2 = posB.x - (dx / len) * pad;
-                        const y2 = posB.y - (dy / len) * pad;
-                        // Perpendicular offset (always points upward / away from center)
-                        const mx = (x1 + x2) / 2;
-                        const my = (y1 + y2) / 2;
-                        // Perp direction pointing away from center circle
-                        const perpX = -(dy / len);
-                        const perpY = dx / len;
-                        const sign = (mx - cx) * perpX + (my - cy) * perpY < 0 ? -1 : 1;
-                        const labelX = mx + sign * perpX * 26;
-                        const labelY = my + sign * perpY * 26;
-                        const net = netLegCashflow(legs[i]!);
-                        const isDebit = net < 0;
-                        const color = isDebit ? "#dc2626" : "#059669";
-                        const pillBg = isDebit ? "#fef2f2" : "#f0fdf4";
-                        const pillStroke = isDebit ? "#fca5a5" : "#6ee7b7";
-                        const labelStr = `${isDebit ? "−" : "+"}$${Math.abs(net).toFixed(0)}`;
-                        const pillW = Math.max(52, labelStr.length * 7 + 16);
-                        return (
-                          <g key={`arr-${i}`}>
-                            <defs>
-                              <marker id={`mh-${i}`} viewBox="0 0 10 10" refX="8" refY="5"
-                                markerWidth="5" markerHeight="5" orient="auto">
-                                <path d="M0,1.5 L8.5,5 L0,8.5 Z" fill={color} />
-                              </marker>
-                            </defs>
-                            <line x1={x1} y1={y1} x2={x2} y2={y2}
-                              stroke={color} strokeWidth="1.8" markerEnd={`url(#mh-${i})`} />
-                            <rect x={labelX - pillW / 2} y={labelY - 10}
-                              width={pillW} height={20} rx={10}
-                              fill={pillBg} stroke={pillStroke} strokeWidth="1" />
-                            <text x={labelX} y={labelY + 4.5}
-                              textAnchor="middle" fontSize="10.5" fontWeight="700" fill={color}>
-                              {labelStr}
-                            </text>
-                          </g>
-                        );
-                      })}
                     </svg>
 
-                    {/* Center circle */}
+                    {/* Center circle — z-index 1 */}
                     <div className="absolute flex flex-col items-center justify-center rounded-full border-2 border-emerald-300 bg-emerald-50 shadow-md"
-                      style={{ width: 104, height: 104, left: cx, top: cy, transform: "translate(-50%,-50%)" }}>
+                      style={{ zIndex: 1, width: 104, height: 104, left: cx, top: cy, transform: "translate(-50%,-50%)" }}>
                       <TickerLogo ticker={selectedWheel.ticker} size="sm" />
                       <div className="mt-0.5 text-[12px] font-bold text-gray-900">{selectedWheel.ticker}</div>
                       <div className={`text-[11px] font-semibold ${totalNet < 0 ? "text-red-600" : "text-emerald-700"}`}>
@@ -639,15 +618,14 @@ export default function CyclesPage() {
                       </div>
                     </div>
 
-                    {/* Leg cards */}
+                    {/* Leg cards — z-index 2 */}
                     {legs.map((trade, idx) => {
                       const pos = positions[idx]!;
                       const net = netLegCashflow(trade);
                       const isDebit = net < 0;
                       return (
                         <div key={trade.id} className="absolute"
-                          style={{ width: cardW, left: pos.x, top: pos.y, transform: "translate(-50%,-50%)" }}>
-                          {/* Step badge */}
+                          style={{ zIndex: 2, width: cardW, left: pos.x, top: pos.y, transform: "translate(-50%,-50%)" }}>
                           <div className="absolute -left-3 -top-3 z-10 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-gray-700 text-[11px] font-bold text-white shadow">
                             {idx + 1}
                           </div>
@@ -670,6 +648,32 @@ export default function CyclesPage() {
                         </div>
                       );
                     })}
+
+                    {/* LAYER 2 (above cards): arrows + PnL pills — z-index 3 */}
+                    <svg className="pointer-events-none absolute inset-0" style={{ zIndex: 3 }} width={W} height={H}>
+                      <defs>
+                        {arrows.map(({ color, i }) => (
+                          <marker key={`m-${i}`} id={`mh-${i}`} viewBox="0 0 10 10" refX="8" refY="5"
+                            markerWidth="5" markerHeight="5" orient="auto">
+                            <path d="M0,1.5 L8.5,5 L0,8.5 Z" fill={color} />
+                          </marker>
+                        ))}
+                      </defs>
+                      {arrows.map(({ x1, y1, x2, y2, labelX, labelY, color, pillBg, pillStroke, labelStr, pillW, i }) => (
+                        <g key={`arr-${i}`}>
+                          <line x1={x1} y1={y1} x2={x2} y2={y2}
+                            stroke={color} strokeWidth="2" markerEnd={`url(#mh-${i})`} />
+                          <rect x={labelX - pillW / 2} y={labelY - 10}
+                            width={pillW} height={20} rx={10}
+                            fill={pillBg} stroke={pillStroke} strokeWidth="1" />
+                          <text x={labelX} y={labelY + 4.5}
+                            textAnchor="middle" fontSize="10.5" fontWeight="700" fill={color}>
+                            {labelStr}
+                          </text>
+                        </g>
+                      ))}
+                    </svg>
+
                   </div>
                 </div>
               );
