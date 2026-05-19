@@ -571,88 +571,181 @@ export default function CyclesPage() {
                 </span>
               </div>
             </div>
-            <div className="relative h-[455px] bg-[#fcfdfd]">
-              <div className="absolute left-1/2 top-[60%] h-[230px] w-[230px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-[#e9eeef]" />
-              <div className="absolute left-1/2 top-[60%] h-[90px] w-[90px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-300 bg-emerald-50 shadow-sm flex flex-col items-center justify-center gap-0.5">
-                <TickerLogo ticker={selectedWheel.ticker} />
-                <div className="text-[11px] font-semibold text-gray-900">{selectedWheel.ticker}</div>
-                {(() => {
-                  const totalNet = selectedWheel.trades.reduce((sum, t) => sum + netLegCashflow(t), 0);
-                  return (
-                    <div className={`text-[10px] font-medium ${totalNet < 0 ? "text-red-600" : "text-emerald-700"}`}>
-                      {totalNet < 0 ? "-" : "+"}${Math.abs(totalNet).toFixed(2)}
-                    </div>
-                  );
-                })()}
-              </div>
-              <svg className="pointer-events-none absolute inset-0 h-full w-full">
-                {selectedWheelLegs.map((_, idx) => {
-                  const count = selectedWheelLegs.length;
-                  const step = count > 1 ? 22 / (count - 1) : 0;
-                  const xPct = 39 + idx * step;
-                  return (
-                    <line
-                      key={`line-${idx}`}
-                      x1={`${xPct}%`}
-                      y1="154"
-                      x2="50%"
-                      y2="286"
-                      stroke="#e3e8ea"
-                      strokeDasharray="3 5"
-                      strokeWidth="0.8"
-                      strokeLinecap="round"
-                    />
-                  );
-                })}
-              </svg>
-              {selectedWheelLegs.map((trade, idx) => {
-                const count = selectedWheelLegs.length;
-                const step = count > 1 ? 22 / (count - 1) : 0;
-                const xPct = 39 + idx * step;
+            {(() => {
+              const legs = selectedWheelLegs;
+              const count = legs.length;
+              // Canvas dimensions (px)
+              const W = 720;
+              const H = 480;
+              // Center circle centre
+              const cx = W / 2;
+              const cy = H * 0.68;
+              // Arc radius for card placement
+              const arcR = Math.min(200, 80 + count * 30);
+              // Fan angle: spread cards in a top arc from -140° to -40° (wider for more legs)
+              const fanDeg = Math.min(160, 60 + (count - 1) * 40);
+              const startDeg = -90 - fanDeg / 2;
+              const cardW = 160;
+              const cardH = 88;
+              const totalNet = legs.reduce((s, t) => s + netLegCashflow(t), 0);
 
-                const netPnl = netLegCashflow(trade);
-                const isDebit = netPnl < 0;
+              // Compute card centres in px
+              const positions = legs.map((_, i) => {
+                const angleDeg = count === 1 ? -90 : startDeg + (i / (count - 1)) * fanDeg;
+                const rad = (angleDeg * Math.PI) / 180;
+                return {
+                  x: cx + arcR * Math.cos(rad),
+                  y: cy + arcR * Math.sin(rad),
+                };
+              });
 
-                return (
+              return (
+                <div
+                  className="relative bg-[#fcfdfd]"
+                  style={{ height: H, overflowX: "auto" }}
+                >
+                  {/* Outer guide ring */}
                   <div
-                    key={trade.id}
-                    className="absolute top-[70px]"
-                    style={{ left: `${xPct}%`, transform: "translateX(-50%)" }}
-                  >
-                    <div
-                      className={`relative w-[176px] rounded-xl border bg-white px-3 py-2 shadow-sm ${
-                        trade.option_type === "PUT" ? "border-[#c7b8ef]" : "border-[#9fd8ca]"
-                      }`}
-                    >
-                      <span className="absolute -left-2 -top-2 inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-200 bg-white text-[9px] font-semibold text-gray-500">
-                        {idx + 1}
-                      </span>
-                      <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-500">
-                        {trade.option_type === "PUT" ? "Cash Secured Put" : "Covered Call"}
-                      </p>
-                      <p className="mt-1 text-[30px] font-semibold leading-none text-gray-900">
-                        ${trade.strike.toFixed(0)}
-                      </p>
-                      <p className={`text-[11px] font-medium ${isDebit ? "text-red-600" : "text-emerald-700"}`}>
-                        {isDebit ? "-" : "+"}${Math.abs(netPnl).toFixed(2)}
-                      </p>
-                      <p className="text-[10px] text-gray-500">{fmtDate(trade.expiry)}</p>
-                      <span className="mt-1 inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
-                        {trade.status}
-                      </span>
-                    </div>
-                    {idx < count - 1 && (
-                      <div className="absolute -right-[52px] top-[44px] flex flex-col items-center gap-0.5">
-                        <span className={`text-[11px] font-semibold ${isDebit ? "text-red-500" : "text-emerald-600"}`}>
-                          {isDebit ? "-" : "+"}${Math.abs(netPnl).toFixed(0)}
+                    className="pointer-events-none absolute rounded-full border border-dashed border-[#e9eeef]"
+                    style={{
+                      width: arcR * 2 + 30,
+                      height: arcR * 2 + 30,
+                      left: cx - arcR - 15,
+                      top: cy - arcR - 15,
+                    }}
+                  />
+
+                  {/* SVG: dashed spoke lines + arrows between legs */}
+                  <svg className="pointer-events-none absolute inset-0" width={W} height={H}>
+                    {/* Spoke lines: card centre → center circle */}
+                    {positions.map((pos, i) => (
+                      <line
+                        key={`spoke-${i}`}
+                        x1={pos.x}
+                        y1={pos.y}
+                        x2={cx}
+                        y2={cy}
+                        stroke="#e3e8ea"
+                        strokeDasharray="4 5"
+                        strokeWidth="1"
+                        strokeLinecap="round"
+                      />
+                    ))}
+                    {/* Arrows between consecutive legs */}
+                    {positions.slice(0, -1).map((posA, i) => {
+                      const posB = positions[i + 1]!;
+                      // Arrow from right edge of card A to left edge of card B
+                      const dx = posB.x - posA.x;
+                      const dy = posB.y - posA.y;
+                      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+                      const pad = cardW / 2 + 6;
+                      const x1 = posA.x + (dx / len) * pad;
+                      const y1 = posA.y + (dy / len) * pad;
+                      const x2 = posB.x - (dx / len) * pad;
+                      const y2 = posB.y - (dy / len) * pad;
+                      return (
+                        <g key={`arrow-${i}`}>
+                          <defs>
+                            <marker
+                              id={`ah-${i}`}
+                              viewBox="0 0 10 10"
+                              refX="9"
+                              refY="5"
+                              markerWidth="6"
+                              markerHeight="6"
+                              orient="auto"
+                            >
+                              <path d="M0,1 L9,5 L0,9 Z" fill="#10b981" />
+                            </marker>
+                          </defs>
+                          <line
+                            x1={x1} y1={y1} x2={x2} y2={y2}
+                            stroke="#10b981"
+                            strokeWidth="1.5"
+                            markerEnd={`url(#ah-${i})`}
+                          />
+                        </g>
+                      );
+                    })}
+                  </svg>
+
+                  {/* PnL labels between consecutive legs */}
+                  {positions.slice(0, -1).map((posA, i) => {
+                    const posB = positions[i + 1]!;
+                    const mx = (posA.x + posB.x) / 2;
+                    const my = (posA.y + posB.y) / 2;
+                    const net = netLegCashflow(legs[i]!);
+                    const isDebit = net < 0;
+                    return (
+                      <div
+                        key={`pnl-${i}`}
+                        className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2"
+                        style={{ left: mx, top: my - 14 }}
+                      >
+                        <span
+                          className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-sm ${
+                            isDebit
+                              ? "bg-red-50 text-red-600 ring-1 ring-red-100"
+                              : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
+                          }`}
+                        >
+                          {isDebit ? "−" : "+"}${Math.abs(net).toFixed(0)}
                         </span>
-                        <span className="text-[14px] text-gray-400">→</span>
                       </div>
-                    )}
+                    );
+                  })}
+
+                  {/* Center circle */}
+                  <div
+                    className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-300 bg-emerald-50 shadow-sm flex flex-col items-center justify-center gap-0.5"
+                    style={{ left: cx, top: cy, width: 90, height: 90 }}
+                  >
+                    <TickerLogo ticker={selectedWheel.ticker} />
+                    <div className="text-[11px] font-semibold text-gray-900">{selectedWheel.ticker}</div>
+                    <div className={`text-[10px] font-medium ${totalNet < 0 ? "text-red-600" : "text-emerald-700"}`}>
+                      {totalNet < 0 ? "−" : "+"}${Math.abs(totalNet).toFixed(2)}
+                    </div>
                   </div>
-                );
-              })}
-            </div>
+
+                  {/* Trade leg cards */}
+                  {legs.map((trade, idx) => {
+                    const pos = positions[idx]!;
+                    const net = netLegCashflow(trade);
+                    const isDebit = net < 0;
+                    return (
+                      <div
+                        key={trade.id}
+                        className="absolute -translate-x-1/2 -translate-y-1/2"
+                        style={{ left: pos.x, top: pos.y, width: cardW }}
+                      >
+                        <div
+                          className={`relative rounded-xl border bg-white px-3 py-2 shadow-sm ${
+                            trade.option_type === "PUT" ? "border-[#c7b8ef]" : "border-[#9fd8ca]"
+                          }`}
+                        >
+                          <span className="absolute -left-2 -top-2 inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-200 bg-white text-[9px] font-semibold text-gray-500">
+                            {idx + 1}
+                          </span>
+                          <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-500">
+                            {trade.option_type === "PUT" ? "Cash Secured Put" : "Covered Call"}
+                          </p>
+                          <p className="mt-0.5 text-[26px] font-semibold leading-none text-gray-900">
+                            ${trade.strike.toFixed(0)}
+                          </p>
+                          <p className={`text-[11px] font-medium ${isDebit ? "text-red-600" : "text-emerald-700"}`}>
+                            {isDebit ? "−" : "+"}${Math.abs(net).toFixed(2)}
+                          </p>
+                          <p className="text-[10px] text-gray-500">{fmtDate(trade.expiry)}</p>
+                          <span className="mt-0.5 inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
+                            {trade.status}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
           {orphanedCCs.length > 0 && (
             <div className="rounded-2xl border border-amber-200 bg-amber-50/50 px-5 py-4 shadow-sm">
