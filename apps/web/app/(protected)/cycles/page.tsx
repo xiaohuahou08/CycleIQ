@@ -145,6 +145,7 @@ export default function CyclesPage() {
     "WHEELS"
   );
   const [tab, setTab] = useState<"ALL" | "ACTIVE" | "COMPLETED">("ACTIVE");
+  const [ccTab, setCcTab] = useState<"ACTIVE" | "COMPLETED">("ACTIVE");
   const [timeRange, setTimeRange] = useState<"ALL" | "WEEK" | "MONTH" | "YEAR">("ALL");
   const [sortBy, setSortBy] = useState<"LATEST" | "PREMIUM" | "TICKER">("LATEST");
   const [searchTicker, setSearchTicker] = useState("");
@@ -417,31 +418,49 @@ export default function CyclesPage() {
         ) : viewTab === "CC_COST_BASIS" ? (
           <div className="space-y-3">
             <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
-              <div className="relative min-w-[220px] max-w-sm">
-                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
-                  🔎
-                </span>
-                <input
-                  type="text"
-                  value={searchTicker}
-                  onChange={(e) => setSearchTicker(e.target.value.toUpperCase())}
-                  placeholder="Search ticker..."
-                  className="w-full rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-9 pr-3 text-sm text-gray-800 outline-none transition focus:border-gray-300 focus:bg-white"
-                />
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Active / Completed tab */}
+                <div className="inline-flex items-center rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs">
+                  {(["ACTIVE", "COMPLETED"] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setCcTab(t)}
+                      className={`rounded-md px-3 py-1 font-medium transition ${
+                        ccTab === t ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      {t === "ACTIVE" ? "Active" : "Completed"}
+                    </button>
+                  ))}
+                </div>
+                <div className="relative min-w-[200px] flex-1">
+                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">🔎</span>
+                  <input
+                    type="text"
+                    value={searchTicker}
+                    onChange={(e) => setSearchTicker(e.target.value.toUpperCase())}
+                    placeholder="Search ticker..."
+                    className="w-full rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-9 pr-3 text-sm text-gray-800 outline-none transition focus:border-gray-300 focus:bg-white"
+                  />
+                </div>
               </div>
             </div>
-            {ccCostBasisRows.length === 0 ? (
+            {(() => {
+              const ccTabTickers = new Set(
+                (ccTab === "ACTIVE" ? activeCycles : completedCycles).map((c) => c.ticker)
+              );
+              const filteredCcRows = ccCostBasisRows.filter((r) => ccTabTickers.has(r.ticker));
+              return filteredCcRows.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-10 text-center text-sm text-gray-500">
-                No assigned positions available for CC cost basis yet.
+                No {ccTab === "ACTIVE" ? "active" : "completed"} assigned positions yet.
               </div>
             ) : (
-              ccCostBasisRows.map((row) => (
+              filteredCcRows.map((row) => (
                 <div key={row.ticker} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-xs text-emerald-700">
-                        ↘
-                      </span>
+                      <TickerLogo ticker={row.ticker} />
                       <span className="text-base font-semibold text-gray-900">{row.ticker}</span>
                     </div>
                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
@@ -493,7 +512,8 @@ export default function CyclesPage() {
                   </div>
                 </div>
               ))
-            )}
+            );
+            })()}
           </div>
         ) : viewTab !== "WHEELS" ? (
           <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-12 text-center text-sm text-gray-500">
