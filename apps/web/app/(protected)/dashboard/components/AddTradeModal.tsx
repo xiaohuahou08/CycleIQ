@@ -11,6 +11,7 @@ import {
   OptionalFieldsToggle,
   TradeModalShell,
 } from "../../components/TradeModalShared";
+import { useTradeDefaults } from "@/lib/hooks/useTradeDefaults";
 
 const tradeSchema = z.object({
   ticker: z
@@ -79,9 +80,9 @@ function TickerLogo({ ticker }: { ticker: string }) {
   );
 }
 
-function defaultExpiry(): string {
+function expiryFromDte(dte: number): string {
   const d = new Date();
-  d.setDate(d.getDate() + 45);
+  d.setDate(d.getDate() + dte);
   return d.toISOString().slice(0, 10);
 }
 
@@ -114,6 +115,7 @@ export default function AddTradeModal({
   title = "Add Trade",
   submitLabel = "Save Trade",
 }: AddTradeModalProps) {
+  const { defaults } = useTradeDefaults();
   const [showOptionalFields, setShowOptionalFields] = useState(true);
   const [commissionFees, setCommissionFees] = useState<string>("");
   const {
@@ -129,7 +131,7 @@ export default function AddTradeModal({
     defaultValues: {
       option_type: "PUT",
       contracts: 1,
-      expiry: defaultExpiry(),
+      expiry: expiryFromDte(45),
       trade_date: today(),
     },
   });
@@ -156,15 +158,19 @@ export default function AddTradeModal({
   useEffect(() => {
     if (open) {
       setShowOptionalFields(true);
-      setCommissionFees(
+      // When editing an existing trade, use its stored commission; otherwise fall back to the
+      // saved default from Settings (if any).
+      const defaultCommission =
         initialValues?.commission_fee !== undefined && initialValues?.commission_fee !== null
           ? String(initialValues.commission_fee)
-          : ""
-      );
+          : defaults.commissionPerContract !== undefined
+            ? String(defaults.commissionPerContract)
+            : "";
+      setCommissionFees(defaultCommission);
       reset({
         option_type: initialValues?.option_type ?? "PUT",
-        contracts: initialValues?.contracts ?? 1,
-        expiry: initialValues?.expiry ?? defaultExpiry(),
+        contracts: initialValues?.contracts ?? defaults.defaultContracts ?? 1,
+        expiry: initialValues?.expiry ?? expiryFromDte(defaults.defaultDte ?? 45),
         trade_date: initialValues?.trade_date ?? today(),
         ticker: initialValues?.ticker ?? "",
         strike: initialValues?.strike,
@@ -173,6 +179,7 @@ export default function AddTradeModal({
         notes: initialValues?.notes ?? "",
       });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, reset, initialValues]);
 
   const onSubmit = async (values: TradeFormValues) => {
