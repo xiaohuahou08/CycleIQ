@@ -753,23 +753,10 @@ export default function CyclesPage() {
               ) : (
                 visibleCycles.map((cycle) => {
                   const linkedTrades = cycle.trades;
-                  const totalPremium = linkedTrades.reduce(
-                    (sum, trade) => sum + trade.premium * trade.contracts * 100,
-                    0
-                  );
                   const openCount = linkedTrades.filter((trade) => trade.status === "OPEN").length;
                   const sortedLegs = linkedTrades
                     .slice()
                     .sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime());
-                  const nearestOpenExpiry = linkedTrades
-                    .filter((trade) => trade.status === "OPEN")
-                    .map((trade) => new Date(trade.expiry).getTime())
-                    .filter((ts) => Number.isFinite(ts))
-                    .sort((a, b) => a - b)[0];
-                  const dte =
-                    nearestOpenExpiry != null
-                      ? Math.max(0, Math.ceil((nearestOpenExpiry - NOW_TS) / (1000 * 60 * 60 * 24)))
-                      : null;
 
                   return (
                     <div
@@ -789,8 +776,6 @@ export default function CyclesPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-5 text-xs text-gray-500">
-                          <span>${Math.abs(totalPremium).toFixed(0)}</span>
-                          <span>{dte != null ? `${dte}d` : "-"}</span>
                           <span>{fmtDate(cycle.updated_at?.slice(0, 10) ?? cycle.created_at?.slice(0, 10) ?? "1970-01-01")}</span>
                           <span
                             className={`rounded-full px-2 py-0.5 text-xs font-medium ${stateBadgeStyle(cycle.state)}`}
