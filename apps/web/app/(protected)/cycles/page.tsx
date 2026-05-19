@@ -385,7 +385,7 @@ export default function CyclesPage() {
                 <p className="text-xs text-gray-500">Net Premium</p>
                 <p className="mt-1 text-2xl font-semibold text-gray-900">
                   $
-                  {sortedCycles
+                  {activeCycles
                     .reduce(
                       (sum, cycle) =>
                         sum + cycle.trades.reduce((tradeSum, t) => tradeSum + netLegCashflow(t), 0),
