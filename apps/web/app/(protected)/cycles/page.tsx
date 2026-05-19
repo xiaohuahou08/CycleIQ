@@ -20,6 +20,14 @@ function fmtMoney(value: number): string {
   });
 }
 
+/** Net cashflow for a single trade leg: gross premium − buyback (for rolls) − commission. */
+function netLegCashflow(t: Trade): number {
+  const gross = t.premium * t.contracts * 100;
+  const buyback = (t.buyback_cost_per_share ?? 0) * t.contracts * 100;
+  const commission = t.commission_fee ?? 0;
+  return gross - buyback - commission;
+}
+
 function stateBadgeStyle(state: string): string {
   if (state === "IDLE") return "bg-gray-100 text-gray-700";
   if (state === "CSP_OPEN") return "bg-blue-100 text-blue-700";
@@ -212,8 +220,8 @@ export default function CyclesPage() {
     return ranged.slice().sort((a, b) => {
       if (sortBy === "TICKER") return a.ticker.localeCompare(b.ticker);
       if (sortBy === "PREMIUM") {
-        const aPremium = a.trades.reduce((sum, t) => sum + t.premium * t.contracts * 100, 0);
-        const bPremium = b.trades.reduce((sum, t) => sum + t.premium * t.contracts * 100, 0);
+        const aPremium = a.trades.reduce((sum, t) => sum + netLegCashflow(t), 0);
+        const bPremium = b.trades.reduce((sum, t) => sum + netLegCashflow(t), 0);
         return bPremium - aPremium;
       }
       return (
@@ -250,9 +258,11 @@ export default function CyclesPage() {
             0
           ) / assignedShares;
 
+        // Net CC cashflow: deduct buyback for rolled legs so the basis-reduction number
+        // reflects what was actually kept, not just the gross premiums collected.
         const ccPremiumTotal = tickerTrades
           .filter((t) => t.option_type === "CALL")
-          .reduce((sum, t) => sum + t.premium * t.contracts * 100, 0);
+          .reduce((sum, t) => sum + netLegCashflow(t), 0);
 
         const reductionPerShare = ccPremiumTotal / assignedShares;
         const currentCost = Math.max(0, weightedInitialCost - reductionPerShare);
@@ -369,17 +379,13 @@ export default function CyclesPage() {
                 <p className="mt-1 text-2xl font-semibold text-gray-900">{completedCycles.length}</p>
               </div>
               <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-                <p className="text-xs text-gray-500">Total Premium</p>
+                <p className="text-xs text-gray-500">Net Premium</p>
                 <p className="mt-1 text-2xl font-semibold text-gray-900">
                   $
                   {sortedCycles
                     .reduce(
                       (sum, cycle) =>
-                        sum +
-                        cycle.trades.reduce(
-                          (tradeSum, trade) => tradeSum + trade.premium * trade.contracts * 100,
-                          0
-                        ),
+                        sum + cycle.trades.reduce((tradeSum, t) => tradeSum + netLegCashflow(t), 0),
                       0
                     )
                     .toFixed(0)}
@@ -539,12 +545,7 @@ export default function CyclesPage() {
                 <TickerLogo ticker={selectedWheel.ticker} />
                 <div className="text-[11px] font-semibold text-gray-900">{selectedWheel.ticker}</div>
                 {(() => {
-                  const totalNet = selectedWheel.trades.reduce((sum, t) => {
-                    const gross = t.premium * t.contracts * 100;
-                    const buyback = (t.buyback_cost_per_share ?? 0) * t.contracts * 100;
-                    const commission = t.commission_fee ?? 0;
-                    return sum + gross - buyback - commission;
-                  }, 0);
+                  const totalNet = selectedWheel.trades.reduce((sum, t) => sum + netLegCashflow(t), 0);
                   return (
                     <div className={`text-[10px] font-medium ${totalNet < 0 ? "text-red-600" : "text-emerald-700"}`}>
                       {totalNet < 0 ? "-" : "+"}${Math.abs(totalNet).toFixed(2)}
@@ -577,11 +578,7 @@ export default function CyclesPage() {
                 const step = count > 1 ? 22 / (count - 1) : 0;
                 const xPct = 39 + idx * step;
 
-                // Net cashflow for this leg: gross premium − buyback (rolls) − commission
-                const gross = trade.premium * trade.contracts * 100;
-                const buyback = (trade.buyback_cost_per_share ?? 0) * trade.contracts * 100;
-                const commission = trade.commission_fee ?? 0;
-                const netPnl = gross - buyback - commission;
+                const netPnl = netLegCashflow(trade);
                 const isDebit = netPnl < 0;
 
                 return (
