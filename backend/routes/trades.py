@@ -256,10 +256,27 @@ def register_trades_routes(trades_bp):
             if cid is None:
                 trade.cycle_id = None
             else:
-                exists = WheelCycle.query.filter_by(id=cid, user_id=user_id).first()
-                if not exists:
+                cycle = WheelCycle.query.filter_by(id=cid, user_id=user_id).first()
+                if not cycle:
                     return jsonify({"error": "cycle_id not found"}), 400
                 trade.cycle_id = cid
+                # Auto-drive FSM: linking an OPEN CALL onto a STOCK_HELD cycle → CC_OPEN
+                if trade.option_type == "CALL" and trade.status == "OPEN" and cycle.state == "STOCK_HELD":
+                    try:
+                        fsm_cycle = replay_cycle(cycle.ticker, cycle.transition_log)
+                        transition = apply_api_event(
+                            fsm_cycle,
+                            "sell_cc",
+                            {
+                                "strike": float(trade.strike),
+                                "expiry": trade.expiry.isoformat(),
+                                "premium": float(trade.premium),
+                            },
+                        )
+                        cycle.transition_log = append_transition(cycle.transition_log, transition)
+                        cycle.state = fsm_cycle.state.value
+                    except (InvalidTransitionError, ValueError, KeyError, TypeError):
+                        pass
 
         if "expiry" in data and data["expiry"]:
             try:

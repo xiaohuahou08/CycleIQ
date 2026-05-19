@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { listCycles, listTrades, type CycleSummary, type Trade } from "@/lib/api/trades";
+import { listCycles, listTrades, updateTrade, type CycleSummary, type Trade } from "@/lib/api/trades";
 import { useProtectedAuth } from "../auth-context";
 
 function fmtDate(iso: string): string {
@@ -141,6 +141,7 @@ export default function CyclesPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedWheelId, setSelectedWheelId] = useState<string | null>(null);
+  const [linkingTradeId, setLinkingTradeId] = useState<string | null>(null);
   const [viewTab, setViewTab] = useState<"WHEELS" | "CC_COST_BASIS" | "CSP_PREMIUM" | "DTE_TIMELINE">(
     "WHEELS"
   );
@@ -311,6 +312,33 @@ export default function CyclesPage() {
         : [],
     [selectedWheel]
   );
+
+  // CC trades for the same ticker that are not already part of this wheel — candidates to link in.
+  const orphanedCCs = useMemo(() => {
+    if (!selectedWheel) return [];
+    const wheelTradeIds = new Set(selectedWheelLegs.map((t) => t.id));
+    return trades.filter(
+      (t) =>
+        t.option_type === "CALL" &&
+        t.ticker === selectedWheel.ticker &&
+        !wheelTradeIds.has(t.id) &&
+        t.cycle_id !== selectedWheel.source_cycle_id
+    );
+  }, [selectedWheel, selectedWheelLegs, trades]);
+
+  const handleLinkTrade = async (tradeId: string) => {
+    if (!token || !selectedWheel) return;
+    setLinkingTradeId(tradeId);
+    try {
+      await updateTrade(token, tradeId, { cycle_id: selectedWheel.source_cycle_id });
+      // Refresh both cycles and trades
+      const [cycleRows, tradeRows] = await Promise.all([listCycles(token), listTrades(token)]);
+      setCycles(cycleRows);
+      setTrades(tradeRows);
+    } finally {
+      setLinkingTradeId(null);
+    }
+  };
 
   if (isAuthLoading) return null;
 
@@ -622,6 +650,43 @@ export default function CyclesPage() {
               })}
             </div>
           </div>
+          {orphanedCCs.length > 0 && (
+            <div className="border-t border-gray-100 px-5 py-4">
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                Unlinked CC trades for {selectedWheel.ticker} — link to this wheel?
+              </p>
+              <div className="flex flex-col gap-2">
+                {orphanedCCs.map((t) => {
+                  const net = netLegCashflow(t);
+                  return (
+                    <div
+                      key={t.id}
+                      className="flex items-center justify-between gap-4 rounded-lg border border-dashed border-amber-200 bg-amber-50 px-4 py-2.5"
+                    >
+                      <div className="flex items-center gap-3 text-[13px]">
+                        <span className="font-semibold text-gray-900">${t.strike.toFixed(0)} CC</span>
+                        <span className="text-gray-500">{fmtDate(t.expiry)}</span>
+                        <span className={`font-medium ${net < 0 ? "text-red-600" : "text-emerald-700"}`}>
+                          {net < 0 ? "-" : "+"}${Math.abs(net).toFixed(2)}
+                        </span>
+                        <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
+                          {t.status}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={linkingTradeId === t.id}
+                        onClick={() => void handleLinkTrade(t.id)}
+                        className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-[12px] font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                      >
+                        {linkingTradeId === t.id ? "Linking…" : "Link to this wheel"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         ) : (
           <>
             <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
