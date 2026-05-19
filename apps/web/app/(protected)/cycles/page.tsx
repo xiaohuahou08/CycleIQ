@@ -584,7 +584,7 @@ export default function CyclesPage() {
                 return { x: cx + arcR * Math.cos(rad), y: cy + arcR * Math.sin(rad) };
               });
 
-              // Pre-compute arrow geometry so it can be reused in both SVG layers
+              // Pre-compute arrow geometry
               const arrows = positions.slice(0, -1).map((posA, i) => {
                 const posB = positions[i + 1]!;
                 const dx = posB.x - posA.x;
@@ -595,22 +595,8 @@ export default function CyclesPage() {
                 const y1 = posA.y + (dy / len) * pad;
                 const x2 = posB.x - (dx / len) * pad;
                 const y2 = posB.y - (dy / len) * pad;
-                const mx = (x1 + x2) / 2;
-                const my = (y1 + y2) / 2;
-                // Perp offset: push label away from center
-                const perpX = -(dy / len);
-                const perpY = dx / len;
-                const sign = (mx - cx) * perpX + (my - cy) * perpY < 0 ? -1 : 1;
-                const labelX = mx + sign * perpX * 28;
-                const labelY = my + sign * perpY * 28;
-                const net = netLegCashflow(legs[i]!);
-                const isDebit = net < 0;
-                const color = isDebit ? "#dc2626" : "#059669";
-                const pillBg = isDebit ? "#fef2f2" : "#f0fdf4";
-                const pillStroke = isDebit ? "#fca5a5" : "#6ee7b7";
-                const labelStr = `${isDebit ? "−" : "+"}$${Math.abs(net).toFixed(0)}`;
-                const pillW = Math.max(52, labelStr.length * 7 + 16);
-                return { x1, y1, x2, y2, labelX, labelY, color, pillBg, pillStroke, labelStr, pillW, i };
+                const color = "#6b7280"; // neutral gray arrow
+                return { x1, y1, x2, y2, color, i };
               });
 
               return (
@@ -673,7 +659,7 @@ export default function CyclesPage() {
                       );
                     })}
 
-                    {/* LAYER 2 (above cards): arrows + PnL pills — z-index 3 */}
+                    {/* LAYER 2 (above cards): arrows — z-index 3 */}
                     <svg className="pointer-events-none absolute inset-0" style={{ zIndex: 3 }} width={W} height={H}>
                       <defs>
                         {arrows.map(({ color, i }) => (
@@ -683,18 +669,9 @@ export default function CyclesPage() {
                           </marker>
                         ))}
                       </defs>
-                      {arrows.map(({ x1, y1, x2, y2, labelX, labelY, color, pillBg, pillStroke, labelStr, pillW, i }) => (
-                        <g key={`arr-${i}`}>
-                          <line x1={x1} y1={y1} x2={x2} y2={y2}
-                            stroke={color} strokeWidth="2" markerEnd={`url(#mh-${i})`} />
-                          <rect x={labelX - pillW / 2} y={labelY - 10}
-                            width={pillW} height={20} rx={10}
-                            fill={pillBg} stroke={pillStroke} strokeWidth="1" />
-                          <text x={labelX} y={labelY + 4.5}
-                            textAnchor="middle" fontSize="10.5" fontWeight="700" fill={color}>
-                            {labelStr}
-                          </text>
-                        </g>
+                      {arrows.map(({ x1, y1, x2, y2, color, i }) => (
+                        <line key={`arr-${i}`} x1={x1} y1={y1} x2={x2} y2={y2}
+                          stroke={color} strokeWidth="2" markerEnd={`url(#mh-${i})`} />
                       ))}
                     </svg>
 
