@@ -170,7 +170,10 @@ export default function CyclesPage() {
   }, [trades]);
 
   const wheels = useMemo(
-    () => cycles.flatMap((cycle) => splitCycleIntoWheels(cycle, tradesByCycle[cycle.id] ?? [])),
+    () =>
+      cycles
+        .flatMap((cycle) => splitCycleIntoWheels(cycle, tradesByCycle[cycle.id] ?? []))
+        .filter((w) => w.trades.length > 0),
     [cycles, tradesByCycle]
   );
 

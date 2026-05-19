@@ -253,6 +253,7 @@ def register_trades_routes(trades_bp):
             trade.notes = data["notes"]
         if "cycle_id" in data:
             cid = data["cycle_id"]
+            old_cycle_id = trade.cycle_id  # remember old cycle before reassigning
             if cid is None:
                 trade.cycle_id = None
             else:
@@ -277,6 +278,13 @@ def register_trades_routes(trades_bp):
                         cycle.state = fsm_cycle.state.value
                     except (InvalidTransitionError, ValueError, KeyError, TypeError):
                         pass
+            # If the trade moved away from its old cycle, delete that cycle if it is now empty.
+            if old_cycle_id and old_cycle_id != trade.cycle_id:
+                remaining = Trade.query.filter_by(cycle_id=old_cycle_id, user_id=user_id).count()
+                if remaining == 0:
+                    old_cycle = WheelCycle.query.filter_by(id=old_cycle_id, user_id=user_id).first()
+                    if old_cycle:
+                        db.session.delete(old_cycle)
 
         if "expiry" in data and data["expiry"]:
             try:
