@@ -547,25 +547,33 @@ export default function CyclesPage() {
               const legs = selectedWheelLegs;
               const count = legs.length;
               const cardW = 168;
-              const cardH = 140; // approximate rendered card height
-              const cardGap = 32; // min gap between card edges
+              const cardH = 152; // measured card height (generous)
+              const cardGap = 36; // minimum gap between card edges
 
-              // Fan angle: spread cards across an arc
-              const fanDeg = count <= 1 ? 0 : Math.min(150, 44 + (count - 1) * 30);
-              // Compute minimum arcR so adjacent card edges don't overlap
-              const angularStep = count <= 1 ? 90 : fanDeg / (count - 1);
-              const minArcR = count <= 1
-                ? 180
-                : (cardW + cardGap) / (2 * Math.sin((angularStep / 2) * (Math.PI / 180)));
-              const arcR = Math.max(200, minArcR);
+              // Fan angle fixed per leg count
+              const fanDeg =
+                count <= 1 ? 0
+                : count === 2 ? 110
+                : count === 3 ? 150
+                : Math.min(180, 110 + (count - 2) * 20);
 
-              // Canvas size: wide enough for leftmost/rightmost cards
-              const halfSpread = arcR + cardW / 2 + 40;
-              const W = Math.max(720, halfSpread * 2);
-              // Tall enough so top card doesn't clip, center circle has space below
-              const H = Math.max(480, arcR + cardH / 2 + 50 + 160);
+              const angularStep = count <= 1 ? 0 : fanDeg / (count - 1);
+              const stepRad = (angularStep * Math.PI) / 180;
+
+              // For an arc centred at -90° (top), the adjacent pair nearest the top has:
+              //   horizontal separation ≈ arcR × sin(step)
+              //   vertical separation   ≈ arcR × (1 − cos(step))
+              // Both must exceed (cardDim + gap) to avoid rectangular overlap.
+              const horzDiff = count <= 1 ? 1 : Math.sin(stepRad);
+              const vertDiff = count <= 1 ? 1 : Math.max(0.001, 1 - Math.cos(stepRad));
+              const arcRForHorz = (cardW + cardGap) / horzDiff;
+              const arcRForVert = (cardH + cardGap) / vertDiff;
+              const arcR = count <= 1 ? 190 : Math.max(220, Math.ceil(Math.max(arcRForHorz, arcRForVert)));
+
+              const W = Math.max(720, Math.ceil((arcR + cardW / 2 + 56) * 2));
               const cx = W / 2;
-              const cy = arcR + cardH / 2 + 50; // top card sits 50px from top
+              const cy = arcR + cardH / 2 + 64; // top card 64 px from top
+              const H = Math.ceil(cy + 230);    // room for centre circle + label
 
               const startDeg = -90 - fanDeg / 2;
               const totalNet = legs.reduce((s, t) => s + netLegCashflow(t), 0);
