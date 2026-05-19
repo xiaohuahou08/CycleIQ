@@ -10,7 +10,6 @@ interface TradeRowProps {
   onEdit: () => void;
   onAction: (action: "buy_to_close" | "expire" | "assign" | "roll") => void;
   rowTint?: boolean;
-  onRowClick: () => void;
 }
 
 interface TradeListProps {
@@ -24,7 +23,6 @@ interface TradeListProps {
     trade: Trade,
     action: "buy_to_close" | "expire" | "assign" | "roll"
   ) => void;
-  onRowClick: (trade: Trade) => void;
 }
 
 const STATUS_STYLES: Record<TradeStatus, string> = {
@@ -322,7 +320,6 @@ function TradeRow({
   onEdit,
   onAction,
   rowTint,
-  onRowClick,
 }: TradeRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(
@@ -362,10 +359,9 @@ function TradeRow({
   return (
     <>
       <tr
-        className={`cursor-pointer border-b border-gray-100 text-[13px] text-gray-900 transition hover:bg-[#fafbfc]/90 ${
+        className={`border-b border-gray-100 text-[13px] text-gray-900 transition hover:bg-[#fafbfc]/90 ${
           rowTint ? "bg-[rgba(254,237,229,0.45)] hover:bg-[rgba(254,237,229,0.55)]" : ""
         }`}
-        onClick={onRowClick}
       >
         <td className="px-4 py-3">
           <div className="flex items-center gap-2.5">
@@ -551,7 +547,6 @@ export default function TradeList({
   onDeleteTrade,
   onEditTrade,
   onAction,
-  onRowClick,
 }: TradeListProps) {
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "expiry",
@@ -680,7 +675,6 @@ export default function TradeList({
                   onDelete={() => onDeleteTrade(trade.id)}
                   onEdit={() => onEditTrade(trade)}
                   onAction={(action) => onAction(trade, action)}
-                  onRowClick={() => onRowClick(trade)}
                 />
               ))}
             </tbody>
