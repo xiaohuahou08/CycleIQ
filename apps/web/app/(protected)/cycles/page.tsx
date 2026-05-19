@@ -525,31 +525,7 @@ export default function CyclesPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-5 text-xs text-gray-500">
-                <span className="inline-flex items-center gap-1">
-                  <MoneyIcon />
-                  <span>
-                    $
-                    {fmtMoney(
-                      selectedWheel.trades.reduce(
-                        (sum, t) => sum + t.premium * t.contracts * 100,
-                        0
-                      )
-                    )}
-                  </span>
-                </span>
-                <span>
-                  {Math.max(
-                    0,
-                    Math.ceil(
-                      (selectedWheel.trades
-                        .filter((t) => t.status === "OPEN")
-                        .map((t) => new Date(t.expiry).getTime())
-                        .sort((a, b) => a - b)[0] - NOW_TS) /
-                        (1000 * 60 * 60 * 24)
-                    )
-                  ) || 0}d
-                </span>
+              <div className="flex items-center gap-3 text-xs text-gray-500">
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-medium ${stateBadgeStyle(selectedWheel.state)}`}
                 >
@@ -562,12 +538,19 @@ export default function CyclesPage() {
               <div className="absolute left-1/2 top-[60%] h-[90px] w-[90px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-300 bg-emerald-50 shadow-sm flex flex-col items-center justify-center gap-0.5">
                 <TickerLogo ticker={selectedWheel.ticker} />
                 <div className="text-[11px] font-semibold text-gray-900">{selectedWheel.ticker}</div>
-                <div className="text-[10px] font-medium text-emerald-700">
-                  +$
-                  {selectedWheel.trades
-                    .reduce((sum, t) => sum + t.premium * t.contracts * 100, 0)
-                    .toFixed(2)}
-                </div>
+                {(() => {
+                  const totalNet = selectedWheel.trades.reduce((sum, t) => {
+                    const gross = t.premium * t.contracts * 100;
+                    const buyback = (t.buyback_cost_per_share ?? 0) * t.contracts * 100;
+                    const commission = t.commission_fee ?? 0;
+                    return sum + gross - buyback - commission;
+                  }, 0);
+                  return (
+                    <div className={`text-[10px] font-medium ${totalNet < 0 ? "text-red-600" : "text-emerald-700"}`}>
+                      {totalNet < 0 ? "-" : "+"}${Math.abs(totalNet).toFixed(2)}
+                    </div>
+                  );
+                })()}
               </div>
               <svg className="pointer-events-none absolute inset-0 h-full w-full">
                 {selectedWheelLegs.map((_, idx) => {
@@ -593,6 +576,14 @@ export default function CyclesPage() {
                 const count = selectedWheelLegs.length;
                 const step = count > 1 ? 22 / (count - 1) : 0;
                 const xPct = 39 + idx * step;
+
+                // Net cashflow for this leg: gross premium − buyback (rolls) − commission
+                const gross = trade.premium * trade.contracts * 100;
+                const buyback = (trade.buyback_cost_per_share ?? 0) * trade.contracts * 100;
+                const commission = trade.commission_fee ?? 0;
+                const netPnl = gross - buyback - commission;
+                const isDebit = netPnl < 0;
+
                 return (
                   <div
                     key={trade.id}
@@ -613,15 +604,22 @@ export default function CyclesPage() {
                       <p className="mt-1 text-[30px] font-semibold leading-none text-gray-900">
                         ${trade.strike.toFixed(0)}
                       </p>
-                      <p className="text-[11px] font-medium text-emerald-700">
-                        +${(trade.premium * trade.contracts * 100).toFixed(2)}
+                      <p className={`text-[11px] font-medium ${isDebit ? "text-red-600" : "text-emerald-700"}`}>
+                        {isDebit ? "-" : "+"}${Math.abs(netPnl).toFixed(2)}
                       </p>
                       <p className="text-[10px] text-gray-500">{fmtDate(trade.expiry)}</p>
                       <span className="mt-1 inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
                         {trade.status}
                       </span>
                     </div>
-                    {idx < count - 1 && <span className="absolute -right-5 top-[52px] text-emerald-600">→</span>}
+                    {idx < count - 1 && (
+                      <div className="absolute -right-[52px] top-[44px] flex flex-col items-center gap-0.5">
+                        <span className={`text-[11px] font-semibold ${isDebit ? "text-red-500" : "text-emerald-600"}`}>
+                          {isDebit ? "-" : "+"}${Math.abs(netPnl).toFixed(0)}
+                        </span>
+                        <span className="text-[14px] text-gray-400">→</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
