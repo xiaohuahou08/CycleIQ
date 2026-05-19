@@ -648,15 +648,17 @@ export default function CyclesPage() {
                       return (
                         <div key={trade.id} className="absolute"
                           style={{ zIndex: 2, width: cardW, left: pos.x, top: pos.y, transform: "translate(-50%,-50%)" }}>
-                          <div className="absolute -left-3 -top-3 z-10 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-gray-700 text-[11px] font-bold text-white shadow">
-                            {idx + 1}
-                          </div>
                           <div className={`rounded-xl border-2 bg-white px-3 py-2.5 shadow-sm ${
                             trade.option_type === "PUT" ? "border-[#c7b8ef]" : "border-[#9fd8ca]"}`}>
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
-                              {trade.option_type === "PUT" ? "Cash Secured Put" : "Covered Call"}
-                            </p>
-                            <p className="mt-0.5 text-[28px] font-bold leading-none text-gray-900">
+                            <div className="mb-1 flex items-center gap-1.5">
+                              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-700 text-[10px] font-bold text-white">
+                                {idx + 1}
+                              </span>
+                              <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
+                                {trade.option_type === "PUT" ? "Cash Secured Put" : "Covered Call"}
+                              </p>
+                            </div>
+                            <p className="text-[28px] font-bold leading-none text-gray-900">
                               ${trade.strike.toFixed(0)}
                             </p>
                             <p className={`text-[12px] font-semibold ${isDebit ? "text-red-600" : "text-emerald-700"}`}>
