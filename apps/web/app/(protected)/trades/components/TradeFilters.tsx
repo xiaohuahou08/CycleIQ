@@ -228,7 +228,7 @@ export default function TradeFilters({
           </span>
         </div>
         <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
-          {onAddTrade && (
+          {onAddTrade && filters.status !== "CALLED_AWAY" && (
             <button
               type="button"
               onClick={onAddTrade}

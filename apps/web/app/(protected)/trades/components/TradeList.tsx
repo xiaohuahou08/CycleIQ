@@ -23,6 +23,8 @@ interface TradeListProps {
     trade: Trade,
     action: "buy_to_close" | "expire" | "assign" | "roll"
   ) => void;
+  /** Hide the "+ Add trade" button (e.g. when viewing auto-generated statuses like CALLED_AWAY). */
+  hideAddButton?: boolean;
 }
 
 const STATUS_STYLES: Record<TradeStatus, string> = {
@@ -547,6 +549,7 @@ export default function TradeList({
   onDeleteTrade,
   onEditTrade,
   onAction,
+  hideAddButton = false,
 }: TradeListProps) {
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "expiry",
@@ -622,13 +625,15 @@ export default function TradeList({
         <p className="mt-1 max-w-md text-[13px] text-gray-500">
           Add a trade to populate this view — same layout as the reference dashboard.
         </p>
-        <button
-          type="button"
-          onClick={onAddTrade}
-          className="mt-5 rounded-lg border border-gray-200 bg-gray-900 px-5 py-2.5 text-[13px] font-medium text-white hover:bg-gray-800"
-        >
-          + Add trade
-        </button>
+        {!hideAddButton && (
+          <button
+            type="button"
+            onClick={onAddTrade}
+            className="mt-5 rounded-lg border border-gray-200 bg-gray-900 px-5 py-2.5 text-[13px] font-medium text-white hover:bg-gray-800"
+          >
+            + Add trade
+          </button>
+        )}
       </div>
     );
   }
