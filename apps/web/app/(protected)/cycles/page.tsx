@@ -385,7 +385,7 @@ export default function CyclesPage() {
                 <p className="text-xs text-gray-500">Net Premium</p>
                 <p className="mt-1 text-2xl font-semibold text-gray-900">
                   $
-                  {activeCycles
+                  {tabCycles
                     .reduce(
                       (sum, cycle) =>
                         sum + cycle.trades.reduce((tradeSum, t) => tradeSum + netLegCashflow(t), 0),
@@ -397,7 +397,7 @@ export default function CyclesPage() {
               <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
                 <p className="text-xs text-gray-500">Ticker</p>
                 <p className="mt-1 text-2xl font-semibold text-gray-900">
-                  {new Set(sortedCycles.map((cycle) => cycle.ticker)).size}
+                  {new Set(tabCycles.map((cycle) => cycle.ticker)).size}
                 </p>
               </div>
             </div>
