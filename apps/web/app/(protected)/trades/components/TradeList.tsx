@@ -327,6 +327,7 @@ function TradeRow({
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(
     null
   );
+  const [confirmRolledDelete, setConfirmRolledDelete] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
 
@@ -338,6 +339,7 @@ function TradeRow({
       if (menuRef.current?.contains(target)) return;
       if (triggerRef.current?.contains(target)) return;
       setMenuOpen(false);
+      setConfirmRolledDelete(false);
     };
 
     const handleViewportChange = () => {
@@ -442,6 +444,7 @@ function TradeRow({
               e.stopPropagation();
               if (menuOpen) {
                 setMenuOpen(false);
+                setConfirmRolledDelete(false);
                 return;
               }
               const rect = e.currentTarget.getBoundingClientRect();
@@ -473,7 +476,7 @@ function TradeRow({
               >
                 Edit
               </button>
-              {trade.status !== "ASSIGNED" && (
+              {trade.status !== "ASSIGNED" && trade.status !== "ROLLED" && (
                 <>
                   <button
                     type="button"
@@ -519,16 +522,52 @@ function TradeRow({
                   </button>
                 </>
               )}
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onDelete();
-                }}
-                className="block w-full px-3 py-2 text-left text-red-600 hover:bg-red-50"
-              >
-                Delete
-              </button>
+              {trade.status === "ROLLED" && !confirmRolledDelete && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmRolledDelete(true)}
+                  className="block w-full px-3 py-2 text-left text-red-600 hover:bg-red-50"
+                >
+                  Delete…
+                </button>
+              )}
+              {trade.status === "ROLLED" && confirmRolledDelete && (
+                <div className="px-3 py-2">
+                  <p className="mb-2 text-[11px] leading-snug text-gray-500">
+                    This is a rolled trade. Deleting it will break the trade chain.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setConfirmRolledDelete(false);
+                      onDelete();
+                    }}
+                    className="block w-full rounded bg-red-600 px-2 py-1.5 text-center text-[11px] font-semibold text-white hover:bg-red-700"
+                  >
+                    Yes, delete anyway
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmRolledDelete(false)}
+                    className="mt-1 block w-full rounded px-2 py-1.5 text-center text-[11px] text-gray-500 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+              {trade.status !== "ROLLED" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onDelete();
+                  }}
+                  className="block w-full px-3 py-2 text-left text-red-600 hover:bg-red-50"
+                >
+                  Delete
+                </button>
+              )}
             </div>
           )}
         </td>
