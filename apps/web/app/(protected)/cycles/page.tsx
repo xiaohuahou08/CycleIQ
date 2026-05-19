@@ -547,12 +547,26 @@ export default function CyclesPage() {
               const legs = selectedWheelLegs;
               const count = legs.length;
               const cardW = 168;
-              const W = 720;
-              const H = 460;
+              const cardH = 140; // approximate rendered card height
+              const cardGap = 32; // min gap between card edges
+
+              // Fan angle: spread cards across an arc
+              const fanDeg = count <= 1 ? 0 : Math.min(150, 44 + (count - 1) * 30);
+              // Compute minimum arcR so adjacent card edges don't overlap
+              const angularStep = count <= 1 ? 90 : fanDeg / (count - 1);
+              const minArcR = count <= 1
+                ? 180
+                : (cardW + cardGap) / (2 * Math.sin((angularStep / 2) * (Math.PI / 180)));
+              const arcR = Math.max(200, minArcR);
+
+              // Canvas size: wide enough for leftmost/rightmost cards
+              const halfSpread = arcR + cardW / 2 + 40;
+              const W = Math.max(720, halfSpread * 2);
+              // Tall enough so top card doesn't clip, center circle has space below
+              const H = Math.max(480, arcR + cardH / 2 + 50 + 160);
               const cx = W / 2;
-              const cy = H * 0.65;
-              const arcR = count <= 1 ? 160 : Math.min(210, 140 + (count - 1) * 20);
-              const fanDeg = count <= 1 ? 0 : Math.min(160, 50 + (count - 1) * 38);
+              const cy = arcR + cardH / 2 + 50; // top card sits 50px from top
+
               const startDeg = -90 - fanDeg / 2;
               const totalNet = legs.reduce((s, t) => s + netLegCashflow(t), 0);
 
