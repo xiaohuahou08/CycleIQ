@@ -21,9 +21,10 @@ const navItems: { label: string; href: string; icon: LucideIcon }[] = [
 
 interface SidebarProps {
   collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }
 
-export default function Sidebar({ collapsed = false }: SidebarProps) {
+export default function Sidebar({ collapsed = false, onToggleCollapsed }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -55,6 +56,18 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
           );
         })}
       </nav>
+      <div className="hidden border-t border-slate-800 p-2 lg:block">
+        <button
+          type="button"
+          onClick={onToggleCollapsed}
+          className={`w-full rounded-lg px-2 py-2 text-xs font-medium text-slate-400 hover:bg-slate-800 hover:text-white ${collapsed ? "text-center" : "text-left"}`}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? "»" : "«"}
+          {!collapsed && <span className="ml-2">Collapse</span>}
+        </button>
+      </div>
     </aside>
   );
 }

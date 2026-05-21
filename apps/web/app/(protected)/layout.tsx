@@ -88,7 +88,10 @@ export default function ProtectedLayout({
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <Sidebar collapsed={sidebarCollapsed} />
+          <Sidebar
+            collapsed={sidebarCollapsed}
+            onToggleCollapsed={() => setSidebarCollapsed((prev) => !prev)}
+          />
         </div>
 
         {/* Main content column */}
@@ -106,14 +109,6 @@ export default function ProtectedLayout({
                 ☰
               </button>
               <h1 className="text-sm font-semibold text-slate-900">{pageTitle}</h1>
-              <button
-                type="button"
-                onClick={() => setSidebarCollapsed((prev) => !prev)}
-                className="hidden rounded-lg px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 lg:inline-flex"
-                aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              >
-                {sidebarCollapsed ? "»" : "«"}
-              </button>
             </div>
 
             <div className="flex items-center gap-3">
