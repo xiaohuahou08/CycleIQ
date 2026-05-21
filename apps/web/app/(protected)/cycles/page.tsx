@@ -319,8 +319,8 @@ export default function CyclesPage() {
   if (isAuthLoading) return null;
 
   return (
-    <main className="bg-slate-50 px-6 py-6">
-      <div className="mx-auto max-w-7xl space-y-4">
+    <main className="h-full bg-slate-50 px-4 py-4 sm:px-6 sm:py-6">
+      <div className="w-full space-y-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
