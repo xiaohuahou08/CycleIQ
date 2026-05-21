@@ -23,6 +23,7 @@ export default function ProtectedLayout({
   const [token, setToken] = useState<string | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const pageTitle = PAGE_TITLES[pathname] ?? "CycleIQ";
 
@@ -87,7 +88,10 @@ export default function ProtectedLayout({
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <Sidebar email={email} onLogout={() => void onLogout()} />
+          <Sidebar
+            collapsed={sidebarCollapsed}
+            onToggleCollapsed={() => setSidebarCollapsed((prev) => !prev)}
+          />
         </div>
 
         {/* Main content column */}
