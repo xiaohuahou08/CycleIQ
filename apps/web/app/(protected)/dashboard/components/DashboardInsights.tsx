@@ -26,42 +26,38 @@ function BarChartCard({
   const max = Math.max(1, ...points.map((p) => p.value));
   const recentPoints = points.slice(-6);
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-      <p className="mb-4 text-base font-semibold text-gray-900">{title}</p>
-      <div className="flex h-44 items-end gap-3">
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <p className="mb-4 text-sm font-semibold text-slate-800">{title}</p>
+      <div className="flex h-40 items-end gap-2">
         {points.length === 0 ? (
-          <p className="text-sm text-gray-400">No data</p>
+          <p className="text-sm text-slate-400">No data</p>
         ) : (
           points.map((p) => {
-            const height = Math.max(16, Math.round((p.value / max) * 140));
+            const height = Math.max(16, Math.round((p.value / max) * 128));
             return (
               <div key={p.label} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                <span className="text-xs font-semibold text-gray-700">{fmtCurrency(p.value)}</span>
+                <span className="text-[10px] font-semibold text-slate-600">{fmtCurrency(p.value)}</span>
                 <div
                   className={`w-full rounded-md ${gradient}`}
                   style={{ height: `${height}px` }}
                   title={`${p.label}: ${fmtCurrency(p.value)}`}
                 />
-                <span className="truncate text-xs text-gray-500">{p.label}</span>
+                <span className="truncate text-[10px] text-slate-400">{p.label}</span>
               </div>
             );
           })
         )}
       </div>
       {recentPoints.length > 0 && (
-        <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50/70 p-3">
-          <div className="space-y-1.5">
+        <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50 p-3">
+          <div className="space-y-1">
             {recentPoints.map((p) => (
               <div
                 key={`${title}-${p.label}`}
-                className="flex items-center justify-between rounded px-2 py-1 text-xs"
+                className="flex items-center justify-between rounded px-1.5 py-0.5 text-xs"
               >
-                <span className="truncate text-gray-500">
-                  {p.label}
-                </span>
-                <span className="font-semibold text-gray-800">
-                  {fmtCurrency(p.value)}
-                </span>
+                <span className="truncate text-slate-500">{p.label}</span>
+                <span className="font-semibold text-slate-700">{fmtCurrency(p.value)}</span>
               </div>
             ))}
           </div>
@@ -75,16 +71,21 @@ function StatCard({
   label,
   value,
   sub,
+  accent,
 }: {
   label: string;
   value: string;
   sub: string;
+  accent: string;
 }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="mt-2 text-3xl font-semibold text-gray-900">{value}</p>
-      <p className="mt-1 text-xs text-gray-500">{sub}</p>
+    <div className={`rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden`}>
+      <div className={`h-1 w-full ${accent}`} />
+      <div className="p-4">
+        <p className="text-xs font-medium text-slate-500">{label}</p>
+        <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-900">{value}</p>
+        <p className="mt-1 text-xs text-slate-400">{sub}</p>
+      </div>
     </div>
   );
 }
@@ -102,14 +103,14 @@ export default function DashboardInsights({
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-28 animate-pulse rounded-2xl border border-gray-200 bg-gray-100" />
+            <div key={i} className="h-28 animate-pulse rounded-2xl border border-slate-200 bg-slate-100" />
           ))}
         </div>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-44 animate-pulse rounded-2xl border border-gray-200 bg-gray-100" />
+            <div key={i} className="h-56 animate-pulse rounded-2xl border border-slate-200 bg-slate-100" />
           ))}
         </div>
       </div>
@@ -118,59 +119,69 @@ export default function DashboardInsights({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      {/* KPI cards — 4-column grid */}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
         <StatCard
           label="Total Capital Invested"
           value={fmtCurrency(kpis?.total_capital_invested ?? 0)}
           sub="Capital in open trades"
+          accent="bg-emerald-400"
         />
         <StatCard
           label="Total Premium"
           value={fmtCurrency(kpis?.total_premium ?? 0)}
           sub="Total premium collected"
+          accent="bg-emerald-400"
         />
         <StatCard
           label="Realized P&L"
           value={fmtCurrency(kpis?.realized_pnl ?? 0)}
           sub="From closed trades"
+          accent="bg-emerald-400"
         />
         <StatCard
-          label="Open Premium Annualized Yield"
+          label="Yearly Income"
+          value={fmtCurrency(kpis?.yearly_income ?? 0)}
+          sub={`${fmtCurrency(kpis?.daily_avg_income ?? 0)} / day`}
+          accent="bg-emerald-400"
+        />
+        <StatCard
+          label="Open Premium Ann. Yield"
           value={fmtPercent(kpis?.open_premium_annualized_yield ?? kpis?.avg_annual_roi ?? 0)}
-          sub="Based on open premium and open capital"
+          sub="Based on open premium and capital"
+          accent="bg-blue-400"
         />
         <StatCard
           label="Realized Annual ROI"
           value={fmtPercent(kpis?.realized_annual_roi ?? 0)}
-          sub="Based on closed premium and holding period"
-        />
-        <StatCard
-          label="Active Trades"
-          value={String(kpis?.active_trades ?? 0)}
-          sub="OPEN positions"
+          sub="Based on closed premium"
+          accent="bg-blue-400"
         />
         <StatCard
           label="Win Rate"
           value={fmtPercent(kpis?.win_rate ?? 0)}
           sub="Based on strategy outcomes"
+          accent="bg-blue-400"
+        />
+        <StatCard
+          label="Active Trades"
+          value={String(kpis?.active_trades ?? 0)}
+          sub="OPEN positions"
+          accent="bg-violet-400"
         />
         <StatCard
           label="Avg Premium / Weighted DTE"
           value={fmtCurrency(kpis?.avg_premium_per_active_day ?? 0)}
           sub={
             (kpis?.weighted_open_dte ?? 0) > 0
-              ? `Premium-weighted avg DTE: ${(kpis?.weighted_open_dte ?? 0).toFixed(1)} days`
+              ? `Avg DTE: ${(kpis?.weighted_open_dte ?? 0).toFixed(1)} days`
               : "No open positions"
           }
-        />
-        <StatCard
-          label="Yearly Income"
-          value={fmtCurrency(kpis?.yearly_income ?? 0)}
-          sub={`${fmtCurrency(kpis?.daily_avg_income ?? 0)} / day`}
+          accent="bg-violet-400"
         />
       </div>
 
-      {/* ── Stock position section (wheel strategy) ── */}
+      {/* Stock position section (wheel strategy) */}
       {((kpis?.total_stock_effective_cost ?? 0) > 0 ||
         (kpis?.total_cc_basis_reduction ?? 0) > 0 ||
         (kpis?.stock_sale_pnl ?? 0) !== 0) && (
@@ -181,43 +192,38 @@ export default function DashboardInsights({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {(kpis?.total_stock_effective_cost ?? 0) > 0 && (
               <div className="rounded-xl border border-purple-100 bg-white px-4 py-3">
-                <p className="text-[11px] font-medium text-gray-400">Effective Stock Cost</p>
-                <p className="mt-1 text-[20px] font-bold tabular-nums text-purple-700">
+                <p className="text-[11px] font-medium text-slate-400">Effective Stock Cost</p>
+                <p className="mt-1 text-xl font-bold tabular-nums text-purple-700">
                   {fmtCurrency(kpis?.total_stock_effective_cost ?? 0)}
                 </p>
-                <p className="mt-0.5 text-[11px] text-gray-400">
-                  Held shares at adjusted basis
-                </p>
+                <p className="mt-0.5 text-[11px] text-slate-400">Held shares at adjusted basis</p>
               </div>
             )}
             {(kpis?.total_cc_basis_reduction ?? 0) > 0 && (
               <div className="rounded-xl border border-emerald-100 bg-white px-4 py-3">
-                <p className="text-[11px] font-medium text-gray-400">CC Basis Reduction</p>
-                <p className="mt-1 text-[20px] font-bold tabular-nums text-emerald-600">
+                <p className="text-[11px] font-medium text-slate-400">CC Basis Reduction</p>
+                <p className="mt-1 text-xl font-bold tabular-nums text-emerald-600">
                   {fmtCurrency(kpis?.total_cc_basis_reduction ?? 0)}
                 </p>
-                <p className="mt-0.5 text-[11px] text-gray-400">
-                  Expired / closed CC premiums credited
-                </p>
+                <p className="mt-0.5 text-[11px] text-slate-400">Expired / closed CC premiums credited</p>
               </div>
             )}
             {(kpis?.stock_sale_pnl ?? 0) !== 0 && (
               <div className="rounded-xl border border-blue-100 bg-white px-4 py-3">
-                <p className="text-[11px] font-medium text-gray-400">Stock Sale P&amp;L</p>
-                <p className={`mt-1 text-[20px] font-bold tabular-nums ${(kpis?.stock_sale_pnl ?? 0) >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                <p className="text-[11px] font-medium text-slate-400">Stock Sale P&amp;L</p>
+                <p className={`mt-1 text-xl font-bold tabular-nums ${(kpis?.stock_sale_pnl ?? 0) >= 0 ? "text-emerald-600" : "text-red-600"}`}>
                   {(kpis?.stock_sale_pnl ?? 0) >= 0 ? "+" : "−"}
                   {fmtCurrency(Math.abs(kpis?.stock_sale_pnl ?? 0))}
                 </p>
-                <p className="mt-0.5 text-[11px] text-gray-400">
-                  From shares called away (strike − cost basis)
-                </p>
+                <p className="mt-0.5 text-[11px] text-slate-400">From shares called away</p>
               </div>
             )}
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4">
+      {/* Charts — 3-column row on large screens */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <BarChartCard
           title="Daily Premium Income"
           points={charts?.daily_premium_income ?? []}
@@ -237,4 +243,3 @@ export default function DashboardInsights({
     </div>
   );
 }
-

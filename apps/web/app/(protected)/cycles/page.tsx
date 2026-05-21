@@ -319,19 +319,19 @@ export default function CyclesPage() {
   if (isAuthLoading) return null;
 
   return (
-    <main className="flex-1 bg-gray-100/80 px-6 py-8">
-      <div className="mx-auto max-w-6xl space-y-4">
-        <div className="rounded-2xl border border-gray-200/80 bg-white/95 p-6 shadow-sm backdrop-blur">
+    <main className="bg-slate-50 px-6 py-6">
+      <div className="mx-auto max-w-7xl space-y-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900">Cycle</h1>
-              <p className="mt-1 text-sm text-gray-500">
+              <h1 className="text-xl font-semibold text-slate-900">Cycle</h1>
+              <p className="mt-1 text-sm text-slate-500">
                 {viewTab === "CC_COST_BASIS"
                   ? "See how covered call premium reduces your cost basis"
                   : "Visual lifecycle of every wheel strategy"}
               </p>
             </div>
-            <div className="inline-flex items-center rounded-xl border border-gray-200 bg-gray-50 p-1 text-xs">
+            <div className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1 text-xs">
               {(
                 [
                   ["WHEELS", "Wheels"],

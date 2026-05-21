@@ -212,19 +212,20 @@ export default function TradesPage() {
   if (isAuthLoading) return null;
   return (
     <>
-      <main className="flex-1 bg-[#f4f6f8] px-4 py-6 sm:px-6 lg:px-8">
+      <main className="bg-slate-50 px-6 py-6">
+        <div className="mx-auto max-w-7xl">
         {saveError && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
             {saveError}
           </div>
         )}
         {saveSuccess && (
-          <div className="mt-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-[13px] text-green-700">
+          <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] text-emerald-700">
             {saveSuccess}
           </div>
         )}
 
-        <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06)]">
+        <div className="mt-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <TradeFilters
             embedded
             onFilterChange={setFilters}
@@ -238,7 +239,7 @@ export default function TradesPage() {
               setModalOpen(true);
             }}
           />
-          <div className="border-t border-gray-100">
+          <div className="border-t border-slate-100">
             <TradeList
               trades={filtered}
               loading={tradesLoading}
@@ -267,6 +268,7 @@ export default function TradesPage() {
             {pricesUpdatedAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}.
           </div>
         )}
+        </div>
       </main>
 
       <AddTradeModal

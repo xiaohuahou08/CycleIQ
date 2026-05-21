@@ -1,19 +1,30 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "@/app/components/Sidebar";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { ProtectedAuthProvider } from "./auth-context";
+
+const PAGE_TITLES: Record<string, string> = {
+  "/dashboard": "Dashboard",
+  "/trades": "Trades",
+  "/cycles": "Cycles",
+  "/reports": "Reports",
+  "/settings": "Settings",
+};
 
 export default function ProtectedLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const router = useRouter();
+  const pathname = usePathname();
   const [email, setEmail] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const pageTitle = PAGE_TITLES[pathname] ?? "CycleIQ";
 
   useEffect(() => {
     const loadUser = async () => {
@@ -52,23 +63,25 @@ export default function ProtectedLayout({
 
   if (isAuthLoading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gray-50">
-        <p className="text-gray-600">Loading…</p>
+      <main className="flex min-h-screen items-center justify-center bg-slate-50">
+        <p className="text-slate-500">Loading…</p>
       </main>
     );
   }
 
   return (
     <ProtectedAuthProvider value={contextValue}>
-      <div className="flex h-screen overflow-hidden bg-gray-50">
+      <div className="flex h-screen overflow-hidden bg-slate-50">
+        {/* Mobile sidebar overlay */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-40 bg-black/30 lg:hidden"
+            className="fixed inset-0 z-40 bg-black/40 lg:hidden"
             onClick={() => setSidebarOpen(false)}
             aria-hidden="true"
           />
         )}
 
+        {/* Sidebar */}
         <div
           className={`fixed inset-y-0 left-0 z-50 transition-transform lg:static lg:translate-x-0 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
@@ -77,19 +90,41 @@ export default function ProtectedLayout({
           <Sidebar email={email} onLogout={() => void onLogout()} />
         </div>
 
-        <div className="flex flex-1 flex-col overflow-auto">
-          <div className="flex items-center border-b border-gray-200 bg-white px-4 py-3 lg:hidden">
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(true)}
-              className="mr-3 rounded-lg p-1.5 text-gray-500 hover:bg-gray-100"
-              aria-label="Open navigation"
-            >
-              ☰
-            </button>
-            <span className="text-sm font-semibold text-gray-900">CycleIQ</span>
+        {/* Main content column */}
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {/* Top header — always visible */}
+          <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6">
+            <div className="flex items-center gap-3">
+              {/* Hamburger for mobile */}
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(true)}
+                className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 lg:hidden"
+                aria-label="Open navigation"
+              >
+                ☰
+              </button>
+              <h1 className="text-sm font-semibold text-slate-900">{pageTitle}</h1>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {email && (
+                <span className="hidden text-xs text-slate-500 sm:block">{email}</span>
+              )}
+              <button
+                type="button"
+                onClick={() => void onLogout()}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+              >
+                Sign out
+              </button>
+            </div>
+          </header>
+
+          {/* Scrollable page content */}
+          <div className="flex-1 overflow-auto">
+            {children}
           </div>
-          {children}
         </div>
       </div>
     </ProtectedAuthProvider>

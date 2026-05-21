@@ -16,11 +16,11 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-      <div className="border-b border-gray-100 px-6 py-4">
-        <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-100 px-6 py-4">
+        <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
         {description && (
-          <p className="mt-0.5 text-xs text-gray-500">{description}</p>
+          <p className="mt-0.5 text-xs text-slate-500">{description}</p>
         )}
       </div>
       <div className="px-6 py-5">{children}</div>
@@ -283,11 +283,11 @@ export default function SettingsPage() {
   const { email, onLogout } = useProtectedAuth();
 
   return (
-    <main className="flex-1 overflow-auto bg-gray-50 px-6 py-8">
+    <main className="bg-slate-50 px-6 py-6">
       <div className="mx-auto max-w-2xl space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Settings</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-xl font-semibold text-slate-900">Settings</h1>
+          <p className="mt-1 text-sm text-slate-500">
             Manage your account and trading preferences.
           </p>
         </div>

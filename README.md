@@ -1,497 +1,284 @@
-# CycleIQ - 期权交易决策智能系统
+# CycleIQ — Wheel Strategy Tracker
 
-> 📈 将碎片化券商数据重建为完整策略周期
+> Track your options wheel cycles from CSP to assignment to covered call — with clear analytics and no spreadsheets.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub stars](https://img.shields.io/github/stars/xiaohuahou08/CycleIQ?style=social)](https://github.com/xiaohuahou08/CycleIQ/stargazers)
 
 ---
 
-## 📖 项目简介
+## What is CycleIQ?
 
-CycleIQ 是一款专为**期权 Wheel Strategy** 交易者设计的智能决策系统。它帮助用户：
+CycleIQ is a web app for retail options traders running the **Wheel Strategy**. It reconstructs your broker's fragmented trade data into coherent cycles so you can track premium income, P&L, and next steps without spreadsheets.
 
-- 🔄 **追踪完整交易周期** — CSP → Assignment → Covered Call → Exit
-- 📊 **量化策略表现** — 自动计算 Premium Income、年化收益率、胜率
-- 🧠 **智能决策支持** — 基于 Delta、IV、Theta 等指标的建议
-- 📈 **可视化资产组合** — 一目了然的持仓和收益概览
-
----
-
-## 🎯 核心概念：Wheel Strategy
-
-Wheel Strategy 是一种系统化期权交易策略，通过循环执行以下步骤产生持续收入：
-
+**Core workflow:**
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                                                                 │
-│   ┌──────────────┐    卖出虚值看跌期权     ┌──────────────┐      │
-│   │              │    (Sell Cash-Secured │              │      │
-│   │   等待开仓    │──────── Put) ───────▶│  持有股票    │      │
-│   │              │                       │ (Assigned)   │      │
-│   └──────────────┘                       └──────┬───────┘      │
-│                                                 │              │
-│                                                 │ 卖出看涨期权  │
-│                                                 │ (Sell        │
-│                                                 │ Covered      │
-│                                                 │ Call)        │
-│                                                 ▼              │
-│   ┌──────────────┐    收回现金               ┌──────────────┐    │
-│   │              │    (Call Assigned)       │              │    │
-│   │   等待开仓    │◀────────────────────────│  卖出股票    │    │
-│   │              │                          │  (Called     │    │
-│   └──────────────┘                          │  Away)       │    │
-│                                              └──────────────┘    │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### 关键术语
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| 看跌期权 | Put Option | 赋予买方卖出标的的权利 |
-| 看涨期权 | Call Option | 赋予买方买入标的的权利 |
-| 保证金 | Margin/Collateral | 卖出期权需冻结的资金 |
-| 权利金 | Premium | 期权的价格/收入 |
-| 行权价 | Strike Price | 期权合约约定的买卖价格 |
-| Delta | Delta | 期权价格对标的资产价格变动的敏感度 |
-| 隐含波动率 | IV (Implied Volatility) | 高IV = 高权利金 = 卖方有利 |
-| Theta | Theta | 时间价值衰减（期权卖方的朋友） |
-| 被行权 | Assigned | 期权买方执行权利，买入/卖出标的 |
-| 强制平仓 | Called Away | 持有的股票被以行权价卖出 |
-
----
-
-## 🏗️ 系统架构
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           CycleIQ 系统架构                              │
-└─────────────────────────────────────────────────────────────────────────┘
-
-                              ┌─────────────────┐
-                              │     Users       │
-                              │   (Traders)     │
-                              └────────┬────────┘
-                                       │
-                                       │ HTTPS
-                                       ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                     Frontend (Next.js / React)                          │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐   │
-│  │  Landing    │  │  Dashboard  │  │ Trade List  │  │ Auth UI     │   │
-│  │  Page       │  │  (KPI/Pos)  │  │ Cycle View  │  │ (Login/Reg) │   │
-│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘   │
-│                              │                                          │
-│                    ┌─────────┴─────────┐                                │
-│                    │   Supabase Auth   │                                │
-│                    │  (JWT / Session)  │                                │
-│                    └─────────┬─────────┘                                │
-└──────────────────────────────┼────────────────────────────────────────┘
-                               │ REST API
-                               ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         Backend (Flask API)                             │
-│                                                                         │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐   │
-│  │  Auth API   │  │ Cycle API   │  │ Trade API   │  │ Stock API   │   │
-│  │  /auth/*    │  │ /api/cycles │  │ /api/trades │  │ /api/stocks │   │
-│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘   │
-│                              │                                          │
-│                    ┌─────────┴─────────┐                                │
-│                    │   State Machine   │                                │
-│                    │  (Wheel Cycle)    │                                │
-│                    └─────────┬─────────┘                                │
-└──────────────────────────────┼────────────────────────────────────────┘
-                               │
-              ┌────────────────┴────────────────┐
-              │                                 │
-              ▼                                 ▼
-┌─────────────────────────┐       ┌─────────────────────────┐
-│    PostgreSQL           │       │  Yahoo Finance /        │
-│    (Supabase)           │       │  Finnhub API            │
-│    (用户数据 + RLS)      │       │  (股票实时价格)          │
-└─────────────────────────┘       └─────────────────────────┘
-```
-
-### 技术栈
-
-| 层级 | 技术 | 说明 |
-|------|------|------|
-| **前端** | Next.js 15+ / React + Vite + TypeScript | 用户界面 |
-| | Tailwind CSS + shadcn/ui | 样式框架 |
-| | Supabase JS Client | 认证 & 数据库客户端 |
-| **后端** | Flask 3.x | Python Web 框架 |
-| | SQLAlchemy + Flask-Migrate (Alembic) | ORM & 数据库迁移 |
-| | Supabase Auth（JWT：`require_auth`） | **ES256/RS256**：用 token 内 `iss` 拉 JWKS 验签；**HS256（旧）**：用 `SUPABASE_JWT_SECRET` |
-| | Pydantic | 数据验证 |
-| **数据库** | PostgreSQL (Supabase) + Row Level Security | 主数据库（每用户数据隔离） |
-| **外部 API** | Yahoo Finance / Finnhub | 股票价格数据 |
-
----
-
-## ✨ 核心功能
-
-### 期权交易周期管理
-
-- 📋 **Wheel Cycle 全流程追踪** — 从 Sell CSP 到 Covered Call 的完整生命周期
-- 🔄 **状态机自动化** — 自动处理 6 种状态转换
-- 📝 **交易记录管理** — 支持所有期权类型（CSP, CC）及状态（OPEN, CLOSED, ASSIGNED, CALLED_AWAY）
-
-### 数据可视化
-
-- 💹 **实时价格显示** — Yahoo Finance / Finnhub 集成
-- 📊 **收益仪表盘** — Premium Income、年化收益率、胜率
-- 📈 **持仓概览** — 当前持仓、盈亏、到期日历
-
-### 用户认证
-
-- 🔐 **JWT Token 认证** — 安全可靠
-- 📧 **邮箱注册登录** — 密码加密存储
-- 🚪 **会话管理** — 登出、Token 刷新
-
----
-
-## 📋 数据模型
-
-Schema 由 `auth.users`（Supabase Auth）+ 2 张应用核心表组成，使用 UUID 主键。用户认证通过 Supabase Auth 管理，并通过 Row Level Security (RLS) 实现每用户数据隔离。
-
-### users（用户认证）
-
-用户账户由 **Supabase Auth** (`auth.users`) 管理，无需自定义 `public.users` 表。
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | UUID PK | 主键（Supabase 自动生成）|
-| email | VARCHAR(255) UNIQUE NOT NULL | 登录邮箱 |
-| created_at | TIMESTAMPTZ | 创建时间 |
-
-> `wheel_cycles.user_id` 和 `trades.user_id` 均通过外键引用 `auth.users(id)`。所有表启用 Row Level Security (RLS)，确保用户只能访问自己的数据（`WHERE user_id = auth.uid()`）。
-
-### wheel_cycles（交易周期）
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | UUID PK | 主键 |
-| user_id | UUID FK → users.id NOT NULL | 所属用户 |
-| ticker | VARCHAR(20) NOT NULL | 股票代码（如 AAPL）|
-| current_state | VARCHAR(30) NOT NULL DEFAULT 'IDLE' | 状态机当前状态 |
-| start_date | DATE | 周期开始日期 |
-| end_date | DATE | 周期结束日期 |
-| shares_held | INTEGER DEFAULT 0 | 持有股票数量（0 或 100 的倍数）|
-| cost_basis | DECIMAL(12,2) | 平均成本（被行权时）|
-| created_at | TIMESTAMPTZ | 创建时间 |
-| updated_at | TIMESTAMPTZ | 更新时间 |
-
-### trades（交易记录）
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | UUID PK | 主键 |
-| wheel_cycle_id | UUID FK → wheel_cycles.id NOT NULL | 关联周期 |
-| option_type | VARCHAR(10) NULLABLE | 期权/仓位类型（PUT / CALL / STOCK） |
-| action | VARCHAR(10) NOT NULL | BUY / SELL |
-| strike | DECIMAL(18,4) | 行权价 |
-| expiration_date | DATE | 到期日 |
-| premium_per_contract | DECIMAL(18,4) | 每张合约权利金 |
-| stock_price | DECIMAL(18,4) | 股票成交价（股票腿） |
-| event | VARCHAR(50) NOT NULL | 触发事件（如 OPEN_CSP / ASSIGNED / MANUAL） |
-| trade_date | DATE NOT NULL DEFAULT CURRENT_DATE | 交易日期 |
-| contracts | INTEGER DEFAULT 1 | 合约数量 |
-| notes | VARCHAR(1000) | 用户备注 |
-| created_at | TIMESTAMPTZ | 创建时间 |
-
-### 表关系
-
-```
-auth.users (Supabase Auth) 1──N wheel_cycles
-wheel_cycles               1──N trades
+Sell CSP → (Assigned) → Hold Stock → Sell CC → (Called Away / Expired) → Repeat
 ```
 
 ---
 
-## 🔌 API 接口
+## Tech Stack
 
-### 认证 API
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | [Next.js 16](https://nextjs.org/) (App Router) + React 19 + TypeScript |
+| **Styling** | Tailwind CSS v4 |
+| **Auth** | Supabase Auth (JWT: ES256 via JWKS / HS256 legacy) |
+| **Backend** | Flask 3.x (Python) |
+| **ORM** | SQLAlchemy + Alembic migrations |
+| **Database** | PostgreSQL via Supabase + Row Level Security |
+| **External API** | Yahoo Finance / Finnhub (live stock prices) |
+| **Deployment** | Vercel (frontend) + Render (backend) |
 
-| 方法 | 端点 | 描述 |
-|------|------|------|
-| POST | `/api/auth/register` | 用户注册 |
-| POST | `/api/auth/login` | 用户登录 |
-| POST | `/api/auth/logout` | 用户登出 |
-| GET | `/api/auth/me` | 获取当前用户 |
-
-### Cycle API
-
-| 方法 | 端点 | 描述 |
-|------|------|------|
-| GET | `/api/cycles` | 获取所有 Cycle |
-| POST | `/api/cycles` | 创建新 Cycle |
-| GET | `/api/cycles/:id` | 获取单个 Cycle |
-| DELETE | `/api/cycles/:id` | 删除 Cycle |
-| POST | `/api/cycles/:id/event` | 应用状态机事件并落库 |
-| GET | `/api/cycles/:id/metrics` | 获取统计指标 |
-
-### Trade API
-
-| 方法 | 端点 | 描述 |
-|------|------|------|
-| GET | `/api/trades` | 获取所有 Trade |
-| POST | `/api/trades` | 创建新 Trade |
-| GET | `/api/trades/:id` | 获取单个 Trade |
-| PUT | `/api/trades/:id` | 更新 Trade |
-| DELETE | `/api/trades/:id` | 删除 Trade |
-
-### Stock API
-
-| 方法 | 端点 | 描述 |
-|------|------|------|
-| GET | `/api/stocks/quote/:symbol` | 获取股票报价 |
+> **Note:** A legacy Vite+React prototype lives in `frontend/`. The active application is `apps/web` (Next.js).
 
 ---
 
-## 🚀 快速开始
+## Features
 
-### 前置要求
-
-- Node.js 18+
-- Python 3.11+
-- Git
-
-### 克隆项目
-
-```bash
-git clone https://github.com/xiaohuahou08/CycleIQ.git
-cd CycleIQ
-```
-
-### 前端启动
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-访问 http://localhost:5173
-
-### Next.js Web Scaffold 启动
-
-```bash
-cd apps/web
-npm install
-npm run dev
-```
-
-访问 http://localhost:3000
-
-### 后端启动
-
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-flask run
-```
-
-访问 http://localhost:5000
-
-### 环境变量
-
-**前端 (.env)**
-```env
-VITE_API_BASE_URL=http://localhost:5000
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-**Next.js Web Scaffold (apps/web/.env.local)**
-```env
-NEXT_PUBLIC_API_URL=https://your-flask-host.example.com
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-`NEXT_PUBLIC_API_URL` 为 Flask API 的基地址（无末尾 `/`，例如 Render 上的 `https://xxx.onrender.com`），须与当前部署的后端一致，否则前端带 Token 请求会失败或打到错误环境。
-
-**后端 (.env)**
-```env
-FLASK_ENV=development
-SECRET_KEY=your_secret_key
-DATABASE_URL=postgresql://user:pass@host:5432/dbname
-DATABASE_POOL_URL=postgresql://user:pass@host:6543/dbname?pgbouncer=true
-SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-# 仅当 Supabase 仍签发 HS256（旧 JWT Secret）时需要；ES256 由 JWKS 验签，可不配
-SUPABASE_JWT_SECRET=your_supabase_jwt_secret
-```
-
-**鉴权说明（自建 Flask）**  
-浏览器里的 `session.access_token` 若为 **ES256**（Supabase 新项目常见），后端会向 `{iss}/.well-known/jwks.json` 拉公钥验签（`iss` 形如 `https://<ref>.supabase.co/auth/v1`）。部署环境需能访问该 HTTPS 地址。单测仍使用 HS256 + `SUPABASE_JWT_SECRET`。
+- **Wheel Cycle tracking** — Full CSP → Assignment → CC → Exit lifecycle per ticker
+- **State machine** — 6-state FSM automatically transitions cycles based on trade events
+- **Dashboard** — KPI cards (premium, ROI, win rate, active trades), income bar charts
+- **Trade log** — Add, edit, expire, roll, and assign trades with live price context
+- **Cycle view** — Timeline visualization of every wheel with per-leg cost basis
+- **Real-time prices** — Stock quotes fetched hourly via `/api/quote`
+- **Per-user isolation** — Supabase RLS ensures users only see their own data
 
 ---
 
-## 📁 项目结构
+## Project Structure
 
 ```
 CycleIQ/
-├── apps/
-│   └── web/                     # Next.js 15+ Web App Scaffold
-│       ├── app/                # App Router pages
-│       ├── lib/supabase/       # Supabase client
-│       ├── middleware.ts       # Route guard
-│       └── package.json
-│
-├── frontend/                    # React 前端
-│   ├── src/
-│   │   ├── components/        # UI 组件
-│   │   │   ├── Auth/          # 认证组件
-│   │   │   ├── Dashboard/     # 仪表盘
-│   │   │   ├── Trade/         # 交易组件
-│   │   │   └── Cycle/         # Cycle 组件
-│   │   ├── pages/             # 页面
-│   │   ├── services/          # API 服务
-│   │   ├── stores/            # 状态管理
-│   │   ├── types/             # TypeScript 类型
-│   │   └── App.tsx            # 主应用
-│   ├── public/               # 静态资源
+├── apps/web/                  # Active frontend (Next.js 16)
+│   ├── app/
+│   │   ├── (protected)/       # Auth-gated pages: dashboard, trades, cycles, reports, settings
+│   │   ├── components/        # Shared UI (Sidebar, etc.)
+│   │   ├── login/ register/   # Public auth pages
+│   │   └── page.tsx           # Landing page
+│   ├── lib/
+│   │   ├── api/trades.ts      # All API client functions
+│   │   └── supabase/          # Supabase client helpers
 │   └── package.json
 │
-├── backend/                    # Flask 后端
-│   ├── auth/                   # Supabase JWT 校验（ES256 JWKS / HS256 secret）
-│   ├── app/
-│   │   ├── models/             # 数据模型
-│   │   ├── routes/            # API 路由（另一套路由包；主 API 见 backend/routes）
-│   │   ├── services/          # 业务逻辑
-│   │   ├── state_machine/     # 状态机
-│   │   └── schemas/           # 数据验证
-│   ├── tests/                 # 测试
-│   ├── requirements.txt
-│   └── run.py                 # 入口文件
+├── backend/                   # Flask API
+│   ├── routes/
+│   │   ├── trades.py          # /api/trades CRUD + expire/roll/assign
+│   │   ├── cycles.py          # /api/cycles + FSM transitions
+│   │   ├── dashboard.py       # /api/dashboard/insights
+│   │   └── metrics.py         # /api/metrics
+│   ├── auth/                  # Supabase JWT verification (ES256 JWKS + HS256)
+│   ├── cycleiq/               # Wheel FSM domain logic
+│   └── requirements.txt
 │
-├── docs/                      # 文档
-├── .github/
-│   └── workflows/            # GitHub Actions
+├── frontend/                  # Legacy Vite prototype (not active)
+├── docs/
 ├── README.md
 └── LICENSE
 ```
 
 ---
 
-## 🧪 测试
+## Quick Start
 
-在仓库根目录（与 `tests/`、`backend/` 同级）执行：
+### Prerequisites
+
+- Node.js 18+
+- Python 3.11+
+
+### Frontend (Next.js — active app)
 
 ```bash
+cd apps/web
+npm install
+npm run dev
+# → http://localhost:3000
+```
+
+### Backend (Flask API)
+
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate   # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+flask run
+# → http://localhost:5000
+```
+
+### Environment Variables
+
+**`apps/web/.env.local`**
+```env
+NEXT_PUBLIC_API_URL=https://your-flask-host.example.com
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+**`backend/.env`**
+```env
+DATABASE_URL=postgresql://user:pass@host:5432/dbname
+DATABASE_POOL_URL=postgresql://user:pass@host:6543/dbname?pgbouncer=true
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+# Only needed for HS256 legacy tokens:
+SUPABASE_JWT_SECRET=your_supabase_jwt_secret
+```
+
+**Auth note:** New Supabase projects issue ES256 tokens. The backend validates these by fetching `{iss}/.well-known/jwks.json`. Ensure your deployment environment has outbound HTTPS access.
+
+---
+
+## Data Model
+
+Authentication is handled by Supabase Auth (`auth.users`). All application tables reference `auth.users(id)` with Row Level Security enforcing per-user data isolation.
+
+### `wheel_cycles`
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID PK | |
+| user_id | UUID FK → auth.users | |
+| ticker | VARCHAR(20) | e.g. AAPL |
+| current_state | VARCHAR(30) | FSM state: IDLE / CSP_OPEN / STOCK_HELD / CC_OPEN / EXIT |
+| start_date | DATE | |
+| end_date | DATE | |
+| shares_held | INTEGER | 0 or multiple of 100 |
+| cost_basis | DECIMAL(12,2) | Effective cost after premium reductions |
+| created_at / updated_at | TIMESTAMPTZ | |
+
+### `trades`
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID PK | |
+| user_id | UUID FK → auth.users | |
+| cycle_id | UUID FK → wheel_cycles | Auto-created if omitted |
+| ticker | VARCHAR(20) | |
+| option_type | VARCHAR(10) | PUT / CALL |
+| strike | DECIMAL(18,4) | |
+| expiry | DATE | |
+| trade_date | DATE | |
+| premium | DECIMAL(18,4) | Per-share premium collected |
+| contracts | INTEGER | Number of contracts (×100 shares) |
+| status | VARCHAR(20) | OPEN / CLOSED / EXPIRED / ASSIGNED / CALLED_AWAY / ROLLED |
+| delta | DECIMAL(8,4) | Optional |
+| commission_fee | DECIMAL(12,4) | Optional |
+| buyback_cost_per_share | DECIMAL(18,4) | For rolled trades |
+| rolled_from_id | UUID FK → trades | For roll chains |
+| notes | TEXT | |
+
+### Relationships
+
+```
+auth.users  1──N  wheel_cycles
+auth.users  1──N  trades
+wheel_cycles 1──N trades  (via cycle_id)
+trades       1──N trades  (via rolled_from_id, roll chains)
+```
+
+---
+
+## API Routes
+
+All routes require `Authorization: Bearer <supabase_access_token>`.
+
+### Trades
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/trades` | List all trades for current user |
+| POST | `/api/trades` | Create a trade (auto-creates cycle if no `cycle_id`) |
+| GET | `/api/trades/:id` | Get single trade |
+| PUT | `/api/trades/:id` | Update trade fields |
+| PATCH | `/api/trades/:id/expire` | Mark expired (OTM / ITM) |
+| PATCH | `/api/trades/:id/status` | Quick status update |
+| DELETE | `/api/trades/:id` | Delete trade |
+
+### Cycles
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/cycles` | List all cycles |
+| POST | `/api/cycles` | Create cycle manually |
+| GET | `/api/cycles/:id` | Get single cycle |
+| DELETE | `/api/cycles/:id` | Delete cycle |
+| POST | `/api/cycles/:id/event` | Apply FSM transition (assign, roll, exit…) |
+
+### Dashboard & Metrics
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/dashboard/insights` | KPIs + chart data for dashboard |
+| GET | `/api/metrics` | Aggregated performance metrics |
+| GET | `/api/quote?symbols=AAPL,MSFT` | Live stock prices (cached ~1hr) |
+
+---
+
+## Deployment
+
+| Service | Platform |
+|---------|---------|
+| Frontend | [Vercel](https://vercel.com) — push to `main`, auto-deploys |
+| Backend | [Render](https://render.com) — `gunicorn --bind 0.0.0.0:$PORT backend.wsgi:app` |
+| Database | [Supabase](https://supabase.com) — PostgreSQL + Auth + RLS |
+
+### Database migrations
+
+```bash
+cd backend
+# Development (direct connection, port 5432)
+DATABASE_URL=postgresql://... flask db upgrade
+
+# Production — run via Render Shell with DATABASE_URL (not pool URL)
+```
+
+> **Render free tier:** Sleeps after 15 min of inactivity. Add a GitHub Actions cron job to ping `/health` periodically.
+
+---
+
+## Testing
+
+```bash
+# From repo root
 python -m pip install -r requirements-test.txt
 PYTHONPATH=. pytest tests/ -v
 ```
 
-`requirements-test.txt` 会安装应用依赖与 `pytest`/`pytest-cov`，与 CI（`.github/workflows/pr-tests.yml`）一致。
+---
+
+## Roadmap
+
+| Feature | Status |
+|---------|--------|
+| Wheel Cycle state machine (Python FSM) | ✅ Done |
+| Supabase JWT auth (ES256 + HS256) | ✅ Done |
+| Trade management UI (add / edit / roll / assign / expire) | ✅ Done |
+| Dashboard KPIs + income charts | ✅ Done |
+| Cycle timeline visualization | ✅ Done |
+| Live stock price integration | ✅ Done |
+| Landing page | ✅ Done |
+| Vercel + Render deployment | ✅ Done |
+| CSV / broker import | 🔜 Planned |
+| DTE alerts & assignment-risk nudges | 🔜 Planned |
+| Advanced reports & exports | 🔜 Planned |
 
 ---
 
-## 📦 部署
+## Contributing
 
-### MVP 部署（推荐）
-
-| 服务 | 平台 | 说明 |
-|------|------|------|
-| **前端** | Vercel | Next.js 原生支持，自动 CI/CD |
-| **后端** | Render | Flask API，免费套餐支持 |
-| **数据库** | Supabase | PostgreSQL + Auth + RLS，免费套餐 |
-
-### 前端 (Vercel)
-
-推送到 `main` 分支，Vercel 自动检测 Next.js 并完成部署。
-
-```bash
-# 本地验证构建
-cd apps/web
-npm run build
-```
-
-### 后端 (Render)
-
-1. 连接 GitHub 仓库（根目录含 `backend/` 时，工作目录与 `requirements.txt` 以仓库为准）
-2. Build：`pip install -r requirements.txt`（根 `requirements.txt` 会安装 `backend/requirements.txt` + 可编辑包 `cycleiq`）
-3. Start：`gunicorn --bind 0.0.0.0:$PORT backend.wsgi:app`（或与 Dockerfile 一致）
-4. 环境变量至少：`DATABASE_URL` 或 `DATABASE_POOL_URL`、`SUPABASE_URL`；**ES256** 场景下务必保证容器能访问公网 JWKS。**HS256** 老项目可继续配置 `SUPABASE_JWT_SECRET`
-5. Vercel 前端需设置 `NEXT_PUBLIC_API_URL` 指向该 Render 服务 URL，且 Flask 已配置 CORS（本项目对前端 Origin 放行）
-
-> **Keep-Alive**: 免费套餐 15 分钟无流量自动休眠。参考 #52 — 可通过 GitHub Actions Cron 定期 ping `/health` 端点保持活跃。
-
-### 生产部署 (VPS + Docker)
-
-```bash
-docker build -t cycleiq-backend ./backend
-docker run -d -p 5000:5000 --env-file .env cycleiq-backend
-```
-
-### 数据库迁移
-
-```bash
-cd backend
-# 开发环境（直连，port 5432）
-DATABASE_URL=postgresql://... flask db upgrade
-
-# 生产环境通过 Render Shell 执行，使用 DATABASE_URL（非 DATABASE_POOL_URL）
-```
+1. Fork the repo
+2. Create a feature branch (`git checkout -b feature/my-feature`)
+3. Commit your changes (`git commit -m 'Add my feature'`)
+4. Push and open a Pull Request
 
 ---
 
-## 🗺️ MVP Roadmap
+## License
 
-以下是 CycleIQ MVP 的完整 Issue 清单（共 13 个）：
-
-| Issue | 标题 | 状态 |
-|-------|------|------|
-| [#2](https://github.com/xiaohuahou08/CycleIQ/issues/2) | [Docs] Wheel Strategy Bilingual Guide & Terminology Glossary | ✅ Done |
-| [#3](https://github.com/xiaohuahou08/CycleIQ/issues/3) | [Feature] Wheel Strategy State Machine (Python Class + Unit Tests) | ✅ Done |
-| [#6](https://github.com/xiaohuahou08/CycleIQ/issues/6) | [Feature] Web App Scaffold: Login & Registration (Mock Auth) | ✅ Done |
-| [#7](https://github.com/xiaohuahou08/CycleIQ/issues/7) | [Feature] Flask API for Wheel Cycle State Machine | 🔄 In Progress |
-| [#8](https://github.com/xiaohuahou08/CycleIQ/issues/8) | [Feature] Flask Auth: Supabase JWT Verification | ✅ Done |
-| [#9](https://github.com/xiaohuahou08/CycleIQ/issues/9) | [Feature] Trade Records Management UI (MVP: Add Trade) | ✅ Done |
-| [#10](https://github.com/xiaohuahou08/CycleIQ/issues/10) | [Task] Frontend Deployment: Vercel (Next.js) | 🔄 In Progress |
-| [#11](https://github.com/xiaohuahou08/CycleIQ/issues/11) | [Spike] Supabase PostgreSQL Setup Research | 🔄 In Progress |
-| [#12](https://github.com/xiaohuahou08/CycleIQ/issues/12) | [Task] Backend Deployment: Render (Flask + Health Check Keep-Alive) | ✅ Done |
-| [#13](https://github.com/xiaohuahou08/CycleIQ/issues/13) | [Feature] Real-Time Ticker Price Display (Yahoo Finance / Finnhub) | 🔄 In Progress |
-| [#14](https://github.com/xiaohuahou08/CycleIQ/issues/14) | [Feature] Landing Page | ✅ Done |
-| [#15](https://github.com/xiaohuahou08/CycleIQ/issues/15) | [Feature] Dashboard Home Page | ✅ Done |
-| [#16](https://github.com/xiaohuahou08/CycleIQ/issues/16) | [Task] Database Schema & Migration | 🔄 In Progress |
-
-> ✅ Done = 已完成  🔄 In Progress = 进行中
+MIT — see [LICENSE](LICENSE)
 
 ---
 
-
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'Add amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 创建 Pull Request
-
----
-
-## 📄 许可证
-
-本项目基于 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
-
----
-
-## 📞 联系方式
-
-- **GitHub**: https://github.com/xiaohuahou08/CycleIQ
-- **Email**: xiaohua.hou@gmail.com
-
----
-
-<p align="center">
-  <strong>CycleIQ - 让 Wheel Strategy 交易更智能</strong>
-</p>
+**CycleIQ** · [GitHub](https://github.com/xiaohuahou08/CycleIQ) · xiaohua.hou@gmail.com
