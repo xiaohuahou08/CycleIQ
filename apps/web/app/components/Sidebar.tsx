@@ -56,7 +56,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapsed }: Sideba
           );
         })}
       </nav>
-
       <div className="hidden border-t border-slate-800 p-2 lg:block">
         <button
           type="button"
