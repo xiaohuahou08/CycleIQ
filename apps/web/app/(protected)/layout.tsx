@@ -23,6 +23,7 @@ export default function ProtectedLayout({
   const [token, setToken] = useState<string | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const pageTitle = PAGE_TITLES[pathname] ?? "CycleIQ";
 
@@ -87,7 +88,7 @@ export default function ProtectedLayout({
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <Sidebar email={email} onLogout={() => void onLogout()} />
+          <Sidebar collapsed={sidebarCollapsed} />
         </div>
 
         {/* Main content column */}
@@ -105,6 +106,14 @@ export default function ProtectedLayout({
                 ☰
               </button>
               <h1 className="text-sm font-semibold text-slate-900">{pageTitle}</h1>
+              <button
+                type="button"
+                onClick={() => setSidebarCollapsed((prev) => !prev)}
+                className="hidden rounded-lg px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 lg:inline-flex"
+                aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                {sidebarCollapsed ? "»" : "«"}
+              </button>
             </div>
 
             <div className="flex items-center gap-3">

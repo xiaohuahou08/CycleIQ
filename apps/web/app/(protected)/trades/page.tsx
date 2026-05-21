@@ -212,8 +212,8 @@ export default function TradesPage() {
   if (isAuthLoading) return null;
   return (
     <>
-      <main className="bg-slate-50 px-6 py-6">
-        <div className="mx-auto max-w-7xl">
+      <main className="h-full bg-slate-50 px-4 py-4 sm:px-6 sm:py-6">
+        <div className="w-full">
         {saveError && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
             {saveError}
