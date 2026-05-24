@@ -67,7 +67,6 @@ function applyFilters(trades: Trade[], f: FilterState): Trade[] {
     ) {
       return false;
     }
-
     if (
       f.search &&
       !t.ticker.toLowerCase().includes(f.search.toLowerCase()) &&
@@ -132,7 +131,7 @@ export default function TradesPage() {
             (t) =>
               t.option_type === "PUT" &&
               t.status === "ASSIGNED" &&
-              (t.cycle_id && !closedCycleIds.has(t.cycle_id))
+              (!t.cycle_id || !closedCycleIds.has(t.cycle_id))
           )
           .map((t) => t.ticker)
       )
