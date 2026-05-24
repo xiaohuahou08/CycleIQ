@@ -77,7 +77,7 @@ export default function TradeFilters({
     filters.dateTo !== "" ||
     filters.search !== "";
 
-  const visibleStatusLabels = Object.entries(STATUS_LABELS).filter(
+  const availableStatusLabels = Object.entries(STATUS_LABELS).filter(
     ([val]) => !(filters.type === "PUT" && val === "CALLED_AWAY")
   );
 
@@ -121,7 +121,7 @@ export default function TradeFilters({
             {label}
           </button>
         ))}
-        {visibleStatusLabels.map(([val, label]) => (
+        {availableStatusLabels.map(([val, label]) => (
           <button
             key={val}
             type="button"
