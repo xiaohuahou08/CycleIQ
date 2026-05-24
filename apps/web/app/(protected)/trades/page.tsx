@@ -53,7 +53,15 @@ function applyFilters(trades: Trade[], f: FilterState): Trade[] {
 
   return trades.filter((t) => {
     if (f.type !== "ALL" && t.option_type !== f.type) return false;
-    if (f.status !== "ALL" && t.status !== f.status) return false;
+    if (f.status !== "ALL") {
+      if (f.status === "CLOSED") {
+        const isClosedStatus = t.status === "CLOSED";
+        const inClosedCycle = Boolean(t.cycle_id && closedCycleIds.has(t.cycle_id));
+        if (!isClosedStatus && !inClosedCycle) return false;
+      } else if (t.status !== f.status) {
+        return false;
+      }
+    }
 
     // Closed wheels should not show in the dedicated "Rolled" status tab.
     if (f.status === "ROLLED" && t.cycle_id && closedCycleIds.has(t.cycle_id)) return false;
