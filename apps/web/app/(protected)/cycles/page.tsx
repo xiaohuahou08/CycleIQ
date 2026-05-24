@@ -89,6 +89,12 @@ interface WheelSummary extends CycleSummary {
 function deriveWheelState(wheelTrades: Trade[], cycleState: string): string {
   const hasOpen = wheelTrades.some((t) => t.status === "OPEN");
   if (hasOpen) return cycleState.startsWith("CC") ? cycleState : "CSP_OPEN";
+
+  const hasCalledAwayCall = wheelTrades.some(
+    (t) => t.option_type === "CALL" && t.status === "CALLED_AWAY"
+  );
+  if (hasCalledAwayCall) return "CSP_CLOSED";
+
   // PUT was assigned → user holds stock, not completed
   const hasAssigned = wheelTrades.some((t) => t.status === "ASSIGNED" && t.option_type === "PUT");
   if (hasAssigned) return "STOCK_HELD";
@@ -190,11 +196,11 @@ export default function CyclesPage() {
   );
 
   const activeCycles = useMemo(
-    () => sortedCycles.filter((cycle) => cycle.state !== "EXIT"),
+    () => sortedCycles.filter((cycle) => cycle.state !== "EXIT" && cycle.state !== "CSP_CLOSED"),
     [sortedCycles]
   );
   const completedCycles = useMemo(
-    () => sortedCycles.filter((cycle) => cycle.state === "EXIT"),
+    () => sortedCycles.filter((cycle) => cycle.state === "EXIT" || cycle.state === "CSP_CLOSED"),
     [sortedCycles]
   );
   const tabCycles =

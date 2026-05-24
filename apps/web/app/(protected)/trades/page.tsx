@@ -26,9 +26,26 @@ function todayIso(): string {
 }
 
 function applyFilters(trades: Trade[], f: FilterState): Trade[] {
+  const cycleTrades = trades.reduce<Record<string, Trade[]>>((acc, t) => {
+    if (!t.cycle_id) return acc;
+    if (!acc[t.cycle_id]) acc[t.cycle_id] = [];
+    acc[t.cycle_id].push(t);
+    return acc;
+  }, {});
+
+  const closedCycleIds = new Set(
+    Object.entries(cycleTrades)
+      .filter(([, ts]) => ts.length > 0 && ts.every((t) => t.status !== "OPEN"))
+      .map(([cycleId]) => cycleId)
+  );
+
   return trades.filter((t) => {
     if (f.type !== "ALL" && t.option_type !== f.type) return false;
     if (f.status !== "ALL" && t.status !== f.status) return false;
+
+    // Closed wheels should not show in the dedicated "Rolled" status tab.
+    if (f.status === "ROLLED" && t.cycle_id && closedCycleIds.has(t.cycle_id)) return false;
+
     if (
       f.search &&
       !t.ticker.toLowerCase().includes(f.search.toLowerCase()) &&
@@ -82,24 +99,60 @@ export default function TradesPage() {
   );
 
   // Tickers that have an assigned (stock-held) position, i.e. CSP that was assigned.
-  const assignedTickers = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          allTrades
-            .filter((t) => t.option_type === "PUT" && t.status === "ASSIGNED")
-            .map((t) => t.ticker)
-        )
-      ),
-    [allTrades]
-  );
+  // Exclude wheels that are already closed (no OPEN legs), including called-away wheels.
+  const assignedTickers = useMemo(() => {
+    const cycleTrades = allTrades.reduce<Record<string, Trade[]>>((acc, t) => {
+      if (!t.cycle_id) return acc;
+      if (!acc[t.cycle_id]) acc[t.cycle_id] = [];
+      acc[t.cycle_id].push(t);
+      return acc;
+    }, {});
+
+    const closedCycleIds = new Set(
+      Object.entries(cycleTrades)
+        .filter(([, ts]) => ts.length > 0 && ts.every((t) => t.status !== "OPEN"))
+        .map(([cycleId]) => cycleId)
+    );
+
+    return Array.from(
+      new Set(
+        allTrades
+          .filter(
+            (t) =>
+              t.option_type === "PUT" &&
+              t.status === "ASSIGNED" &&
+              (!t.cycle_id || !closedCycleIds.has(t.cycle_id))
+          )
+          .map((t) => t.ticker)
+      )
+    );
+  }, [allTrades]);
 
   // Map ticker → cycle_id for ASSIGNED PUT trades (most recent per ticker).
   // Used to explicitly link new CC trades to the correct existing wheel.
   const assignedCycleByTicker = useMemo(() => {
+    const cycleTrades = allTrades.reduce<Record<string, Trade[]>>((acc, t) => {
+      if (!t.cycle_id) return acc;
+      if (!acc[t.cycle_id]) acc[t.cycle_id] = [];
+      acc[t.cycle_id].push(t);
+      return acc;
+    }, {});
+
+    const closedCycleIds = new Set(
+      Object.entries(cycleTrades)
+        .filter(([, ts]) => ts.length > 0 && ts.every((t) => t.status !== "OPEN"))
+        .map(([cycleId]) => cycleId)
+    );
+
     const map: Record<string, string> = {};
     allTrades
-      .filter((t) => t.option_type === "PUT" && t.status === "ASSIGNED" && t.cycle_id)
+      .filter(
+        (t) =>
+          t.option_type === "PUT" &&
+          t.status === "ASSIGNED" &&
+          t.cycle_id &&
+          !closedCycleIds.has(t.cycle_id)
+      )
       .sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime())
       .forEach((t) => {
         if (t.cycle_id) map[t.ticker] = t.cycle_id;

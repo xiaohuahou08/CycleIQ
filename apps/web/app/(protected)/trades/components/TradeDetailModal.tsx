@@ -474,7 +474,7 @@ export default function TradeDetailModal({
             {/* ── primary actions ── */}
             <div className="flex flex-wrap justify-center gap-2">
               {(
-                trade.status === "ASSIGNED"
+                trade.status === "ASSIGNED" || (trade.option_type === "PUT" && trade.status === "EXPIRED")
                   ? [
                       { label: "Edit", Icon: IcPencil, onClick: () => { onClose(); onEdit(trade); } },
                     ]

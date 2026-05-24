@@ -312,7 +312,7 @@ export default function TradeFilters({
         </div>
         <div className="min-w-[360px] flex-1 overflow-x-auto">
           <div className="flex w-max min-w-full items-center gap-1 rounded-full bg-[#eef0f4] p-1">
-          {STATUS_ROW.map(({ key, label, Icon }) => {
+          {STATUS_ROW.filter(({ key }) => !(filters.type === "PUT" && key === "CALLED_AWAY")).map(({ key, label, Icon }) => {
             const active = filters.status === key;
             return (
               <button
