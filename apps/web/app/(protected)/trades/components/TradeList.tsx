@@ -163,6 +163,7 @@ function TradeRow({
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const isCcAway = trade.option_type === "CALL" && trade.status === "CALLED_AWAY";
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -275,17 +276,19 @@ function TradeRow({
               >
                 Edit
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onAction("buy_to_close");
-                }}
-                className="block w-full px-3 py-2 transition-shadow duration-150 hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.16)]"
-              >
-                Buy to Close
-              </button>
-              {isExpiredEligible(trade) && (
+              {!isCcAway && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onAction("buy_to_close");
+                  }}
+                  className="block w-full px-3 py-2 transition-shadow duration-150 hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.16)]"
+                >
+                  Buy to Close
+                </button>
+              )}
+              {!isCcAway && isExpiredEligible(trade) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -297,26 +300,30 @@ function TradeRow({
                   Expire
                 </button>
               )}
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onAction("assign");
-                }}
-                className="block w-full px-3 py-2 transition-shadow duration-150 hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.16)]"
-              >
-                Assign
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onAction("roll");
-                }}
-                className="block w-full px-3 py-2 transition-shadow duration-150 hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.16)]"
-              >
-                Roll
-              </button>
+              {!isCcAway && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onAction("assign");
+                  }}
+                  className="block w-full px-3 py-2 transition-shadow duration-150 hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.16)]"
+                >
+                  Assign
+                </button>
+              )}
+              {!isCcAway && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onAction("roll");
+                  }}
+                  className="block w-full px-3 py-2 transition-shadow duration-150 hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.16)]"
+                >
+                  Roll
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
