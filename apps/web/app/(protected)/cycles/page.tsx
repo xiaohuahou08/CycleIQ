@@ -196,11 +196,11 @@ export default function CyclesPage() {
   );
 
   const activeCycles = useMemo(
-    () => sortedCycles.filter((cycle) => cycle.state !== "EXIT"),
+    () => sortedCycles.filter((cycle) => cycle.state !== "EXIT" && cycle.state !== "CSP_CLOSED"),
     [sortedCycles]
   );
   const completedCycles = useMemo(
-    () => sortedCycles.filter((cycle) => cycle.state === "EXIT"),
+    () => sortedCycles.filter((cycle) => cycle.state === "EXIT" || cycle.state === "CSP_CLOSED"),
     [sortedCycles]
   );
   const tabCycles =
