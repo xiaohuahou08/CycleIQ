@@ -114,7 +114,7 @@ class Cycle:
             (CycleState.CSP_OPEN, CycleEvent.CSP_ROLL): CycleState.CSP_OPEN,
             (CycleState.STOCK_HELD, CycleEvent.SELL_CC): CycleState.CC_OPEN,
             (CycleState.CC_OPEN, CycleEvent.CC_EXPIRE_OTM): CycleState.STOCK_HELD,
-            (CycleState.CC_OPEN, CycleEvent.CC_ASSIGNED): CycleState.EXIT,
+            (CycleState.CC_OPEN, CycleEvent.CC_ASSIGNED): CycleState.CSP_CLOSED,
             (CycleState.CC_OPEN, CycleEvent.CC_ROLL): CycleState.CC_OPEN,
         }
     )
@@ -196,7 +196,11 @@ class Cycle:
         days = 0
         if self.transitions:
             start = self.transitions[0].timestamp.date()
-            end = as_of.date() if self.state != CycleState.EXIT else self.updated_at.date()
+            end = (
+                as_of.date()
+                if self.state not in (CycleState.EXIT, CycleState.IDLE)
+                else self.updated_at.date()
+            )
             days = max(1, (end - start).days)
 
         annualized_return = Decimal("0")

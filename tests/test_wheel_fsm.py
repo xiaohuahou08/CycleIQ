@@ -50,7 +50,7 @@ class WheelFSMTests(unittest.TestCase):
         self.assertEqual(t2.to_state, CycleState.CSP_CLOSED)
         self.assertEqual(cycle.state, CycleState.IDLE)
 
-    def test_full_cycle_assignment_to_exit_and_metrics(self) -> None:
+    def test_full_cycle_assignment_to_csp_closed_and_metrics(self) -> None:
         cycle = Cycle(ticker="TSLA")
         start = datetime(2026, 1, 2, tzinfo=timezone.utc)
         cycle.apply_event(
@@ -68,13 +68,14 @@ class WheelFSMTests(unittest.TestCase):
             option_legs=[call_sell("210", "2.00", date(2026, 2, 20))],
             timestamp=start + timedelta(days=15),
         )
-        cycle.apply_event(
+        t4 = cycle.apply_event(
             CycleEvent.CC_ASSIGNED,
             stock_leg=StockLeg(action=StockAction.SELL, price=Decimal("210"), quantity=100),
             timestamp=start + timedelta(days=45),
         )
 
-        self.assertEqual(cycle.state, CycleState.EXIT)
+        self.assertEqual(t4.to_state, CycleState.CSP_CLOSED)
+        self.assertEqual(cycle.state, CycleState.IDLE)
         metrics = cycle.metrics()
         self.assertEqual(metrics.total_premium_collected, Decimal("5.00"))
         self.assertEqual(metrics.stock_pnl, Decimal("1000"))
