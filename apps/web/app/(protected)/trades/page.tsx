@@ -55,6 +55,9 @@ function applyFilters(trades: Trade[], f: FilterState): Trade[] {
     if (f.type !== "ALL" && t.option_type !== f.type) return false;
     if (f.status !== "ALL") {
       if (f.status === "CLOSED") {
+        // Keep EXPIRED legs exclusive to the EXPIRED tab.
+        if (t.status === "EXPIRED") return false;
+
         const isClosedStatus = t.status === "CLOSED";
         const inClosedCycle = Boolean(t.cycle_id && closedCycleIds.has(t.cycle_id));
         if (!isClosedStatus && !inClosedCycle) return false;
