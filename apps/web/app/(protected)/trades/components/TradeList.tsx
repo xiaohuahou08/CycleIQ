@@ -163,9 +163,9 @@ function TradeRow({
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const isCcAway = trade.option_type === "CALL" && trade.status === "CALLED_AWAY";
+  const isCcCalledAway = trade.option_type === "CALL" && trade.status === "CALLED_AWAY";
   const isCspExpired = trade.option_type === "PUT" && trade.status === "EXPIRED";
-  const isEditDeleteOnly = isCcAway || isCspExpired;
+  const isEditDeleteOnly = isCcCalledAway || isCspExpired;
 
   useEffect(() => {
     if (!menuOpen) return;
