@@ -58,6 +58,16 @@ function applyFilters(trades: Trade[], f: FilterState): Trade[] {
     // Closed wheels should not show in the dedicated "Rolled" status tab.
     if (f.status === "ROLLED" && t.cycle_id && closedCycleIds.has(t.cycle_id)) return false;
 
+    // CSP-assigned views should not include positions from wheels already closed/called-away.
+    if (
+      f.status === "ASSIGNED" &&
+      t.option_type === "PUT" &&
+      t.cycle_id &&
+      closedCycleIds.has(t.cycle_id)
+    ) {
+      return false;
+    }
+
     if (
       f.search &&
       !t.ticker.toLowerCase().includes(f.search.toLowerCase()) &&
