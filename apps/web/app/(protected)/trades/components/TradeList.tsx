@@ -164,6 +164,8 @@ function TradeRow({
   const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const isCcAway = trade.option_type === "CALL" && trade.status === "CALLED_AWAY";
+  const isCspExpired = trade.option_type === "PUT" && trade.status === "EXPIRED";
+  const isEditDeleteOnly = isCcAway || isCspExpired;
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -276,7 +278,7 @@ function TradeRow({
               >
                 Edit
               </button>
-              {!isCcAway && (
+              {!isEditDeleteOnly && (
                 <button
                   type="button"
                   onClick={() => {
@@ -288,7 +290,7 @@ function TradeRow({
                   Buy to Close
                 </button>
               )}
-              {!isCcAway && isExpiredEligible(trade) && (
+              {!isEditDeleteOnly && isExpiredEligible(trade) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -300,7 +302,7 @@ function TradeRow({
                   Expire
                 </button>
               )}
-              {!isCcAway && (
+              {!isEditDeleteOnly && (
                 <button
                   type="button"
                   onClick={() => {
@@ -312,7 +314,7 @@ function TradeRow({
                   Assign
                 </button>
               )}
-              {!isCcAway && (
+              {!isEditDeleteOnly && (
                 <button
                   type="button"
                   onClick={() => {
