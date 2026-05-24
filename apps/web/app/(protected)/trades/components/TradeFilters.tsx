@@ -49,6 +49,9 @@ export default function TradeFilters({
 
   const apply = (patch: Partial<FilterState>) => {
     const next = { ...filters, ...patch };
+    if (next.type === "PUT" && next.status === "CALLED_AWAY") {
+      next.status = "ALL";
+    }
     setFilters(next);
     onFilterChange(next);
   };
@@ -73,6 +76,10 @@ export default function TradeFilters({
     filters.dateFrom !== "" ||
     filters.dateTo !== "" ||
     filters.search !== "";
+
+  const visibleStatusLabels = Object.entries(STATUS_LABELS).filter(
+    ([val]) => !(filters.type === "PUT" && val === "CALLED_AWAY")
+  );
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
@@ -114,7 +121,7 @@ export default function TradeFilters({
             {label}
           </button>
         ))}
-        {Object.entries(STATUS_LABELS).map(([val, label]) => (
+        {visibleStatusLabels.map(([val, label]) => (
           <button
             key={val}
             type="button"
