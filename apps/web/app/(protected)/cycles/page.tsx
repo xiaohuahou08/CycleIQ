@@ -93,7 +93,6 @@ function deriveWheelState(wheelTrades: Trade[], cycleState: string): string {
   const hasCalledAwayCall = wheelTrades.some(
     (t) => t.option_type === "CALL" && t.status === "CALLED_AWAY"
   );
-  // CC端完整退出（含 called away）归到 EXIT。
   if (hasCalledAwayCall) return "EXIT";
 
   // PUT was assigned → user holds stock, not completed

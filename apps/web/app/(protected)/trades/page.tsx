@@ -48,11 +48,13 @@ function getClosedCycleIds(trades: Trade[]): Set<string> {
   );
 }
 
-function applyFilters(trades: Trade[], f: FilterState): Trade[] {
+function applyFilters(trades: Trade[], f: FilterState, closedCycleIds: Set<string>): Trade[] {
   return trades.filter((t) => {
     if (f.type !== "ALL" && t.option_type !== f.type) return false;
     if (f.status !== "ALL" && t.status !== f.status) return false;
 
+    // Closed wheels should not show in the dedicated "Rolled" status tab.
+    if (f.status === "ROLLED" && t.cycle_id && closedCycleIds.has(t.cycle_id)) return false;
     if (
       f.search &&
       !t.ticker.toLowerCase().includes(f.search.toLowerCase()) &&
@@ -105,31 +107,43 @@ export default function TradesPage() {
     [allTrades]
   );
 
+  const closedCycleIds = useMemo(() => getClosedCycleIds(allTrades), [allTrades]);
+
   // Tickers that have an assigned (stock-held) position, i.e. CSP that was assigned.
-  const assignedTickers = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          allTrades
-            .filter((t) => t.option_type === "PUT" && t.status === "ASSIGNED")
-            .map((t) => t.ticker)
-        )
-      ),
-    [allTrades]
-  );
+  // Exclude wheels that are already closed (no OPEN legs), including called-away wheels.
+  const assignedTickers = useMemo(() => {
+    return Array.from(
+      new Set(
+        allTrades
+          .filter(
+            (t) =>
+              t.option_type === "PUT" &&
+              t.status === "ASSIGNED" &&
+              (!t.cycle_id || !closedCycleIds.has(t.cycle_id))
+          )
+          .map((t) => t.ticker)
+      )
+    );
+  }, [allTrades, closedCycleIds]);
 
   // Map ticker → cycle_id for ASSIGNED PUT trades (most recent per ticker).
   // Used to explicitly link new CC trades to the correct existing wheel.
   const assignedCycleByTicker = useMemo(() => {
     const map: Record<string, string> = {};
     allTrades
-      .filter((t) => t.option_type === "PUT" && t.status === "ASSIGNED" && t.cycle_id)
+      .filter(
+        (t) =>
+          t.option_type === "PUT" &&
+          t.status === "ASSIGNED" &&
+          t.cycle_id &&
+          !closedCycleIds.has(t.cycle_id)
+      )
       .sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime())
       .forEach((t) => {
         if (t.cycle_id) map[t.ticker] = t.cycle_id;
       });
     return map;
-  }, [allTrades]);
+  }, [allTrades, closedCycleIds]);
 
   // Fetch live prices for all unique tickers whenever the trade list changes.
   useEffect(() => {
@@ -231,7 +245,7 @@ export default function TradesPage() {
     }
   };
 
-  const filtered = applyFilters(allTrades, filters);
+  const filtered = applyFilters(allTrades, filters, closedCycleIds);
 
   if (isAuthLoading) return null;
   return (
