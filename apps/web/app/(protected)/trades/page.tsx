@@ -277,7 +277,7 @@ export default function TradesPage() {
               onDeleteTrade={onDeleteTrade}
               onEditTrade={onEditTrade}
               onAction={onAction}
-              hideAddButton={filters.status === "CALLED_AWAY"}
+              hideAddButton={filters.status === "CALLED_AWAY" || filters.status === "CLOSED"}
             />
           </div>
         </div>
