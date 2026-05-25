@@ -476,7 +476,9 @@ function TradeRow({
               >
                 Edit
               </button>
-              {trade.status !== "ASSIGNED" && trade.status !== "ROLLED" && (
+              {trade.status !== "ASSIGNED" &&
+                trade.status !== "ROLLED" &&
+                !(trade.option_type === "PUT" && trade.status === "EXPIRED") && (
                 <>
                   <button
                     type="button"

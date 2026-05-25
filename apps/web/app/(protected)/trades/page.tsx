@@ -25,10 +25,34 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+function getClosedCycleIds(trades: Trade[]): Set<string> {
+  const cycleTrades = trades.reduce<Record<string, Trade[]>>((acc, t) => {
+    if (!t.cycle_id) return acc;
+    if (!acc[t.cycle_id]) acc[t.cycle_id] = [];
+    acc[t.cycle_id].push(t);
+    return acc;
+  }, {});
+
+  return new Set(
+    Object.entries(cycleTrades)
+      .filter(([, ts]) => {
+        const hasCalledAway = ts.some(
+          (t) =>
+            (t.option_type === "CALL" || t.option_type === "PUT") &&
+            t.status === "CALLED_AWAY"
+        );
+        const hasOpen = ts.some((t) => t.status === "OPEN");
+        return hasCalledAway || !hasOpen;
+      })
+      .map(([cycleId]) => cycleId)
+  );
+}
+
 function applyFilters(trades: Trade[], f: FilterState): Trade[] {
   return trades.filter((t) => {
     if (f.type !== "ALL" && t.option_type !== f.type) return false;
     if (f.status !== "ALL" && t.status !== f.status) return false;
+
     if (
       f.search &&
       !t.ticker.toLowerCase().includes(f.search.toLowerCase()) &&
@@ -253,7 +277,7 @@ export default function TradesPage() {
               onDeleteTrade={onDeleteTrade}
               onEditTrade={onEditTrade}
               onAction={onAction}
-              hideAddButton={filters.status === "CALLED_AWAY"}
+              hideAddButton={filters.status === "CALLED_AWAY" || filters.status === "CLOSED"}
             />
           </div>
         </div>

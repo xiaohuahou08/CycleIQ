@@ -72,20 +72,27 @@ function StatCard({
   value,
   sub,
   accent,
+  tip,
 }: {
   label: string;
   value: string;
   sub: string;
   accent: string;
+  tip?: string;
 }) {
   return (
-    <div className={`rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden`}>
+    <div className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className={`h-1 w-full ${accent}`} />
       <div className="p-4">
         <p className="text-xs font-medium text-slate-500">{label}</p>
         <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-900">{value}</p>
         <p className="mt-1 text-xs text-slate-400">{sub}</p>
       </div>
+      {tip && (
+        <div className="pointer-events-none absolute left-3 right-3 top-3 z-10 hidden rounded-lg border border-slate-200 bg-white/95 px-2.5 py-2 text-[11px] leading-snug text-slate-600 shadow-lg backdrop-blur group-hover:block">
+          {tip}
+        </div>
+      )}
     </div>
   );
 }
@@ -125,48 +132,56 @@ export default function DashboardInsights({
           label="Total Capital Invested"
           value={fmtCurrency(kpis?.total_capital_invested ?? 0)}
           sub="Capital in open trades"
+          tip="Σ (open trade strike × contracts × 100). For open CALL, use effective stock basis when available."
           accent="bg-emerald-400"
         />
         <StatCard
           label="Total Premium"
           value={fmtCurrency(kpis?.total_premium ?? 0)}
           sub="Total premium collected"
+          tip="Σ (premium × contracts × 100) across all trades."
           accent="bg-emerald-400"
         />
         <StatCard
           label="Realized P&L"
           value={fmtCurrency(kpis?.realized_pnl ?? 0)}
           sub="From closed trades"
+          tip="Σ realized option cashflow (premium − fees − buyback for rolled legs) + stock sale P&L from called-away shares."
           accent="bg-emerald-400"
         />
         <StatCard
           label="Yearly Income"
           value={fmtCurrency(kpis?.yearly_income ?? 0)}
           sub={`${fmtCurrency(kpis?.daily_avg_income ?? 0)} / day`}
+          tip="Daily avg = total premium ÷ days since first trade. Yearly income = daily avg × 365."
           accent="bg-emerald-400"
         />
         <StatCard
           label="Open Premium Ann. Yield"
           value={fmtPercent(kpis?.open_premium_annualized_yield ?? kpis?.avg_annual_roi ?? 0)}
           sub="Based on open premium and capital"
+          tip="(open premium ÷ capital at risk) × (365 ÷ avg open DTE)."
           accent="bg-blue-400"
         />
         <StatCard
           label="Realized Annual ROI"
           value={fmtPercent(kpis?.realized_annual_roi ?? 0)}
           sub="Based on closed premium"
+          tip="(realized P&L ÷ realized capital at risk) × (365 ÷ avg closed holding days)."
           accent="bg-blue-400"
         />
         <StatCard
           label="Win Rate"
           value={fmtPercent(kpis?.win_rate ?? 0)}
           sub="Based on strategy outcomes"
+          tip="wins ÷ terminal trades. Wins = EXPIRED/CALLED_AWAY, or CLOSED with positive realized cashflow."
           accent="bg-blue-400"
         />
         <StatCard
           label="Active Trades"
           value={String(kpis?.active_trades ?? 0)}
           sub="OPEN positions"
+          tip="Count of trades with status OPEN."
           accent="bg-violet-400"
         />
         <StatCard
@@ -177,6 +192,7 @@ export default function DashboardInsights({
               ? `Avg DTE: ${(kpis?.weighted_open_dte ?? 0).toFixed(1)} days`
               : "No open positions"
           }
+          tip="Weighted open DTE = Σ(premium × DTE) ÷ Σ(premium). Avg premium/day = open premium ÷ weighted open DTE."
           accent="bg-violet-400"
         />
       </div>

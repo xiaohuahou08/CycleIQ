@@ -200,11 +200,13 @@ export default function TradeFilters({
   };
 
   const toggleCsp = () => {
-    apply({ type: filters.type === "PUT" ? "ALL" : "PUT" });
+    if (filters.type === "PUT") return;
+    apply({ type: "PUT" });
   };
 
   const toggleCc = () => {
-    apply({ type: filters.type === "CALL" ? "ALL" : "CALL" });
+    if (filters.type === "CALL") return;
+    apply({ type: "CALL" });
   };
 
   const shell = embedded
@@ -312,7 +314,11 @@ export default function TradeFilters({
         </div>
         <div className="min-w-[360px] flex-1 overflow-x-auto">
           <div className="flex w-max min-w-full items-center gap-1 rounded-full bg-[#eef0f4] p-1">
-          {STATUS_ROW.map(({ key, label, Icon }) => {
+          {STATUS_ROW.filter(({ key }) => {
+            if (filters.type === "PUT" && key === "CALLED_AWAY") return false;
+            if (filters.type === "CALL" && key === "ASSIGNED") return false;
+            return true;
+          }).map(({ key, label, Icon }) => {
             const active = filters.status === key;
             return (
               <button

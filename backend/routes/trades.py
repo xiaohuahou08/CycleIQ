@@ -345,6 +345,23 @@ def register_trades_routes(trades_bp):
                 if chain_premium > 0:
                     trade.prior_roll_premium_per_share = float(chain_premium)
 
+            if st == "CALLED_AWAY" and trade.option_type == "CALL" and trade.cycle_id:
+                assigned_put = (
+                    Trade.query.filter_by(user_id=user_id, cycle_id=trade.cycle_id, option_type="PUT")
+                    .filter(Trade.status.in_(["ASSIGNED", "OPEN"]))
+                    .order_by(Trade.trade_date.desc(), Trade.created_at.desc())
+                    .first()
+                )
+                if assigned_put:
+                    assigned_put.status = "CALLED_AWAY"
+                    assigned_put.called_away_at = trade.called_away_at or trade.trade_date
+                    assigned_put.updated_at = datetime.now(timezone.utc)
+                    apply_stock_cost_basis(assigned_put)
+
+                cycle = WheelCycle.query.filter_by(id=trade.cycle_id, user_id=user_id).first()
+                if cycle:
+                    cycle.state = "EXIT"
+
         trade.updated_at = datetime.now(timezone.utc)
         apply_stock_cost_basis(trade)
         db.session.commit()
