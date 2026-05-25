@@ -81,18 +81,29 @@ function StatCard({
   tip?: string;
 }) {
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className={`h-1 w-full ${accent}`} />
-      <div className="p-4">
-        <p className="text-xs font-medium text-slate-500">{label}</p>
-        <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-900">{value}</p>
-        <p className="mt-1 text-xs text-slate-400">{sub}</p>
-      </div>
-      {tip && (
-        <div className="pointer-events-none absolute left-3 right-3 top-3 z-10 hidden rounded-lg border border-slate-200 bg-white/95 px-2.5 py-2 text-[11px] leading-snug text-slate-600 shadow-lg backdrop-blur group-hover:block">
-          {tip}
+    <div className="relative rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md">
+      <div className={`absolute left-0 top-0 h-1 w-full rounded-t-2xl ${accent}`} />
+      <div className="flex items-start justify-between">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-medium text-slate-400">{label}</p>
+          <p className="mt-2 text-2xl font-bold tabular-nums text-slate-800">{value}</p>
+          <p className="mt-1 text-xs text-slate-500">{sub}</p>
         </div>
-      )}
+        {tip && (
+          <div className="group relative ml-2 shrink-0">
+            {/* Info Icon */}
+            <span className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-400 transition-colors duration-150 group-hover:bg-slate-200 group-hover:text-slate-600">
+              ?
+            </span>
+            {/* Tooltip Content */}
+            <div className="pointer-events-none absolute bottom-full right-0 mb-2 w-56 origin-bottom-right scale-95 rounded-lg bg-slate-900/95 px-3 py-2 text-[11px] leading-normal text-slate-100 shadow-xl opacity-0 transition-all duration-150 backdrop-blur-sm border border-slate-800/80 group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto z-50">
+              {tip}
+              {/* Arrow */}
+              <div className="absolute top-full right-1.5 h-1.5 w-1.5 -translate-y-[3px] rotate-45 bg-slate-900/95 border-r border-b border-slate-800/80" />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
