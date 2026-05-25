@@ -93,6 +93,7 @@ function deriveWheelState(wheelTrades: Trade[], cycleState: string): string {
   const hasCalledAwayCall = wheelTrades.some(
     (t) => t.option_type === "CALL" && t.status === "CALLED_AWAY"
   );
+  // A called-away covered call means the wheel fully exits this cycle.
   if (hasCalledAwayCall) return "EXIT";
 
   // PUT was assigned → user holds stock, not completed
