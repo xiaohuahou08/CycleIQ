@@ -48,20 +48,7 @@ function getClosedCycleIds(trades: Trade[]): Set<string> {
   );
 }
 
-function applyFilters(trades: Trade[], f: FilterState): Trade[] {
-  const cycleTrades = trades.reduce<Record<string, Trade[]>>((acc, t) => {
-    if (!t.cycle_id) return acc;
-    if (!acc[t.cycle_id]) acc[t.cycle_id] = [];
-    acc[t.cycle_id].push(t);
-    return acc;
-  }, {});
-
-  const closedCycleIds = new Set(
-    Object.entries(cycleTrades)
-      .filter(([, ts]) => ts.length > 0 && ts.every((t) => t.status !== "OPEN"))
-      .map(([cycleId]) => cycleId)
-  );
-
+function applyFilters(trades: Trade[], f: FilterState, closedCycleIds: Set<string>): Trade[] {
   return trades.filter((t) => {
     if (f.type !== "ALL" && t.option_type !== f.type) return false;
     if (f.status !== "ALL" && t.status !== f.status) return false;
@@ -120,22 +107,11 @@ export default function TradesPage() {
     [allTrades]
   );
 
+  const closedCycleIds = useMemo(() => getClosedCycleIds(allTrades), [allTrades]);
+
   // Tickers that have an assigned (stock-held) position, i.e. CSP that was assigned.
   // Exclude wheels that are already closed (no OPEN legs), including called-away wheels.
   const assignedTickers = useMemo(() => {
-    const cycleTrades = allTrades.reduce<Record<string, Trade[]>>((acc, t) => {
-      if (!t.cycle_id) return acc;
-      if (!acc[t.cycle_id]) acc[t.cycle_id] = [];
-      acc[t.cycle_id].push(t);
-      return acc;
-    }, {});
-
-    const closedCycleIds = new Set(
-      Object.entries(cycleTrades)
-        .filter(([, ts]) => ts.length > 0 && ts.every((t) => t.status !== "OPEN"))
-        .map(([cycleId]) => cycleId)
-    );
-
     return Array.from(
       new Set(
         allTrades
@@ -148,24 +124,11 @@ export default function TradesPage() {
           .map((t) => t.ticker)
       )
     );
-  }, [allTrades]);
+  }, [allTrades, closedCycleIds]);
 
   // Map ticker → cycle_id for ASSIGNED PUT trades (most recent per ticker).
   // Used to explicitly link new CC trades to the correct existing wheel.
   const assignedCycleByTicker = useMemo(() => {
-    const cycleTrades = allTrades.reduce<Record<string, Trade[]>>((acc, t) => {
-      if (!t.cycle_id) return acc;
-      if (!acc[t.cycle_id]) acc[t.cycle_id] = [];
-      acc[t.cycle_id].push(t);
-      return acc;
-    }, {});
-
-    const closedCycleIds = new Set(
-      Object.entries(cycleTrades)
-        .filter(([, ts]) => ts.length > 0 && ts.every((t) => t.status !== "OPEN"))
-        .map(([cycleId]) => cycleId)
-    );
-
     const map: Record<string, string> = {};
     allTrades
       .filter(
@@ -180,7 +143,7 @@ export default function TradesPage() {
         if (t.cycle_id) map[t.ticker] = t.cycle_id;
       });
     return map;
-  }, [allTrades]);
+  }, [allTrades, closedCycleIds]);
 
   // Fetch live prices for all unique tickers whenever the trade list changes.
   useEffect(() => {
@@ -282,7 +245,7 @@ export default function TradesPage() {
     }
   };
 
-  const filtered = applyFilters(allTrades, filters);
+  const filtered = applyFilters(allTrades, filters, closedCycleIds);
 
   if (isAuthLoading) return null;
   return (
