@@ -25,6 +25,7 @@ interface TradeListProps {
   ) => void;
   /** Hide the "+ Add trade" button (e.g. when viewing auto-generated statuses like CALLED_AWAY). */
   hideAddButton?: boolean;
+  statusFilter?: string;
 }
 
 const STATUS_STYLES: Record<TradeStatus, string> = {
@@ -261,35 +262,53 @@ function SortChevrons({
   active: boolean;
   dir: "asc" | "desc";
 }) {
-  const upActive = active && dir === "asc";
-  const dnActive = active && dir === "desc";
+  if (!active) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="ml-1 h-3.5 w-3.5 text-slate-300 transition-colors group-hover:text-slate-400"
+        aria-hidden
+      >
+        <path d="M7 15l5 5 5-5M7 9l5-5 5 5" />
+      </svg>
+    );
+  }
+
+  if (dir === "asc") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="ml-1 h-3.5 w-3.5 text-blue-600 transition-colors"
+        aria-hidden
+      >
+        <path d="M12 19V5M5 12l7-7 7 7" />
+      </svg>
+    );
+  }
+
   return (
-    <span className="ml-1 inline-flex h-4 shrink-0 flex-col items-center justify-center gap-[1px] align-middle leading-none">
-      <svg
-        viewBox="0 0 12 12"
-        fill={upActive ? "currentColor" : "none"}
-        stroke="currentColor"
-        strokeWidth={upActive ? 0 : 1.8}
-        className={`h-2 w-2 transition-colors ${
-          upActive ? "text-blue-500" : "text-gray-300"
-        }`}
-        aria-hidden
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" d="m3 8 3-5 3 5" />
-      </svg>
-      <svg
-        viewBox="0 0 12 12"
-        fill={dnActive ? "currentColor" : "none"}
-        stroke="currentColor"
-        strokeWidth={dnActive ? 0 : 1.8}
-        className={`h-2 w-2 transition-colors ${
-          dnActive ? "text-blue-500" : "text-gray-300"
-        }`}
-        aria-hidden
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" d="m9 4-3 5-3-5" />
-      </svg>
-    </span>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="ml-1 h-3.5 w-3.5 text-blue-600 transition-colors"
+      aria-hidden
+    >
+      <path d="M12 5v14M5 12l7 7 7-7" />
+    </svg>
   );
 }
 
@@ -591,11 +610,21 @@ export default function TradeList({
   onEditTrade,
   onAction,
   hideAddButton = false,
+  statusFilter,
 }: TradeListProps) {
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "expiry",
     dir: "asc",
   });
+
+  useEffect(() => {
+    if (!statusFilter) return;
+    const isClosedOrPast = ["CLOSED", "EXPIRED", "ASSIGNED", "ROLLED"].includes(statusFilter);
+    setSort({
+      key: "expiry",
+      dir: isClosedOrPast ? "desc" : "asc",
+    });
+  }, [statusFilter]);
 
   const groups = useMemo(() => {
     const acc: Record<string, Trade[]> = {};
@@ -610,9 +639,18 @@ export default function TradeList({
     return acc;
   }, [trades, sort]);
 
-  const sortedWeekKeys = Object.keys(groups).sort(
-    (a, b) => parseLocalDateKey(a).getTime() - parseLocalDateKey(b).getTime()
-  );
+  const sortedWeekKeys = useMemo(() => {
+    const keys = Object.keys(groups);
+    if (sort.key === "expiry" || sort.key === "dte") {
+      const multiplier = sort.dir === "asc" ? 1 : -1;
+      return keys.sort(
+        (a, b) => multiplier * (parseLocalDateKey(a).getTime() - parseLocalDateKey(b).getTime())
+      );
+    }
+    return keys.sort(
+      (a, b) => parseLocalDateKey(a).getTime() - parseLocalDateKey(b).getTime()
+    );
+  }, [groups, sort.key, sort.dir]);
 
   const toggleSort = (key: SortKey) => {
     setSort((prev) =>
