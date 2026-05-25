@@ -360,7 +360,7 @@ def register_trades_routes(trades_bp):
 
                 cycle = WheelCycle.query.filter_by(id=trade.cycle_id, user_id=user_id).first()
                 if cycle:
-                    cycle.state = "CSP_CLOSED"
+                    cycle.state = "EXIT"
 
         trade.updated_at = datetime.now(timezone.utc)
         apply_stock_cost_basis(trade)

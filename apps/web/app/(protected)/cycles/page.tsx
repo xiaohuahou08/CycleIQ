@@ -93,11 +93,17 @@ function deriveWheelState(wheelTrades: Trade[], cycleState: string): string {
   const hasCalledAwayCall = wheelTrades.some(
     (t) => t.option_type === "CALL" && t.status === "CALLED_AWAY"
   );
-  if (hasCalledAwayCall) return "CSP_CLOSED";
+  if (hasCalledAwayCall) return "EXIT";
 
   // PUT was assigned → user holds stock, not completed
   const hasAssigned = wheelTrades.some((t) => t.status === "ASSIGNED" && t.option_type === "PUT");
   if (hasAssigned) return "STOCK_HELD";
+
+  const hasPut = wheelTrades.some((t) => t.option_type === "PUT");
+  const hasCall = wheelTrades.some((t) => t.option_type === "CALL");
+  // 只有CSP分支（如 buy-to-close / close）结束，归到 CSP_CLOSED。
+  if (hasPut && !hasCall) return "CSP_CLOSED";
+
   // Backend explicitly says stock is held
   if (cycleState === "STOCK_HELD" || cycleState === "CC_OPEN") return cycleState;
   return "EXIT";
