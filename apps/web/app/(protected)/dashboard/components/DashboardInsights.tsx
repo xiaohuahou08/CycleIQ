@@ -1,6 +1,96 @@
 "use client";
 
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { DashboardInsights as DashboardInsightsData } from "@/lib/api/trades";
+
+const TOOLTIP_MAX_W = 224;
+const TOOLTIP_GAP = 8;
+const VIEWPORT_PAD = 12;
+
+function StatCardHelp({ tip }: { tip: string }) {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: TOOLTIP_MAX_W });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const tipRef = useRef<HTMLDivElement>(null);
+
+  const updatePosition = useCallback(() => {
+    const btn = btnRef.current;
+    const tipEl = tipRef.current;
+    if (!btn) return;
+
+    const rect = btn.getBoundingClientRect();
+    const tipW = Math.min(TOOLTIP_MAX_W, window.innerWidth - VIEWPORT_PAD * 2);
+    const tipH = tipEl?.offsetHeight ?? 80;
+
+    let left = rect.left + rect.width / 2 - tipW / 2;
+    left = Math.max(VIEWPORT_PAD, Math.min(left, window.innerWidth - tipW - VIEWPORT_PAD));
+
+    const spaceBelow = window.innerHeight - rect.bottom - TOOLTIP_GAP - VIEWPORT_PAD;
+    const spaceAbove = rect.top - TOOLTIP_GAP - VIEWPORT_PAD;
+    let top =
+      spaceBelow >= tipH || spaceBelow >= spaceAbove
+        ? rect.bottom + TOOLTIP_GAP
+        : rect.top - TOOLTIP_GAP - tipH;
+
+    top = Math.max(VIEWPORT_PAD, Math.min(top, window.innerHeight - tipH - VIEWPORT_PAD));
+    setCoords({ top, left, width: tipW });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updatePosition();
+    const id = requestAnimationFrame(updatePosition);
+    const onReflow = () => updatePosition();
+    window.addEventListener("scroll", onReflow, true);
+    window.addEventListener("resize", onReflow);
+    return () => {
+      cancelAnimationFrame(id);
+      window.removeEventListener("scroll", onReflow, true);
+      window.removeEventListener("resize", onReflow);
+    };
+  }, [open, updatePosition, tip]);
+
+  const show = () => setOpen(true);
+  const hide = () => setOpen(false);
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        className="flex h-5 w-5 shrink-0 cursor-help items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-400 transition-colors duration-150 hover:bg-slate-200 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+        aria-label="Metric details"
+        onMouseEnter={show}
+        onMouseLeave={hide}
+        onFocus={show}
+        onBlur={hide}
+      >
+        ?
+      </button>
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={tipRef}
+            role="tooltip"
+            style={{
+              position: "fixed",
+              top: coords.top,
+              left: coords.left,
+              width: coords.width,
+            }}
+            className="z-[9999] rounded-lg border border-slate-700/80 bg-slate-900 px-3 py-2 text-[11px] leading-snug text-slate-100 shadow-xl"
+            onMouseEnter={show}
+            onMouseLeave={hide}
+          >
+            {tip}
+          </div>,
+          document.body
+        )}
+    </>
+  );
+}
 
 function fmtCurrency(value: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -81,28 +171,15 @@ function StatCard({
   tip?: string;
 }) {
   return (
-    <div className="relative rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md">
+    <div className="relative overflow-visible rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md">
       <div className={`absolute left-0 top-0 h-1 w-full rounded-t-2xl ${accent}`} />
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-medium text-slate-400">{label}</p>
           <p className="mt-2 text-2xl font-bold tabular-nums text-slate-800">{value}</p>
           <p className="mt-1 text-xs text-slate-500">{sub}</p>
         </div>
-        {tip && (
-          <div className="group relative ml-2 shrink-0">
-            {/* Info Icon */}
-            <span className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-400 transition-colors duration-150 group-hover:bg-slate-200 group-hover:text-slate-600">
-              ?
-            </span>
-            {/* Tooltip Content */}
-            <div className="pointer-events-none absolute bottom-full right-0 mb-2 w-56 origin-bottom-right scale-95 rounded-lg bg-slate-900/95 px-3 py-2 text-[11px] leading-normal text-slate-100 shadow-xl opacity-0 transition-all duration-150 backdrop-blur-sm border border-slate-800/80 group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto z-50">
-              {tip}
-              {/* Arrow */}
-              <div className="absolute top-full right-1.5 h-1.5 w-1.5 -translate-y-[3px] rotate-45 bg-slate-900/95 border-r border-b border-slate-800/80" />
-            </div>
-          </div>
-        )}
+        {tip && <StatCardHelp tip={tip} />}
       </div>
     </div>
   );
@@ -138,54 +215,54 @@ export default function DashboardInsights({
   return (
     <div className="space-y-4">
       {/* KPI cards — 4-column grid */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 overflow-visible md:grid-cols-3 lg:grid-cols-4">
         <StatCard
           label="Total Capital Invested"
           value={fmtCurrency(kpis?.total_capital_invested ?? 0)}
           sub="Open CSP cash + stock held"
-          tip="Open CSP strike notional + stock cost from assignment (once per ticker). Open CC does not add capital — stock was already invested at assign."
+          tip="Open CSP (expiry not passed) strike × shares + effective stock cost after assignment (CC premiums reduce basis). Open CC does not add capital."
           accent="bg-emerald-400"
         />
         <StatCard
           label="Total Premium"
           value={fmtCurrency(kpis?.total_premium ?? 0)}
-          sub="Total premium collected"
-          tip="Σ (premium × contracts × 100) across all trades."
+          sub="Gross premium, all legs"
+          tip="Sum of premium × contracts × 100 for every trade (includes open, rolled, and bought-back legs). Not net cash after fees or buybacks."
           accent="bg-emerald-400"
         />
         <StatCard
           label="Realized P&L"
           value={fmtCurrency(kpis?.realized_pnl ?? 0)}
           sub="Option cashflow + stock sales"
-          tip="Σ net option cashflow on CLOSED, EXPIRED, ROLLED, CALLED_AWAY, and ASSIGNED (CSP premium at assignment) legs, plus stock sale P&L when CC shares are called away."
+          tip="Net option cashflow (premium − fees − buyback) on CLOSED, EXPIRED, ROLLED, CALLED_AWAY, and ASSIGNED legs, plus stock P&L when CC shares are called away (strike − assignment basis)."
           accent="bg-emerald-400"
         />
         <StatCard
           label="Yearly Income"
           value={fmtCurrency(kpis?.yearly_income ?? 0)}
           sub={`${fmtCurrency(kpis?.daily_avg_income ?? 0)} / day`}
-          tip="Daily avg = total premium ÷ days since first trade. Yearly income = daily avg × 365."
+          tip="Projection only: (total gross premium ÷ days since first trade) × 365. Not realized income; ignores fees, buybacks, and assignment timing."
           accent="bg-emerald-400"
         />
         <StatCard
           label="Open Premium Ann. Yield"
           value={fmtPercent(kpis?.open_premium_annualized_yield ?? kpis?.avg_annual_roi ?? 0)}
           sub="Based on open premium and capital"
-          tip="(open premium ÷ capital at risk) × (365 ÷ avg open DTE)."
+          tip="(sum of open-leg gross premium ÷ total capital invested) × (365 ÷ simple average DTE of open legs). Uses unweighted DTE, not the premium-weighted DTE on the card below."
           accent="bg-blue-400"
         />
         <StatCard
           label="Realized Annual ROI"
           value={fmtPercent(kpis?.realized_annual_roi ?? 0)}
-          sub="Based on closed premium"
-          tip="(realized P&L ÷ realized capital at risk) × (365 ÷ avg closed holding days)."
+          sub="Annualized realized return"
+          tip="(realized P&L ÷ capital at risk on realized legs) × (365 ÷ average holding days from open to completion). Includes ASSIGNED CSP in both numerator and denominator."
           accent="bg-blue-400"
         />
         <StatCard
           label="Win Rate"
           value={fmtPercent(kpis?.win_rate ?? 0)}
           sub="Based on strategy outcomes"
-          tip="wins ÷ terminal trades. Wins = EXPIRED/CALLED_AWAY, or CLOSED with positive realized cashflow."
+          tip="Wins ÷ terminal legs (CLOSED, EXPIRED, ASSIGNED, CALLED_AWAY). Win = OTM expire, called away, or CLOSED with positive net cashflow. ASSIGNED CSP counts in the denominator but not as a win."
           accent="bg-blue-400"
         />
         <StatCard
@@ -211,17 +288,17 @@ export default function DashboardInsights({
       {/* Charts — 3-column row on large screens */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <BarChartCard
-          title="Daily Premium Income"
+          title="Daily Premium (by open date)"
           points={charts?.daily_premium_income ?? []}
           gradient="bg-gradient-to-t from-blue-500 to-sky-300"
         />
         <BarChartCard
-          title="Weekly Premium Income"
+          title="Weekly Premium (by open date)"
           points={charts?.weekly_premium_income ?? []}
           gradient="bg-gradient-to-t from-violet-600 to-fuchsia-300"
         />
         <BarChartCard
-          title="Monthly Premium Income"
+          title="Monthly Premium (by open date)"
           points={charts?.monthly_premium_income ?? []}
           gradient="bg-gradient-to-t from-indigo-600 to-blue-300"
         />
