@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ChevronDown, ChevronUp, ChevronsUpDown, MoreHorizontal } from "lucide-react";
+import { iconSm, iconStroke } from "@/app/components/icons";
 import type { Trade, TradeStatus } from "@/lib/api/trades";
 
 interface TradeRowProps {
@@ -261,51 +263,30 @@ function SortChevrons({
 }) {
   if (!active) {
     return (
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
+      <ChevronsUpDown
         className="ml-1 h-3.5 w-3.5 text-slate-300 transition-colors group-hover:text-slate-400"
+        strokeWidth={iconStroke}
         aria-hidden
-      >
-        <path d="M7 15l5 5 5-5M7 9l5-5 5 5" />
-      </svg>
+      />
     );
   }
 
   if (dir === "asc") {
     return (
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="ml-1 h-3.5 w-3.5 text-blue-600 transition-colors"
+      <ChevronUp
+        className="ml-1 h-3.5 w-3.5 text-blue-600"
+        strokeWidth={2.25}
         aria-hidden
-      >
-        <path d="M12 19V5M5 12l7-7 7 7" />
-      </svg>
+      />
     );
   }
 
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2.5}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="ml-1 h-3.5 w-3.5 text-blue-600 transition-colors"
+    <ChevronDown
+      className="ml-1 h-3.5 w-3.5 text-blue-600"
+      strokeWidth={2.25}
       aria-hidden
-    >
-      <path d="M12 5v14M5 12l7 7 7-7" />
-    </svg>
+    />
   );
 }
 
@@ -470,10 +451,11 @@ function TradeRow({
               });
               setMenuOpen(true);
             }}
-            className="rounded px-2 py-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            className="inline-flex rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
             title="Actions"
+            aria-label="Trade actions"
           >
-            <span className="text-[16px] leading-none tracking-tighter">⋯</span>
+            <MoreHorizontal className={iconSm} strokeWidth={iconStroke} aria-hidden />
           </button>
           {menuOpen && menuPos && (
             <div

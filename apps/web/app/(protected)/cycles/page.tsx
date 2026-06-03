@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { CircleDollarSign, Search } from "lucide-react";
+import { iconSm, iconStroke } from "@/app/components/icons";
 import { listCycles, listTrades, type CycleSummary, type Trade } from "@/lib/api/trades";
 import { useProtectedAuth } from "../auth-context";
 
@@ -130,10 +132,11 @@ function TickerLogo({ ticker, size = "sm" }: { ticker: string; size?: "sm" | "lg
 
 function MoneyIcon() {
   return (
-    <svg viewBox="0 0 20 20" className="h-3.5 w-3.5 text-gray-400" fill="none" aria-hidden="true">
-      <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M10 6.5v7M12 8.2c0-.8-.9-1.4-2-1.4s-2 .6-2 1.4.9 1.3 2 1.3 2 .5 2 1.4-.9 1.4-2 1.4-2-.6-2-1.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
+    <CircleDollarSign
+      className={`${iconSm} text-gray-400`}
+      strokeWidth={iconStroke}
+      aria-hidden
+    />
   );
 }
 
@@ -495,7 +498,9 @@ export default function CyclesPage() {
                   ))}
                 </div>
                 <div className="relative min-w-[200px] flex-1">
-                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">🔎</span>
+                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
+                    <Search className={iconSm} strokeWidth={iconStroke} aria-hidden />
+                  </span>
                   <input
                     type="text"
                     value={searchTicker}
@@ -815,7 +820,7 @@ export default function CyclesPage() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="relative min-w-[220px] flex-1">
                   <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
-                    🔎
+                    <Search className={iconSm} strokeWidth={iconStroke} aria-hidden />
                   </span>
                   <input
                     type="text"

@@ -4,14 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart2,
+  ChevronLeft,
+  ChevronRight,
   LayoutDashboard,
-  PanelLeftClose,
-  PanelLeftOpen,
   RefreshCw,
   Settings,
   TrendingUp,
   type LucideIcon,
 } from "lucide-react";
+import { CycleIQMark, iconMd, iconStroke } from "@/app/components/icons";
 
 const navItems: { label: string; href: string; icon: LucideIcon }[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -49,11 +50,12 @@ export default function Sidebar({ collapsed = false, onToggleCollapsed }: Sideba
           title="CycleIQ"
         >
           {narrow ? (
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-[15px] font-bold tracking-tight text-emerald-400 ring-1 ring-emerald-500/25">
-              C
-            </span>
+            <CycleIQMark className="h-10 w-10 text-emerald-400" />
           ) : (
-            <span className="text-[1.35rem] font-bold leading-none tracking-tight">CycleIQ</span>
+            <span className="flex items-center gap-2.5">
+              <CycleIQMark className="h-9 w-9 shrink-0 text-emerald-400" />
+              <span className="text-[1.35rem] font-bold leading-none tracking-tight">CycleIQ</span>
+            </span>
           )}
         </Link>
       </div>
@@ -75,7 +77,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapsed }: Sideba
                   : "text-slate-400 hover:bg-slate-800 hover:text-white"
               }`}
             >
-              <Icon className="h-5 w-5 shrink-0" strokeWidth={isActive ? 2.25 : 2} />
+              <Icon className={iconMd} strokeWidth={isActive ? 2.25 : iconStroke} />
               {!narrow && <span className="text-[13px] leading-none">{item.label}</span>}
             </Link>
           );
@@ -86,19 +88,14 @@ export default function Sidebar({ collapsed = false, onToggleCollapsed }: Sideba
         <button
           type="button"
           onClick={onToggleCollapsed}
-          className={`flex w-full items-center rounded-lg py-2.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white ${
-            narrow ? "justify-center px-0" : "gap-2.5 px-3"
-          }`}
+          className="flex w-full items-center justify-center rounded-lg py-2.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
           aria-label={narrow ? "Expand sidebar" : "Collapse sidebar"}
           title={narrow ? "Expand sidebar" : "Collapse sidebar"}
         >
           {narrow ? (
-            <PanelLeftOpen className="h-5 w-5 shrink-0" aria-hidden />
+            <ChevronRight className={iconMd} strokeWidth={iconStroke} aria-hidden />
           ) : (
-            <>
-              <PanelLeftClose className="h-5 w-5 shrink-0" aria-hidden />
-              <span className="text-[13px] font-medium">Collapse</span>
-            </>
+            <ChevronLeft className={iconMd} strokeWidth={iconStroke} aria-hidden />
           )}
         </button>
       </div>

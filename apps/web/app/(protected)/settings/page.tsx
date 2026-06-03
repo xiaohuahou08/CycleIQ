@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Check, X } from "lucide-react";
+import { iconSm, iconStroke } from "@/app/components/icons";
 import { useProtectedAuth } from "../auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useTradeDefaults } from "@/lib/hooks/useTradeDefaults";
@@ -65,7 +67,11 @@ function Toast({
           : "bg-red-600 text-white"
       }`}
     >
-      <span>{type === "success" ? "✓" : "✕"}</span>
+      {type === "success" ? (
+        <Check className={iconSm} strokeWidth={iconStroke} aria-hidden />
+      ) : (
+        <X className={iconSm} strokeWidth={iconStroke} aria-hidden />
+      )}
       {message}
     </div>
   );

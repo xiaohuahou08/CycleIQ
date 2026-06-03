@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
+import { ChevronDown, ChevronUp, X } from "lucide-react";
+import { iconSm, iconStroke } from "@/app/components/icons";
 
 interface TradeModalShellProps {
   open: boolean;
@@ -111,10 +113,10 @@ export function TradeModalShell({
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-lg p-1 text-gray-400 hover:text-gray-600"
+            className="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
             aria-label="Close"
           >
-            ✕
+            <X className={iconSm} strokeWidth={iconStroke} aria-hidden />
           </button>
         </div>
         {children}
@@ -134,9 +136,19 @@ export function OptionalFieldsToggle({
     <button
       type="button"
       onClick={onToggle}
-      className="w-full rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 hover:bg-purple-100"
+      className="flex w-full items-center justify-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 hover:bg-purple-100"
     >
-      {open ? "▲ Hide Optional Fields" : "▼ Show Optional Fields"}
+      {open ? (
+        <>
+          <ChevronUp className={iconSm} strokeWidth={iconStroke} aria-hidden />
+          Hide Optional Fields
+        </>
+      ) : (
+        <>
+          <ChevronDown className={iconSm} strokeWidth={iconStroke} aria-hidden />
+          Show Optional Fields
+        </>
+      )}
     </button>
   );
 }

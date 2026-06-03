@@ -18,6 +18,8 @@ import AddTradeModal from "../dashboard/components/AddTradeModal";
 import AssignTradeModal from "./components/AssignTradeModal";
 import ExpireTradeModal from "./components/ExpireTradeModal";
 import RollTradeModal from "./components/RollTradeModal";
+import { Clock } from "lucide-react";
+import { iconXs, iconStroke } from "@/app/components/icons";
 import TradeFilters, { type FilterState } from "./components/TradeFilters";
 import TradeList from "./components/TradeList";
 
@@ -315,10 +317,7 @@ export default function TradesPage() {
 
         {pricesUpdatedAt && (
           <div className="flex shrink-0 items-center gap-1.5 border-t border-teal-100 bg-teal-50 px-4 py-2 text-[12px] text-teal-700">
-            <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5 shrink-0" aria-hidden>
-              <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4" />
-              <path d="M8 5v3.5l2 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <Clock className={iconXs} strokeWidth={iconStroke} aria-hidden />
             Prices update once per hour. Last updated at{" "}
             {pricesUpdatedAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}.
           </div>

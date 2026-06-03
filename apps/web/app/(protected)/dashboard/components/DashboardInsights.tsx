@@ -2,6 +2,8 @@
 
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Info } from "lucide-react";
+import { iconSm, iconStroke } from "@/app/components/icons";
 import type { DashboardInsights as DashboardInsightsData } from "@/lib/api/trades";
 
 const TOOLTIP_MAX_W = 224;
@@ -59,14 +61,14 @@ function StatCardHelp({ tip }: { tip: string }) {
       <button
         ref={btnRef}
         type="button"
-        className="flex h-5 w-5 shrink-0 cursor-help items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-400 transition-colors duration-150 hover:bg-slate-200 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+        className="flex h-6 w-6 shrink-0 cursor-help items-center justify-center rounded-full bg-slate-100 text-slate-400 transition-colors duration-150 hover:bg-slate-200 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
         aria-label="Metric details"
         onMouseEnter={show}
         onMouseLeave={hide}
         onFocus={show}
         onBlur={hide}
       >
-        ?
+        <Info className={iconSm} strokeWidth={iconStroke} aria-hidden />
       </button>
       {open &&
         typeof document !== "undefined" &&

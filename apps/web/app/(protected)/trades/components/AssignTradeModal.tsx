@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Package } from "lucide-react";
+import { iconMd, iconStroke } from "@/app/components/icons";
 import type { Trade } from "@/lib/api/trades";
 import {
   ModalActionButtons,
@@ -14,12 +16,7 @@ function todayIso(): string {
 }
 
 function PackageIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-      <path d="M3.27 6.96 12 12.01l8.73-5.05M12 22.08V12" />
-    </svg>
-  );
+  return <Package className={iconMd} strokeWidth={iconStroke} aria-hidden />;
 }
 
 interface AssignTradeModalProps {

@@ -1,6 +1,21 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import {
+  ArrowLeftRight,
+  Calendar,
+  CalendarCheck,
+  CircleCheck,
+  Clock,
+  ExternalLink,
+  Info,
+  LineChart,
+  Pencil,
+  RotateCw,
+  Trash2,
+  X,
+} from "lucide-react";
+import { iconSm, iconStroke, iconXs } from "@/app/components/icons";
 import type { Trade, TradeStatus } from "@/lib/api/trades";
 
 /* ─────────────────────────── types ─────────────────────────── */
@@ -111,58 +126,6 @@ function resultLabel(t: Trade): string {
     default: return "—";
   }
 }
-
-/* ─────────────────────────── tiny SVG icons ─────────────────────────── */
-function Ic({
-  children,
-  className = "h-4 w-4",
-}: React.PropsWithChildren<{ className?: string }>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.6}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-    >
-      {children}
-    </svg>
-  );
-}
-
-const IcX = () => (
-  <Ic><path d="M18 6 6 18M6 6l12 12" /></Ic>
-);
-const IcCalendar = () => (
-  <Ic><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3v4m8-4v4M4 11h16" /></Ic>
-);
-const IcClock = () => (
-  <Ic><circle cx="12" cy="12" r="8" /><path d="M12 7v6l4 2" /></Ic>
-);
-const IcPencil = () => (
-  <Ic><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z" /></Ic>
-);
-const IcRefresh = () => (
-  <Ic><path d="M21 12a9 9 0 1 0-9 9" /><path d="M21 3v9h-9" /></Ic>
-);
-const IcArrows = () => (
-  <Ic><path d="M7 16V4m0 0L3 8m4-4 4 4" /><path d="M17 8v12m0 0 4-4m-4 4-4-4" /></Ic>
-);
-const IcCheck = () => (
-  <Ic><circle cx="12" cy="12" r="9" /><path d="m9 12 2 2 4-4" /></Ic>
-);
-const IcExpire = () => (
-  <Ic><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3v4m8-4v4M4 11h16M9 16l2 2 4-4" /></Ic>
-);
-const IcTrash = () => (
-  <Ic><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6m4-6v6" /><path d="M9 6V4h6v2" /></Ic>
-);
-const IcExternal = () => (
-  <Ic><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></Ic>
-);
 
 /* ─────────────────────────── logo ─────────────────────────── */
 function TickerLogo({ ticker }: { ticker: string }) {
@@ -324,7 +287,7 @@ export default function TradeDetailModal({
               onClick={onClose}
               className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
             >
-              <IcX />
+              <X className={iconSm} strokeWidth={iconStroke} aria-hidden />
             </button>
           </div>
 
@@ -356,9 +319,9 @@ export default function TradeDetailModal({
                 <div key={label} className="rounded-xl bg-gray-50 px-4 py-3">
                   <p className="flex items-center gap-1 text-[11px] font-medium text-gray-400">
                     {green ? (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-3.5 w-3.5"><path strokeLinecap="round" d="M3 17l7-8 5 6 8-13" /><path d="M21 17H3" /></svg>
+                      <LineChart className={iconXs} strokeWidth={iconStroke} aria-hidden />
                     ) : (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-3.5 w-3.5"><path strokeLinecap="round" d="M12 8v4m0 4h.01" /><circle cx="12" cy="12" r="9" /></svg>
+                      <Info className={iconXs} strokeWidth={iconStroke} aria-hidden />
                     )}
                     {label}
                   </p>
@@ -411,29 +374,29 @@ export default function TradeDetailModal({
             <div className="space-y-2 rounded-xl bg-gray-50 px-4 py-3">
               {[
                 {
-                  Icon: IcCalendar,
+                  Icon: Calendar,
                   label: "Opened",
                   value: fmtDate(trade.trade_date),
                 },
                 {
-                  Icon: IcCalendar,
+                  Icon: Calendar,
                   label: "Expiration",
                   value: fmtDate(trade.expiry),
                 },
                 {
-                  Icon: IcClock,
+                  Icon: Clock,
                   label: "Days in Trade",
                   value: `${dit}d`,
                 },
                 {
-                  Icon: IcClock,
+                  Icon: Clock,
                   label: "Days to Expiry",
                   value: `${dte}d`,
                 },
               ].map(({ Icon, label, value }) => (
                 <div key={label} className="flex items-center justify-between">
                   <span className="flex items-center gap-2 text-[13px] text-gray-500">
-                    <Icon />
+                    <Icon className={iconSm} strokeWidth={iconStroke} aria-hidden />
                     {label}
                   </span>
                   <span className="text-[13px] font-medium tabular-nums text-gray-900">
@@ -452,7 +415,7 @@ export default function TradeDetailModal({
             {showRollHistory && (
               <div>
                 <div className="mb-3 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-gray-500">
-                  <IcRefresh />
+                  <RotateCw className={iconSm} strokeWidth={iconStroke} aria-hidden />
                   Roll History
                 </div>
                 {rollChain.map((t, i) => {
@@ -476,14 +439,14 @@ export default function TradeDetailModal({
               {(
                 trade.status === "ASSIGNED" || (trade.option_type === "PUT" && trade.status === "EXPIRED")
                   ? [
-                      { label: "Edit", Icon: IcPencil, onClick: () => { onClose(); onEdit(trade); } },
+                      { label: "Edit", Icon: Pencil, onClick: () => { onClose(); onEdit(trade); } },
                     ]
                   : [
-                      { label: "Edit", Icon: IcPencil, onClick: () => { onClose(); onEdit(trade); } },
-                      { label: "Roll", Icon: IcRefresh, onClick: () => { onClose(); onAction(trade, "roll"); } },
-                      { label: "Buy to Close", Icon: IcArrows, onClick: () => { onClose(); onAction(trade, "buy_to_close"); } },
-                      { label: trade.option_type === "CALL" ? "Call Away" : "Assign", Icon: IcCheck, onClick: () => { onClose(); onAction(trade, "assign"); } },
-                      { label: "Expire", Icon: IcExpire, onClick: () => { onClose(); onAction(trade, "expire"); } },
+                      { label: "Edit", Icon: Pencil, onClick: () => { onClose(); onEdit(trade); } },
+                      { label: "Roll", Icon: RotateCw, onClick: () => { onClose(); onAction(trade, "roll"); } },
+                      { label: "Buy to Close", Icon: ArrowLeftRight, onClick: () => { onClose(); onAction(trade, "buy_to_close"); } },
+                      { label: trade.option_type === "CALL" ? "Call Away" : "Assign", Icon: CircleCheck, onClick: () => { onClose(); onAction(trade, "assign"); } },
+                      { label: "Expire", Icon: CalendarCheck, onClick: () => { onClose(); onAction(trade, "expire"); } },
                     ]
               ).map(({ label, Icon, onClick }) => (
                 <button
@@ -492,7 +455,7 @@ export default function TradeDetailModal({
                   onClick={onClick}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-medium text-gray-700 shadow-sm hover:bg-gray-50"
                 >
-                  <Icon />
+                  <Icon className={iconSm} strokeWidth={iconStroke} aria-hidden />
                   {label}
                 </button>
               ))}
@@ -506,7 +469,7 @@ export default function TradeDetailModal({
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-medium text-gray-700 shadow-sm hover:bg-gray-50"
               >
-                <IcExternal />
+                <ExternalLink className={iconSm} strokeWidth={iconStroke} aria-hidden />
                 Explore {trade.ticker}
               </a>
               <button
@@ -514,7 +477,7 @@ export default function TradeDetailModal({
                 onClick={() => { onClose(); onDelete(trade.id); }}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-[12px] font-medium text-red-600 shadow-sm hover:bg-red-100"
               >
-                <IcTrash />
+                <Trash2 className={iconSm} strokeWidth={iconStroke} aria-hidden />
                 Delete
               </button>
             </div>

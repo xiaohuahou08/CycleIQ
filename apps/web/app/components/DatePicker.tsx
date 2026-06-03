@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Calendar } from "lucide-react";
+import { iconSm, iconStroke } from "@/app/components/icons";
 
 function parseIso(iso: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
@@ -106,7 +107,8 @@ export default function DatePicker({
         } ${open ? "ring-2 ring-emerald-500/30 ring-offset-1" : ""}`}
       >
         <Calendar
-          className={`h-3.5 w-3.5 shrink-0 ${emphasized || value ? "text-emerald-300" : "text-gray-400"}`}
+          className={`${iconSm} ${emphasized || value ? "text-emerald-300" : "text-gray-400"}`}
+          strokeWidth={iconStroke}
           aria-hidden
         />
         <span className="truncate">{value ? formatDisplay(value) : placeholder}</span>

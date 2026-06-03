@@ -1,7 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ArrowDownToLine,
+  Calendar,
+  Check,
+  CircleDot,
+  Clock,
+  LineChart,
+  RotateCw,
+  Search,
+  TrendingUp,
+  type LucideIcon,
+} from "lucide-react";
 import DatePicker from "@/app/components/DatePicker";
+import { iconSm, iconStroke } from "@/app/components/icons";
 
 export interface FilterState {
   type: string;
@@ -12,116 +25,17 @@ export interface FilterState {
   endDate?: string;
 }
 
-const icBase = "h-4 w-4 shrink-0";
-
-function SvgFrame(props: React.PropsWithChildren<{ className?: string }>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.5}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={`${icBase} ${props.className ?? ""}`}
-      aria-hidden
-    >
-      {props.children}
-    </svg>
-  );
-}
-
-function IconSearchSm({ className }: { className?: string }) {
-  return (
-    <SvgFrame className={className}>
-      <circle cx="11" cy="11" r="7" />
-      <path d="M20 20l-3.35-3.35" />
-    </SvgFrame>
-  );
-}
-
-function IconCircleDot({ className }: { className?: string }) {
-  return (
-    <SvgFrame className={className}>
-      <circle cx="12" cy="12" r="8" />
-      <circle cx="12" cy="12" r="3" />
-    </SvgFrame>
-  );
-}
-
-function IconChartLine({ className }: { className?: string }) {
-  return (
-    <SvgFrame className={className}>
-      <path d="M3 17l7-8 5 6 8-13" />
-      <path d="M21 17H3" />
-    </SvgFrame>
-  );
-}
-
-function IconClock({ className }: { className?: string }) {
-  return (
-    <SvgFrame className={className}>
-      <circle cx="12" cy="12" r="8" />
-      <path d="M12 7v6l4 2" />
-    </SvgFrame>
-  );
-}
-
-function IconCheck({ className }: { className?: string }) {
-  return (
-    <SvgFrame className={className}>
-      <path d="M5 13l4 4L19 7" />
-    </SvgFrame>
-  );
-}
-
-function IconCalendar({ className }: { className?: string }) {
-  return (
-    <SvgFrame className={className}>
-      <rect x="4" y="5" width="16" height="15" rx="2" />
-      <path d="M8 3v4m8-4v4M4 11h16" />
-    </SvgFrame>
-  );
-}
-
-function IconArrowDown({ className }: { className?: string }) {
-  return (
-    <SvgFrame className={className}>
-      <path d="M12 5v14" />
-      <path d="M6 17l6 6 6-6" />
-    </SvgFrame>
-  );
-}
-
-function IconRefresh({ className }: { className?: string }) {
-  return (
-    <SvgFrame className={className}>
-      <path d="M21 12a9 9 0 10-9 9.25" />
-      <path d="M21 3v9h-9" />
-    </SvgFrame>
-  );
-}
-
-function IconTrendUp({ className }: { className?: string }) {
-  return (
-    <SvgFrame className={className}>
-      <path d="M3 17l6-6 4 4 7-7" />
-      <path d="M17 7h4v4" />
-    </SvgFrame>
-  );
-}
-
 const STATUS_ROW: ReadonlyArray<{
   key: string;
   label: string;
-  Icon: ({ className }: { className?: string }) => React.JSX.Element;
+  Icon: LucideIcon;
 }> = [
-  { key: "OPEN", label: "Open", Icon: IconClock },
-  { key: "CLOSED", label: "Closed", Icon: IconCheck },
-  { key: "EXPIRED", label: "Expired", Icon: IconCalendar },
-  { key: "ASSIGNED", label: "Assigned", Icon: IconArrowDown },
-  { key: "CALLED_AWAY", label: "Away", Icon: IconTrendUp },
-  { key: "ROLLED", label: "Rolled", Icon: IconRefresh },
+  { key: "OPEN", label: "Open", Icon: Clock },
+  { key: "CLOSED", label: "Closed", Icon: Check },
+  { key: "EXPIRED", label: "Expired", Icon: Calendar },
+  { key: "ASSIGNED", label: "Assigned", Icon: ArrowDownToLine },
+  { key: "CALLED_AWAY", label: "Away", Icon: TrendingUp },
+  { key: "ROLLED", label: "Rolled", Icon: RotateCw },
 ];
 
 interface TradeFiltersProps {
@@ -144,11 +58,9 @@ export default function TradeFilters({
     search: "",
     dateRangeType: "TODAY",
   });
-
   const [suggestOpen, setSuggestOpen] = useState(false);
   const searchWrapRef = useRef<HTMLDivElement>(null);
 
-  // Fire initial filter state on mount so the parent always reflects the default (CSP + OPEN).
   const onFilterChangeRef = useRef(onFilterChange);
   onFilterChangeRef.current = onFilterChange;
   useEffect(() => {
@@ -192,7 +104,6 @@ export default function TradeFilters({
   const switchOptionType = (type: "PUT" | "CALL") => {
     if (filters.type === type) return;
     let status = filters.status;
-    // Status tabs differ by strategy — reset incompatible selection.
     if (type === "PUT" && status === "CALLED_AWAY") status = "OPEN";
     if (type === "CALL" && status === "ASSIGNED") status = "OPEN";
     apply({
@@ -212,12 +123,9 @@ export default function TradeFilters({
   return (
     <div className={shell}>
       <div className="flex w-full flex-wrap items-center gap-2 px-4 py-3 sm:px-5">
-        <div
-          ref={searchWrapRef}
-          className="relative w-36 shrink-0"
-        >
+        <div ref={searchWrapRef} className="relative w-36 shrink-0">
           <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-gray-400">
-            <IconSearchSm />
+            <Search className={iconSm} strokeWidth={iconStroke} aria-hidden />
           </span>
           <input
             type="text"
@@ -265,7 +173,11 @@ export default function TradeFilters({
                 : "border border-gray-200 bg-white text-gray-700 shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:bg-gray-50"
             }`}
           >
-            <IconCircleDot className={filters.type === "PUT" ? "text-white" : "text-gray-500"} />
+            <CircleDot
+              className={iconSm}
+              strokeWidth={iconStroke}
+              aria-hidden
+            />
             CSP
           </button>
           <button
@@ -277,39 +189,39 @@ export default function TradeFilters({
                 : "border border-gray-200 bg-white text-gray-700 shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:bg-gray-50"
             }`}
           >
-            <IconChartLine className={filters.type === "CALL" ? "text-white" : "text-gray-500"} />
+            <LineChart className={iconSm} strokeWidth={iconStroke} aria-hidden />
             CC
           </button>
         </div>
         <div className="min-w-0 flex-1 overflow-x-auto">
           <div className="flex w-max min-w-full items-center gap-1 rounded-full bg-[#eef0f4] p-1">
-          {STATUS_ROW.filter(({ key }) => {
-            if (filters.type === "PUT" && key === "CALLED_AWAY") return false;
-            if (filters.type === "CALL" && key === "ASSIGNED") return false;
-            return true;
-          }).map(({ key, label, Icon }) => {
-            const active = filters.status === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() =>
-                  apply({
-                    status: key,
-                    dateRangeType: key === "OPEN" ? "TODAY" : "1M",
-                  })
-                }
-                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-[12px] font-semibold capitalize transition ${
-                  active
-                    ? "border border-transparent bg-white text-gray-900 shadow-[0_1px_2px_rgba(15,23,42,0.06)] ring-1 ring-gray-100"
-                    : "border border-transparent bg-transparent text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                <Icon className="text-current" />
-                {label}
-              </button>
-            );
-          })}
+            {STATUS_ROW.filter(({ key }) => {
+              if (filters.type === "PUT" && key === "CALLED_AWAY") return false;
+              if (filters.type === "CALL" && key === "ASSIGNED") return false;
+              return true;
+            }).map(({ key, label, Icon }) => {
+              const active = filters.status === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() =>
+                    apply({
+                      status: key,
+                      dateRangeType: key === "OPEN" ? "TODAY" : "1M",
+                    })
+                  }
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-[12px] font-semibold capitalize transition ${
+                    active
+                      ? "border border-transparent bg-white text-gray-900 shadow-[0_1px_2px_rgba(15,23,42,0.06)] ring-1 ring-gray-100"
+                      : "border border-transparent bg-transparent text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  <Icon className={iconSm} strokeWidth={iconStroke} aria-hidden />
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -395,7 +307,6 @@ export default function TradeFilters({
           </button>
         )}
       </div>
-
     </div>
   );
 }
