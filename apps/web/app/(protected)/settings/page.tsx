@@ -243,51 +243,6 @@ function TradingDefaultsSection() {
   );
 }
 
-// ─── Danger zone ──────────────────────────────────────────────────────────────
-function DangerZoneSection({ onLogout }: { onLogout: () => Promise<void> }) {
-  const [confirming, setConfirming] = useState(false);
-
-  return (
-    <Section
-      title="Danger Zone"
-      description="Irreversible actions for your account."
-    >
-      <FieldRow
-        label="Sign out"
-        hint="Sign out of CycleIQ on this device."
-      >
-        {confirming ? (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">Are you sure?</span>
-            <button
-              type="button"
-              onClick={() => void onLogout()}
-              className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
-            >
-              Yes, sign out
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirming(false)}
-              className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setConfirming(true)}
-            className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-100"
-          >
-            Sign out
-          </button>
-        )}
-      </FieldRow>
-    </Section>
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const { email, onLogout } = useProtectedAuth();
@@ -297,9 +252,17 @@ export default function SettingsPage() {
       <div className="mx-auto w-full max-w-2xl space-y-6">
         <AccountSection email={email} />
         <TradingDefaultsSection />
-        <DangerZoneSection onLogout={onLogout} />
 
-        <p className="text-center text-xs text-gray-400">CycleIQ · v0.1</p>
+        <div className="flex flex-col items-center gap-4 pt-2 pb-4">
+          <button
+            type="button"
+            onClick={() => void onLogout()}
+            className="rounded-lg bg-red-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-red-700"
+          >
+            Sign out
+          </button>
+          <p className="text-xs text-gray-400">CycleIQ · v0.1</p>
+        </div>
       </div>
     </main>
   );
