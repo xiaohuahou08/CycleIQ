@@ -203,15 +203,21 @@ export default function TradeFilters({
     onFilterChange(next);
   };
 
-  const toggleCsp = () => {
-    if (filters.type === "PUT") return;
-    apply({ type: "PUT" });
+  const switchOptionType = (type: "PUT" | "CALL") => {
+    if (filters.type === type) return;
+    let status = filters.status;
+    // Status tabs differ by strategy — reset incompatible selection.
+    if (type === "PUT" && status === "CALLED_AWAY") status = "OPEN";
+    if (type === "CALL" && status === "ASSIGNED") status = "OPEN";
+    apply({
+      type,
+      status,
+      dateRangeType: status === "OPEN" ? "TODAY" : "1M",
+    });
   };
 
-  const toggleCc = () => {
-    if (filters.type === "CALL") return;
-    apply({ type: "CALL" });
-  };
+  const toggleCsp = () => switchOptionType("PUT");
+  const toggleCc = () => switchOptionType("CALL");
 
   const shell = embedded
     ? "bg-white"
@@ -234,7 +240,7 @@ export default function TradeFilters({
           </span>
         </div>
         <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
-          {onAddTrade && filters.status !== "CALLED_AWAY" && (
+          {onAddTrade && !["CALLED_AWAY", "CLOSED", "EXPIRED", "ROLLED"].includes(filters.status) && (
             <button
               type="button"
               onClick={onAddTrade}
@@ -328,7 +334,12 @@ export default function TradeFilters({
               <button
                 key={key}
                 type="button"
-                onClick={() => apply({ status: key })}
+                onClick={() =>
+                  apply({
+                    status: key,
+                    dateRangeType: key === "OPEN" ? "TODAY" : "1M",
+                  })
+                }
                 className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-[12px] font-semibold capitalize transition ${
                   active
                     ? "border border-transparent bg-white text-gray-900 shadow-[0_1px_2px_rgba(15,23,42,0.06)] ring-1 ring-gray-100"

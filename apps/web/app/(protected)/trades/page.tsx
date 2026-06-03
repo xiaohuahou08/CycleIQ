@@ -308,17 +308,10 @@ export default function TradesPage() {
             <TradeList
               trades={filtered}
               loading={tradesLoading}
-              onAddTrade={() => {
-                setSaveError(null);
-                setSaveSuccess(null);
-                setEditingTrade(null);
-                setModalOpen(true);
-              }}
               prices={prices}
               onDeleteTrade={onDeleteTrade}
               onEditTrade={onEditTrade}
               onAction={onAction}
-              hideAddButton={filters.status === "CALLED_AWAY" || filters.status === "CLOSED"}
               statusFilter={filters.status}
             />
           </div>

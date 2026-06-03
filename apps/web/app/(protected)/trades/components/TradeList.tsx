@@ -16,15 +16,12 @@ interface TradeListProps {
   trades: Trade[];
   loading: boolean;
   prices: Record<string, number>;
-  onAddTrade: () => void;
   onDeleteTrade: (id: string) => void;
   onEditTrade: (trade: Trade) => void;
   onAction: (
     trade: Trade,
     action: "buy_to_close" | "expire" | "assign" | "roll"
   ) => void;
-  /** Hide the "+ Add trade" button (e.g. when viewing auto-generated statuses like CALLED_AWAY). */
-  hideAddButton?: boolean;
   statusFilter?: string;
 }
 
@@ -605,11 +602,9 @@ export default function TradeList({
   trades,
   loading,
   prices,
-  onAddTrade,
   onDeleteTrade,
   onEditTrade,
   onAction,
-  hideAddButton = false,
   statusFilter,
 }: TradeListProps) {
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
@@ -699,20 +694,8 @@ export default function TradeList({
 
   if (trades.length === 0) {
     return (
-      <div className="flex flex-col items-center py-16 text-center">
+      <div className="flex items-center justify-center py-16 text-center">
         <p className="text-[15px] font-semibold text-gray-900">No positions yet</p>
-        <p className="mt-1 max-w-md text-[13px] text-gray-500">
-          Add a trade to populate this view — same layout as the reference dashboard.
-        </p>
-        {!hideAddButton && (
-          <button
-            type="button"
-            onClick={onAddTrade}
-            className="mt-5 rounded-lg border border-gray-200 bg-gray-900 px-5 py-2.5 text-[13px] font-medium text-white hover:bg-gray-800"
-          >
-            + Add trade
-          </button>
-        )}
       </div>
     );
   }
