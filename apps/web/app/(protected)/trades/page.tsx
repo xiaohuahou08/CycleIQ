@@ -52,21 +52,18 @@ function applyFilters(trades: Trade[], f: FilterState, closedCycleIds: Set<strin
   return trades.filter((t) => {
     if (f.type !== "ALL" && t.option_type !== f.type) return false;
     
-    // Status filter
-    if (f.status !== "ALL") {
-      if (t.status !== f.status) return false;
-    } else {
-      // Date filter applies when status is "ALL" (History mode)
-      const tDate = t.trade_date; // YYYY-MM-DD string
-      if (f.dateRangeType === "1M") {
-        const oneMonthAgo = new Date();
-        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-        const oneMonthAgoStr = oneMonthAgo.toISOString().slice(0, 10);
-        if (tDate < oneMonthAgoStr) return false;
-      } else if (f.dateRangeType === "CUSTOM") {
-        if (f.startDate && tDate < f.startDate) return false;
-        if (f.endDate && tDate > f.endDate) return false;
-      }
+    if (f.status !== "ALL" && t.status !== f.status) return false;
+
+    // Date range stacks with status (e.g. Open + last month)
+    const tDate = t.trade_date;
+    if (f.dateRangeType === "1M") {
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+      const oneMonthAgoStr = oneMonthAgo.toISOString().slice(0, 10);
+      if (tDate < oneMonthAgoStr) return false;
+    } else if (f.dateRangeType === "CUSTOM") {
+      if (f.startDate && tDate < f.startDate) return false;
+      if (f.endDate && tDate > f.endDate) return false;
     }
 
     if (

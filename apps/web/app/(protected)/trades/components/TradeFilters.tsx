@@ -237,9 +237,9 @@ export default function TradeFilters({
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => apply({ status: "ALL", dateRangeType: "1M" })}
+              onClick={() => apply({ dateRangeType: "1M" })}
               className={`rounded-lg px-3 py-1.5 text-[12px] font-semibold transition ${
-                filters.status === "ALL" && filters.dateRangeType === "1M"
+                filters.dateRangeType === "1M"
                   ? "bg-gray-900 text-white shadow-sm"
                   : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
               }`}
@@ -253,18 +253,17 @@ export default function TradeFilters({
                 value={filters.startDate ?? ""}
                 onChange={(e) =>
                   apply({
-                    status: "ALL",
                     dateRangeType: "CUSTOM",
                     startDate: e.target.value || undefined,
                   })
                 }
                 onFocus={() => {
-                  if (filters.status !== "ALL" || filters.dateRangeType !== "CUSTOM") {
-                    apply({ status: "ALL", dateRangeType: "CUSTOM" });
+                  if (filters.dateRangeType !== "CUSTOM") {
+                    apply({ dateRangeType: "CUSTOM" });
                   }
                 }}
                 className={`rounded border px-1.5 py-0.5 text-[12px] text-gray-900 focus:outline-none ${
-                  filters.status === "ALL" && filters.dateRangeType === "CUSTOM"
+                  filters.dateRangeType === "CUSTOM"
                     ? "border-gray-400 bg-gray-50"
                     : "border-transparent"
                 }`}
@@ -276,18 +275,17 @@ export default function TradeFilters({
                 value={filters.endDate ?? ""}
                 onChange={(e) =>
                   apply({
-                    status: "ALL",
                     dateRangeType: "CUSTOM",
                     endDate: e.target.value || undefined,
                   })
                 }
                 onFocus={() => {
-                  if (filters.status !== "ALL" || filters.dateRangeType !== "CUSTOM") {
-                    apply({ status: "ALL", dateRangeType: "CUSTOM" });
+                  if (filters.dateRangeType !== "CUSTOM") {
+                    apply({ dateRangeType: "CUSTOM" });
                   }
                 }}
                 className={`rounded border px-1.5 py-0.5 text-[12px] text-gray-900 focus:outline-none ${
-                  filters.status === "ALL" && filters.dateRangeType === "CUSTOM"
+                  filters.dateRangeType === "CUSTOM"
                     ? "border-gray-400 bg-gray-50"
                     : "border-transparent"
                 }`}
