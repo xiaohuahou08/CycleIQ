@@ -214,9 +214,10 @@ def register_dashboard_routes(dashboard_bp):
         total_capital_invested = open_csp_capital + total_stock_effective_cost
 
         # ── Realized P&L ────────────────────────────────────────────────────
-        # ROLLED = intermediate leg (premium realized, but position not yet terminal).
-        # Include in P&L (premium was collected) but exclude from win-rate denominator.
-        pnl_statuses = {"CLOSED", "EXPIRED", "ROLLED", "CALLED_AWAY"}
+        # ASSIGNED (CSP put): option premium is realized at assignment; stock P&L
+        # follows via CC / call-away (aligned with Cycles wheel netLegCashflow).
+        # ROLLED = intermediate leg — include cashflow, exclude from win-rate denominator.
+        pnl_statuses = {"CLOSED", "EXPIRED", "ROLLED", "CALLED_AWAY", "ASSIGNED"}
         realized_trades = [t for t in closed_trades if t.status in pnl_statuses]
         # Add stock gain/loss from shares called away (not captured in option premium alone)
         realized_pnl = sum(_realized_cashflow(t) for t in realized_trades) + extra_stock_sale_pnl

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import DatePicker from "@/app/components/DatePicker";
 
 export interface FilterState {
   type: string;
@@ -336,52 +337,55 @@ export default function TradeFilters({
             Last month
           </button>
           <div
-            className={`flex items-center gap-1.5 rounded-lg border px-2 py-1 ${
+            className={`flex flex-wrap items-center gap-1 rounded-lg border p-1 ${
               filters.dateRangeType === "CUSTOM"
-                ? "border-gray-400 bg-gray-50"
+                ? "border-gray-400 bg-gray-50 ring-1 ring-gray-200"
                 : "border-gray-200 bg-white"
             }`}
           >
-            <span className="text-[11px] font-medium text-gray-500">Custom</span>
-            <input
-              type="date"
-              value={filters.startDate ?? ""}
-              onChange={(e) =>
-                apply({
-                  dateRangeType: "CUSTOM",
-                  startDate: e.target.value || undefined,
-                })
-              }
-              onFocus={() => {
-                if (filters.dateRangeType !== "CUSTOM") {
-                  apply({ dateRangeType: "CUSTOM" });
-                }
-              }}
-              className="rounded border-0 bg-transparent px-0.5 py-0.5 text-[12px] text-gray-900 focus:outline-none"
+            <button
+              type="button"
+              onClick={() => apply({ dateRangeType: "CUSTOM" })}
+              className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${
+                filters.dateRangeType === "CUSTOM"
+                  ? "text-gray-900"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Custom
+            </button>
+            <span className="text-gray-300" aria-hidden>
+              |
+            </span>
+            <DatePicker
+              value={filters.startDate}
+              placeholder="From"
+              emphasized={filters.dateRangeType === "CUSTOM"}
               aria-label="From date"
-            />
-            <span className="text-gray-400">–</span>
-            <input
-              type="date"
-              value={filters.endDate ?? ""}
-              onChange={(e) =>
+              onChange={(startDate) =>
                 apply({
                   dateRangeType: "CUSTOM",
-                  endDate: e.target.value || undefined,
+                  startDate,
                 })
               }
-              onFocus={() => {
-                if (filters.dateRangeType !== "CUSTOM") {
-                  apply({ dateRangeType: "CUSTOM" });
-                }
-              }}
-              className="rounded border-0 bg-transparent px-0.5 py-0.5 text-[12px] text-gray-900 focus:outline-none"
+            />
+            <span className="text-[11px] text-gray-400">–</span>
+            <DatePicker
+              value={filters.endDate}
+              placeholder="To"
+              emphasized={filters.dateRangeType === "CUSTOM"}
               aria-label="To date"
+              onChange={(endDate) =>
+                apply({
+                  dateRangeType: "CUSTOM",
+                  endDate,
+                })
+              }
             />
           </div>
         </div>
 
-        {onAddTrade && !["CALLED_AWAY", "CLOSED", "EXPIRED", "ROLLED"].includes(filters.status) && (
+        {onAddTrade && (
           <button
             type="button"
             onClick={onAddTrade}

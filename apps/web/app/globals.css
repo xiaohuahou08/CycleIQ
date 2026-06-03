@@ -27,3 +27,23 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans-inter), Inter, system-ui, sans-serif;
 }
+
+/* Native date inputs in modals — light chrome aligned with app tokens */
+input[type="date"].date-input {
+  color-scheme: light;
+  font-family: inherit;
+}
+
+input[type="date"].date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.55;
+  filter: grayscale(0.2);
+}
+
+input[type="date"].date-input:hover::-webkit-calendar-picker-indicator {
+  opacity: 0.85;
+}
+
+input[type="date"].date-input:focus::-webkit-calendar-picker-indicator {
+  opacity: 1;
+}

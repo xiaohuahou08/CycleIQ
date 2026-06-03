@@ -285,7 +285,7 @@ def test_dashboard_insights_api(client):
             "ticker": "UNH",
             "option_type": "PUT",
             "strike": 360,
-            "expiry": "2026-05-07",
+            "expiry": "2027-05-07",
             "trade_date": "2026-04-27",
             "premium": 1.2,
             "contracts": 2,
@@ -295,7 +295,7 @@ def test_dashboard_insights_api(client):
             "ticker": "HIMS",
             "option_type": "PUT",
             "strike": 28,
-            "expiry": "2026-05-07",
+            "expiry": "2027-05-07",
             "trade_date": "2026-04-28",
             "premium": 1.5,
             "contracts": 3,
@@ -316,6 +316,37 @@ def test_dashboard_insights_api(client):
     assert body["kpis"]["total_premium"] == pytest.approx(690.0)
     assert body["kpis"]["realized_pnl"] == pytest.approx(450.0)
     assert isinstance(body["charts"]["daily_premium_income"], list)
+
+
+def test_dashboard_insights_includes_assigned_csp_premium(client):
+    """ASSIGNED CSP premium counts toward realized P&L (matches Cycles wheel)."""
+    h = auth_headers("55555555-5555-5555-5555-555555555555")
+    created = client.post(
+        "/api/trades",
+        json={
+            "ticker": "AAPL",
+            "option_type": "PUT",
+            "strike": 180,
+            "expiry": "2026-06-20",
+            "trade_date": "2026-04-01",
+            "premium": 2.0,
+            "contracts": 1,
+            "status": "OPEN",
+        },
+        headers=h,
+    )
+    assert created.status_code == 201
+    tid = created.get_json()["id"]
+    assign = client.put(
+        f"/api/trades/{tid}",
+        json={"status": "ASSIGNED", "trade_date": "2026-04-29"},
+        headers=h,
+    )
+    assert assign.status_code == 200
+
+    body = client.get("/api/dashboard/insights", headers=h).get_json()
+    # premium 2.0 × 1 contract × 100
+    assert body["kpis"]["realized_pnl"] == pytest.approx(200.0)
 
 
 def test_expire_trade_endpoint_sets_metadata(client):
