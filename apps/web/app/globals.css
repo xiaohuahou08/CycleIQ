@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0B0E11;
+  --foreground: #E1E2E7;
 
   /* Design tokens */
-  --page-bg: #f8fafc;
-  --sidebar-bg: #0f172a;
-  --accent: #10b981;
-  --surface: #ffffff;
-  --border: #e2e8f0;
+  --page-bg: #0B0E11;
+  --sidebar-bg: #111417;
+  --accent: #8B5CF6;
+  --surface: #15191C;
+  --border: #2D3439;
 }
 
 @theme inline {
@@ -22,15 +22,49 @@
   --color-border: var(--border);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans-inter), Inter, system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom Stitch design styles */
+.glass-card {
+  background: #15191C;
+  border: 1px solid #2D3439;
+  border-radius: 16px;
+  transition: all 0.2s ease-in-out;
+}
+
+.glass-card:hover {
+  border-color: rgba(208, 188, 255, 0.25);
+  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.1);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #d0bcff 0%, #4cd7f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.action-gradient {
+  background: linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%);
+}
+
+.chart-grid {
+  background-image: radial-gradient(circle at 1px 1px, rgba(149, 142, 160, 0.1) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0b0e11;
+}
+::-webkit-scrollbar-thumb {
+  background: #323538;
+  border-radius: 10px;
 }

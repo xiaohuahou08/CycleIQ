@@ -51,7 +51,23 @@ function getClosedCycleIds(trades: Trade[]): Set<string> {
 function applyFilters(trades: Trade[], f: FilterState, closedCycleIds: Set<string>): Trade[] {
   return trades.filter((t) => {
     if (f.type !== "ALL" && t.option_type !== f.type) return false;
-    if (f.status !== "ALL" && t.status !== f.status) return false;
+    
+    // Status filter
+    if (f.status !== "ALL") {
+      if (t.status !== f.status) return false;
+    } else {
+      // Date filter applies when status is "ALL" (History mode)
+      const tDate = t.trade_date; // YYYY-MM-DD string
+      if (f.dateRangeType === "1M") {
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+        const oneMonthAgoStr = oneMonthAgo.toISOString().slice(0, 10);
+        if (tDate < oneMonthAgoStr) return false;
+      } else if (f.dateRangeType === "CUSTOM") {
+        if (f.startDate && tDate < f.startDate) return false;
+        if (f.endDate && tDate > f.endDate) return false;
+      }
+    }
 
     if (
       f.search &&
@@ -81,6 +97,7 @@ export default function TradesPage() {
     type: "PUT",
     status: "OPEN",
     search: "",
+    dateRangeType: "1M",
   });
 
   useEffect(() => {
@@ -161,11 +178,17 @@ export default function TradesPage() {
     setSaveError(null);
     setSaveSuccess(null);
     try {
-      await createTrade(token, input);
+      const created = await createTrade(token, input);
       setModalOpen(false);
       setTradesLoading(true);
       const trades = await listTrades(token);
       setAllTrades(trades);
+      // Match list filters to the new trade so it is visible (default view is PUT + OPEN).
+      setFilters((prev) => ({
+        ...prev,
+        type: created.option_type,
+        status: created.status === "OPEN" ? "OPEN" : prev.status,
+      }));
       setSaveSuccess("Trade saved successfully.");
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save trade.");
