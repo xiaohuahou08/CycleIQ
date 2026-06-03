@@ -21,7 +21,8 @@ def apply_stock_cost_basis(trade: Trade) -> None:
     `prior_roll_premium_per_share` accumulates net premium collected from any
     rolls before the final assignment leg (e.g. rolling from $375 → $390 strike).
     """
-    if trade.option_type != "PUT" or trade.status != "ASSIGNED":
+    # Keep basis on CALLED_AWAY so wheel/dashboard P&L can use assignment cost.
+    if trade.option_type != "PUT" or trade.status not in ("ASSIGNED", "CALLED_AWAY"):
         trade.stock_cost_basis_per_share = None
         return
     shares = int(trade.contracts) * 100

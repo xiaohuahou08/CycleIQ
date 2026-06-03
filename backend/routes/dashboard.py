@@ -140,7 +140,7 @@ def register_dashboard_routes(dashboard_bp):
             assigned_puts = [
                 t for t in tt
                 if t.option_type == "PUT"
-                and t.status == "ASSIGNED"
+                and t.status in ("ASSIGNED", "CALLED_AWAY")
                 and t.stock_cost_basis_per_share is not None
             ]
             if not assigned_puts:

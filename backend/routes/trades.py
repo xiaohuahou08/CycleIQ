@@ -356,7 +356,7 @@ def register_trades_routes(trades_bp):
                     assigned_put.status = "CALLED_AWAY"
                     assigned_put.called_away_at = trade.called_away_at or trade.trade_date
                     assigned_put.updated_at = datetime.now(timezone.utc)
-                    apply_stock_cost_basis(assigned_put)
+                    # Preserve stock_cost_basis_per_share (do not clear on CALLED_AWAY).
 
                 cycle = WheelCycle.query.filter_by(id=trade.cycle_id, user_id=user_id).first()
                 if cycle:

@@ -28,12 +28,65 @@ function netLegCashflow(t: Trade): number {
   return gross - buyback - commission;
 }
 
+/** CSP assignment cost per share (stored or computed — mirrors backend). */
+function assignmentStockBasisPerShare(put: Trade): number | null {
+  if (put.option_type !== "PUT") return null;
+  if (
+    put.stock_cost_basis_per_share != null &&
+    Number.isFinite(put.stock_cost_basis_per_share)
+  ) {
+    return put.stock_cost_basis_per_share;
+  }
+  const shares = put.contracts * 100;
+  if (shares <= 0) return null;
+  const openFee = put.commission_fee ?? 0;
+  const assignFee = put.fees_on_assignment ?? 0;
+  const priorRoll = put.prior_roll_premium_per_share ?? 0;
+  return put.strike - put.premium - priorRoll + (openFee + assignFee) / shares;
+}
+
+/**
+ * Wheel total realized P&L: sum of option leg cashflows plus stock gain/loss when
+ * shares are called away (sale at CC strike vs assignment cost basis).
+ */
+function wheelTotalNetPnl(legs: Trade[]): number {
+  let total = legs.reduce((sum, t) => sum + netLegCashflow(t), 0);
+
+  const stockPuts = legs.filter(
+    (t) =>
+      t.option_type === "PUT" &&
+      (t.status === "ASSIGNED" || t.status === "CALLED_AWAY")
+  );
+  const assignedShares = stockPuts.reduce((s, t) => s + t.contracts * 100, 0);
+  if (assignedShares <= 0) return total;
+
+  let basisWeighted = 0;
+  for (const put of stockPuts) {
+    const basis = assignmentStockBasisPerShare(put);
+    if (basis == null) continue;
+    basisWeighted += basis * put.contracts * 100;
+  }
+  const initialBasisPerShare = basisWeighted / assignedShares;
+
+  for (const cc of legs.filter((t) => t.option_type === "CALL" && t.status === "CALLED_AWAY")) {
+    const sharesCalled = cc.contracts * 100;
+    total += (cc.strike - initialBasisPerShare) * sharesCalled;
+  }
+
+  return total;
+}
+
+function isCompletedWheel(state: string): boolean {
+  return state === "EXIT" || state === "CSP_CLOSED";
+}
+
 function stateBadgeStyle(state: string): string {
   if (state === "IDLE") return "bg-gray-100 text-gray-700";
   if (state === "CSP_OPEN") return "bg-blue-100 text-blue-700";
   if (state === "STOCK_HELD") return "bg-purple-100 text-purple-700";
   if (state === "CC_OPEN") return "bg-amber-100 text-amber-700";
-  if (state === "EXIT") return "bg-green-100 text-green-700";
+  if (state === "EXIT") return "bg-amber-100 text-amber-900 ring-1 ring-amber-400/60 font-semibold";
+  if (state === "CSP_CLOSED") return "bg-slate-200 text-slate-800 ring-1 ring-slate-400/50 font-semibold";
   return "bg-slate-100 text-slate-700";
 }
 
@@ -534,8 +587,20 @@ export default function CyclesPage() {
           </div>
         ) : selectedWheel ? (
           <>
-          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-            <div className="flex h-[58px] items-center justify-between border-b border-gray-200 bg-[#f5f8f8] px-5">
+          <div
+            className={`overflow-hidden rounded-2xl border shadow-sm ${
+              isCompletedWheel(selectedWheel.state)
+                ? "border-amber-300 bg-gradient-to-b from-amber-50 via-white to-white ring-1 ring-amber-200/80"
+                : "border-gray-200 bg-white"
+            }`}
+          >
+            <div
+              className={`flex h-[58px] items-center justify-between border-b px-5 ${
+                isCompletedWheel(selectedWheel.state)
+                  ? "border-amber-200 bg-amber-50/90"
+                  : "border-gray-200 bg-[#f5f8f8]"
+              }`}
+            >
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -572,12 +637,13 @@ export default function CyclesPage() {
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-medium ${stateBadgeStyle(selectedWheel.state)}`}
                 >
-                  {selectedWheel.state === "EXIT" ? "Completed" : "Active"}
+                  {isCompletedWheel(selectedWheel.state) ? "Completed" : "Active"}
                 </span>
               </div>
             </div>
             {(() => {
               const legs = selectedWheelLegs;
+              const completed = isCompletedWheel(selectedWheel.state);
               const count = legs.length;
               const cardW = 168;
               const cardH = 152; // measured card height (generous)
@@ -609,7 +675,7 @@ export default function CyclesPage() {
               const H = Math.ceil(cy + 230);    // room for centre circle + label
 
               const startDeg = -90 - fanDeg / 2;
-              const totalNet = legs.reduce((s, t) => s + netLegCashflow(t), 0);
+              const totalNet = wheelTotalNetPnl(legs);
 
               const positions = legs.map((_, i) => {
                 const angleDeg = count <= 1 ? -90 : startDeg + (i / (count - 1)) * fanDeg;
@@ -632,31 +698,66 @@ export default function CyclesPage() {
                 return { x1, y1, x2, y2, color, i };
               });
 
+              const centerSize = completed ? 120 : 104;
+              const ringStroke = completed ? "#f59e0b" : "#e9eeef";
+              const spokeStroke = completed ? "#fcd34d" : "#dde3e6";
+
               return (
-                <div className="overflow-x-auto bg-[#fcfdfd]">
+                <div
+                  className={`overflow-x-auto ${completed ? "bg-gradient-to-b from-amber-50/40 to-[#fcfdfd]" : "bg-[#fcfdfd]"}`}
+                >
                   <div className="relative mx-auto" style={{ width: W, height: H }}>
 
                     {/* LAYER 1 (behind cards): guide ring + spokes */}
                     <svg className="pointer-events-none absolute inset-0" style={{ zIndex: 0 }} width={W} height={H}>
                       {arcR > 0 && (
                         <circle cx={cx} cy={cy} r={arcR + 22}
-                          fill="none" stroke="#e9eeef" strokeDasharray="4 6" strokeWidth="1" />
+                          fill="none" stroke={ringStroke} strokeDasharray={completed ? "6 4" : "4 6"} strokeWidth={completed ? 2 : 1} />
                       )}
                       {positions.map((pos, i) => (
                         <line key={`sp-${i}`}
                           x1={pos.x} y1={pos.y} x2={cx} y2={cy}
-                          stroke="#dde3e6" strokeDasharray="4 5" strokeWidth="1" strokeLinecap="round" />
+                          stroke={spokeStroke} strokeDasharray="4 5" strokeWidth={completed ? 1.5 : 1} strokeLinecap="round" />
                       ))}
                     </svg>
 
                     {/* Center circle — z-index 1 */}
-                    <div className="absolute flex flex-col items-center justify-center rounded-full border-2 border-emerald-300 bg-emerald-50 shadow-md"
-                      style={{ zIndex: 1, width: 104, height: 104, left: cx, top: cy, transform: "translate(-50%,-50%)" }}>
+                    <div
+                      className={`absolute flex flex-col items-center justify-center rounded-full border-2 shadow-lg ${
+                        completed
+                          ? "border-amber-500 bg-gradient-to-br from-amber-100 via-amber-50 to-white ring-4 ring-amber-300/70 shadow-amber-300/40"
+                          : "border-emerald-400 bg-emerald-50 ring-2 ring-emerald-200/80 shadow-md"
+                      }`}
+                      style={{
+                        zIndex: 1,
+                        width: centerSize,
+                        height: centerSize,
+                        left: cx,
+                        top: cy,
+                        transform: "translate(-50%,-50%)",
+                      }}
+                    >
+                      {completed && (
+                        <span className="absolute -top-1 rounded-full bg-amber-600 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-sm">
+                          Done
+                        </span>
+                      )}
                       <TickerLogo ticker={selectedWheel.ticker} size="sm" />
-                      <div className="mt-0.5 text-[12px] font-bold text-gray-900">{selectedWheel.ticker}</div>
-                      <div className={`text-[11px] font-semibold ${totalNet < 0 ? "text-red-600" : "text-emerald-700"}`}>
+                      <div className={`font-bold text-gray-900 ${completed ? "mt-1 text-[13px]" : "mt-0.5 text-[12px]"}`}>
+                        {selectedWheel.ticker}
+                      </div>
+                      <div
+                        className={`font-bold tabular-nums ${
+                          completed ? "text-[14px]" : "text-[11px] font-semibold"
+                        } ${totalNet < 0 ? "text-red-700" : completed ? "text-amber-900" : "text-emerald-700"}`}
+                      >
                         {totalNet < 0 ? "−" : "+"}${Math.abs(totalNet).toFixed(0)}
                       </div>
+                      {completed && (
+                        <span className="mt-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700/90">
+                          Net P&L
+                        </span>
+                      )}
                     </div>
 
                     {/* Leg cards — z-index 2 */}
@@ -796,12 +897,21 @@ export default function CyclesPage() {
                     .slice()
                     .sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime());
 
+                  const cycleCompleted = isCompletedWheel(cycle.state);
                   return (
                     <div
                       key={cycle.id}
-                      className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
+                      className={`overflow-hidden rounded-xl border shadow-sm ${
+                        cycleCompleted
+                          ? "border-amber-300 bg-gradient-to-r from-amber-50/90 to-white ring-1 ring-amber-200/60"
+                          : "border-gray-200 bg-white"
+                      }`}
                     >
-                      <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+                      <div
+                        className={`flex items-center justify-between border-b px-4 py-3 ${
+                          cycleCompleted ? "border-amber-200/80 bg-amber-50/50" : "border-gray-100"
+                        }`}
+                      >
                         <div className="flex items-center gap-2">
                           <TickerLogo ticker={cycle.ticker} />
                           <div>
