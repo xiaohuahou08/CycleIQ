@@ -22,7 +22,11 @@ import TradeFilters, { type FilterState } from "./components/TradeFilters";
 import TradeList from "./components/TradeList";
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function getClosedCycleIds(trades: Trade[]): Set<string> {
@@ -54,16 +58,21 @@ function applyFilters(trades: Trade[], f: FilterState, closedCycleIds: Set<strin
     
     if (f.status !== "ALL" && t.status !== f.status) return false;
 
-    // Date range stacks with status (e.g. Open + last month)
-    const tDate = t.trade_date;
-    if (f.dateRangeType === "1M") {
+    // Date range stacks with status (e.g. Open + Today)
+    const todayStr = todayIso();
+    if (f.dateRangeType === "TODAY") {
+      if (t.expiry < todayStr) return false;
+    } else if (f.dateRangeType === "1M") {
       const oneMonthAgo = new Date();
       oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-      const oneMonthAgoStr = oneMonthAgo.toISOString().slice(0, 10);
-      if (tDate < oneMonthAgoStr) return false;
+      const y = oneMonthAgo.getFullYear();
+      const m = String(oneMonthAgo.getMonth() + 1).padStart(2, "0");
+      const day = String(oneMonthAgo.getDate()).padStart(2, "0");
+      const oneMonthAgoStr = `${y}-${m}-${day}`;
+      if (t.trade_date < oneMonthAgoStr) return false;
     } else if (f.dateRangeType === "CUSTOM") {
-      if (f.startDate && tDate < f.startDate) return false;
-      if (f.endDate && tDate > f.endDate) return false;
+      if (f.startDate && t.trade_date < f.startDate) return false;
+      if (f.endDate && t.trade_date > f.endDate) return false;
     }
 
     if (
@@ -92,9 +101,9 @@ export default function TradesPage() {
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     type: "PUT",
-    status: "ALL",
+    status: "OPEN",
     search: "",
-    dateRangeType: "1M",
+    dateRangeType: "TODAY",
   });
 
   useEffect(() => {
