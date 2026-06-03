@@ -64,19 +64,19 @@ export default function ProtectedLayout({
 
   if (isAuthLoading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#0B0E11]">
-        <p className="text-[#94A3B8] font-medium animate-pulse">Loading Premium Ledger…</p>
+      <main className="flex min-h-screen items-center justify-center bg-slate-50">
+        <p className="text-slate-500">Loading…</p>
       </main>
     );
   }
 
   return (
     <ProtectedAuthProvider value={contextValue}>
-      <div className="flex h-screen overflow-hidden bg-[#0B0E11] text-[#E1E2E7]">
+      <div className="flex h-screen overflow-hidden bg-slate-50">
         {/* Mobile sidebar overlay */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-40 bg-black/60 lg:hidden"
+            className="fixed inset-0 z-40 bg-black/40 lg:hidden"
             onClick={() => setSidebarOpen(false)}
             aria-hidden="true"
           />
@@ -97,52 +97,36 @@ export default function ProtectedLayout({
         {/* Main content column */}
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Top header — always visible */}
-          <header className="flex h-20 shrink-0 items-center justify-between border-b border-[#2D3439] bg-[#111417]/80 backdrop-blur-xl px-8">
-            <div className="flex items-center gap-4">
+          <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6">
+            <div className="flex items-center gap-3">
               {/* Hamburger for mobile */}
               <button
                 type="button"
                 onClick={() => setSidebarOpen(true)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-[#1D2023] lg:hidden"
+                className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 lg:hidden"
                 aria-label="Open navigation"
               >
                 ☰
               </button>
-              <div className="flex items-center gap-3">
-                <div className="bg-[#1D2023] p-2 rounded-lg border border-[#2D3439]">
-                  <span className="text-[#8B5CF6] text-lg font-bold select-none">⚡</span>
-                </div>
-                <div>
-                  <h1 className="text-lg font-bold text-[#E1E2E7]">{pageTitle}</h1>
-                  <p className="text-[10px] text-[#94A3B8] opacity-60">Your options premium portfolio overview</p>
-                </div>
-              </div>
+              <h1 className="text-sm font-semibold text-slate-900">{pageTitle}</h1>
             </div>
 
-            <div className="flex items-center gap-6">
-              {/* Live Status Badge */}
-              <div className="flex items-center gap-2 bg-[#22C55E]/10 text-[#22C55E] px-4 py-2 rounded-full border border-[#22C55E]/20 select-none">
-                <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]"></span>
-                <span className="text-xs font-bold tracking-wide">Live Status</span>
-              </div>
-
-              <div className="flex items-center gap-4 border-l border-[#2D3439] pl-6">
-                {email && (
-                  <span className="hidden text-xs text-[#94A3B8] font-medium sm:block">{email}</span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => void onLogout()}
-                  className="rounded-xl border border-[#2D3439] bg-[#111417]/80 px-4 py-2 text-xs font-bold text-[#94A3B8] hover:text-[#E1E2E7] hover:bg-[#1D2023] transition-all duration-200"
-                >
-                  Sign out
-                </button>
-              </div>
+            <div className="flex items-center gap-3">
+              {email && (
+                <span className="hidden text-xs text-slate-500 sm:block">{email}</span>
+              )}
+              <button
+                type="button"
+                onClick={() => void onLogout()}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+              >
+                Sign out
+              </button>
             </div>
           </header>
 
           {/* Scrollable page content */}
-          <div className="flex-1 overflow-auto bg-[#0B0E11] text-[#E1E2E7]">
+          <div className="flex-1 overflow-auto">
             {children}
           </div>
         </div>
