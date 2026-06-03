@@ -142,8 +142,8 @@ export default function DashboardInsights({
         <StatCard
           label="Total Capital Invested"
           value={fmtCurrency(kpis?.total_capital_invested ?? 0)}
-          sub="Capital in open trades"
-          tip="Σ (open trade strike × contracts × 100). For open CALL, use effective stock basis when available."
+          sub="Open CSP cash + stock held"
+          tip="Open CSP strike notional + stock cost from assignment (once per ticker). Open CC does not add capital — stock was already invested at assign."
           accent="bg-emerald-400"
         />
         <StatCard

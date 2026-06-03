@@ -110,7 +110,11 @@ def register_dashboard_routes(dashboard_bp):
     @require_auth
     def insights(user_id: str):
         trades = Trade.query.filter_by(user_id=user_id).all()
-        open_trades = [t for t in trades if t.status == "OPEN"]
+        today = datetime.utcnow().date()
+        # Active open legs only (matches Trades "Today" — expiry has not passed).
+        open_trades = [
+            t for t in trades if t.status == "OPEN" and t.expiry is not None and t.expiry >= today
+        ]
         closed_trades = [t for t in trades if t.status != "OPEN"]
 
         total_premium = sum(_premium_total(t) for t in trades)
@@ -185,22 +189,29 @@ def register_dashboard_routes(dashboard_bp):
                 total_cc_basis_reduction += cc_reduction_net
                 total_stock_effective_cost += effective_basis_per_share * remaining_shares
 
-        # ── Capital at risk (per trade) ──────────────────────────────────────
+        # ── Capital invested ─────────────────────────────────────────────────
+        # • Open CSP: cash-secured notional (new cash at risk).
+        # • Stock held after assignment: counted once via total_stock_effective_cost.
+        # • Open CC does NOT add capital — shares were already paid for at assignment;
+        #   the CC is premium income on existing stock, not additional deployment.
         def _capital_at_risk(t: Trade) -> float:
-            """Capital deployed per trade.
-            • Open CC legs: use effective stock cost basis (initial − expired CC reductions)
-              so that the dashboard reflects the true current holding cost.
-            • All other trades: use strike notional.
-            """
-            if t.option_type == "CALL":
-                eff_basis = ticker_effective_basis.get(t.ticker)
-                if eff_basis is not None:
-                    return eff_basis * int(t.contracts) * 100
-                if getattr(t, "stock_cost_basis_per_share", None) is not None:
-                    return float(t.stock_cost_basis_per_share) * int(t.contracts) * 100
-            return float(t.strike) * int(t.contracts) * 100
+            """Per-leg capital for closed-trade ROI (includes CC at stock basis when applicable)."""
+            shares = int(t.contracts) * 100
+            if t.option_type == "PUT":
+                return float(t.strike) * shares
+            eff_basis = ticker_effective_basis.get(t.ticker)
+            if eff_basis is not None:
+                return eff_basis * shares
+            if getattr(t, "stock_cost_basis_per_share", None) is not None:
+                return float(t.stock_cost_basis_per_share) * shares
+            return float(t.strike) * shares
 
-        total_capital_invested = sum(_capital_at_risk(t) for t in open_trades)
+        open_csp_capital = sum(
+            float(t.strike) * int(t.contracts) * 100
+            for t in open_trades
+            if t.option_type == "PUT"
+        )
+        total_capital_invested = open_csp_capital + total_stock_effective_cost
 
         # ── Realized P&L ────────────────────────────────────────────────────
         # ROLLED = intermediate leg (premium realized, but position not yet terminal).
@@ -222,7 +233,6 @@ def register_dashboard_routes(dashboard_bp):
         ]
         win_rate = (len(wins) / len(terminal_trades) * 100.0) if terminal_trades else 0.0
 
-        today = datetime.utcnow().date()
         if trades:
             first_trade_day = min(t.trade_date for t in trades if t.trade_date is not None)
             elapsed_days = _days_between(today, first_trade_day)
