@@ -11,7 +11,17 @@ import {
   TrendingUp,
   type LucideIcon,
 } from "lucide-react";
-import { CycleIQMark, iconMd, iconStroke } from "@/app/components/icons";
+import { CycleIQMark, iconStroke } from "@/app/components/icons";
+
+/** Icon / type scale follows sidebar mode (expanded vs collapsed). */
+const sb = {
+  wide: "w-[14rem]",
+  narrow: "w-[4.25rem]",
+  logoMark: { wide: "h-9 w-9", narrow: "h-10 w-10" },
+  logoText: "text-[1.0625rem] font-bold leading-tight tracking-tight",
+  navIcon: { wide: "h-5 w-5", narrow: "h-[1.375rem] w-[1.375rem]" },
+  navLabel: "text-sm leading-tight",
+} as const;
 
 const navItems: { label: string; href: string; icon: LucideIcon }[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -32,23 +42,21 @@ export default function Sidebar({ collapsed = false, onToggleCollapsed }: Sideba
   return (
     <aside
       className={`flex h-full shrink-0 flex-col items-center bg-slate-900 transition-[width] duration-200 ease-out ${
-        narrow ? "w-16" : "w-[13.5rem]"
+        narrow ? sb.narrow : sb.wide
       }`}
     >
-      <div className="flex h-14 w-full shrink-0 items-center justify-center border-b border-slate-800/80 px-2">
+      <div className="flex h-[3.75rem] w-full shrink-0 items-center justify-center border-b border-slate-800/80 px-2">
         <Link
           href="/dashboard"
           className="flex items-center justify-center text-white transition-opacity hover:opacity-90"
           title="CycleIQ"
         >
           {narrow ? (
-            <CycleIQMark className="h-9 w-9 text-emerald-400" />
+            <CycleIQMark className={`${sb.logoMark.narrow} text-emerald-400`} />
           ) : (
-            <span className="flex items-center justify-center gap-2">
-              <CycleIQMark className="h-8 w-8 shrink-0 text-emerald-400" />
-              <span className="text-base font-bold leading-tight tracking-tight">
-                CycleIQ
-              </span>
+            <span className="flex max-w-full items-center justify-center gap-2 px-1">
+              <CycleIQMark className={`${sb.logoMark.wide} shrink-0 text-emerald-400`} />
+              <span className={`${sb.logoText} truncate`}>CycleIQ</span>
             </span>
           )}
         </Link>
@@ -68,17 +76,18 @@ export default function Sidebar({ collapsed = false, onToggleCollapsed }: Sideba
               href={item.href}
               title={narrow ? item.label : undefined}
               className={`flex w-full items-center justify-center rounded-lg font-medium transition-colors ${
-                narrow ? "px-0 py-2.5" : "gap-2 px-1.5 py-2.5"
+                narrow ? "px-0 py-2.5" : "gap-2.5 px-2 py-3"
               } ${
                 isActive
                   ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/20"
                   : "text-slate-400 hover:bg-slate-800 hover:text-white"
               }`}
             >
-              <Icon className={iconMd} strokeWidth={isActive ? 2.25 : iconStroke} />
-              {!narrow && (
-                <span className="text-[13px] leading-tight">{item.label}</span>
-              )}
+              <Icon
+                className={`shrink-0 ${narrow ? sb.navIcon.narrow : sb.navIcon.wide}`}
+                strokeWidth={isActive ? 2.25 : iconStroke}
+              />
+              {!narrow && <span className={sb.navLabel}>{item.label}</span>}
             </Link>
           );
         })}
@@ -93,9 +102,13 @@ export default function Sidebar({ collapsed = false, onToggleCollapsed }: Sideba
           title={narrow ? "Expand sidebar" : "Collapse sidebar"}
         >
           {narrow ? (
-            <ChevronRight className={iconMd} strokeWidth={iconStroke} aria-hidden />
+            <ChevronRight
+              className={narrow ? sb.navIcon.narrow : sb.navIcon.wide}
+              strokeWidth={iconStroke}
+              aria-hidden
+            />
           ) : (
-            <ChevronLeft className={iconMd} strokeWidth={iconStroke} aria-hidden />
+            <ChevronLeft className={sb.navIcon.wide} strokeWidth={iconStroke} aria-hidden />
           )}
         </button>
       </div>
