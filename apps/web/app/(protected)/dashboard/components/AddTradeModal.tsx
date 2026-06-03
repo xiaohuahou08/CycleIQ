@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -11,7 +11,7 @@ import {
   OptionalFieldsToggle,
   TradeModalShell,
 } from "../../components/TradeModalShared";
-import { useTradeDefaults } from "@/lib/hooks/useTradeDefaults";
+import { commissionFeeTotal, useTradeDefaults } from "@/lib/hooks/useTradeDefaults";
 
 const tradeSchema = z.object({
   ticker: z
@@ -118,6 +118,7 @@ export default function AddTradeModal({
   const { defaults } = useTradeDefaults();
   const [showOptionalFields, setShowOptionalFields] = useState(true);
   const [commissionFees, setCommissionFees] = useState<string>("");
+  const commissionEditedRef = useRef(false);
   const {
     register,
     handleSubmit,
@@ -155,32 +156,44 @@ export default function AddTradeModal({
       .slice(0, 8);
   }, [tickerSuggestions, tickerValue]);
 
+  const isEdit = initialValues != null && initialValues.ticker != null && initialValues.ticker !== "";
+
   useEffect(() => {
-    if (open) {
-      setShowOptionalFields(true);
-      // When editing an existing trade, use its stored commission; otherwise fall back to the
-      // saved default from Settings (if any).
-      const defaultCommission =
-        initialValues?.commission_fee !== undefined && initialValues?.commission_fee !== null
-          ? String(initialValues.commission_fee)
-          : defaults.commissionPerContract !== undefined
-            ? String(defaults.commissionPerContract)
-            : "";
-      setCommissionFees(defaultCommission);
-      reset({
-        option_type: initialValues?.option_type ?? "PUT",
-        contracts: initialValues?.contracts ?? defaults.defaultContracts ?? 1,
-        expiry: initialValues?.expiry ?? expiryFromDte(defaults.defaultDte ?? 45),
-        trade_date: initialValues?.trade_date ?? today(),
-        ticker: initialValues?.ticker ?? "",
-        strike: initialValues?.strike,
-        premium: initialValues?.premium,
-        delta: initialValues?.delta,
-        notes: initialValues?.notes ?? "",
-      });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, reset, initialValues]);
+    if (!open) return;
+    commissionEditedRef.current = false;
+    setShowOptionalFields(true);
+    const contracts = initialValues?.contracts ?? defaults.defaultContracts ?? 1;
+    const defaultCommission =
+      initialValues?.commission_fee !== undefined && initialValues?.commission_fee !== null
+        ? String(initialValues.commission_fee)
+        : (() => {
+            const total = commissionFeeTotal(defaults.commissionPerContract, contracts);
+            return total !== undefined ? String(total) : "";
+          })();
+    setCommissionFees(defaultCommission);
+    reset({
+      option_type: initialValues?.option_type ?? "PUT",
+      contracts,
+      expiry: initialValues?.expiry ?? expiryFromDte(defaults.defaultDte ?? 45),
+      trade_date: initialValues?.trade_date ?? today(),
+      ticker: initialValues?.ticker ?? "",
+      strike: initialValues?.strike,
+      premium: initialValues?.premium,
+      delta: initialValues?.delta,
+      notes: initialValues?.notes ?? "",
+    });
+  }, [open, reset, initialValues, defaults]);
+
+  // New trades: keep total commission in sync when contracts change (per-contract × contracts).
+  useEffect(() => {
+    if (!open || isEdit || commissionEditedRef.current) return;
+    const total = commissionFeeTotal(
+      defaults.commissionPerContract,
+      Number(contractsValue) || 1
+    );
+    if (total === undefined) return;
+    setCommissionFees(String(total));
+  }, [open, isEdit, contractsValue, defaults.commissionPerContract]);
 
   const onSubmit = async (values: TradeFormValues) => {
     const commissionNumber = commissionFees.trim() ? Number(commissionFees) : undefined;
@@ -443,7 +456,7 @@ export default function AddTradeModal({
                       htmlFor="commissionFees"
                       className="mb-1 block text-sm font-medium text-gray-700"
                     >
-                      Commission Fees
+                      Commission Fees (total)
                     </label>
                     <div className="flex items-center gap-2 rounded-lg border border-purple-200 bg-white px-3 py-2 focus-within:border-purple-400">
                       <span className="text-sm font-medium text-gray-500">$</span>
@@ -453,8 +466,15 @@ export default function AddTradeModal({
                         step="0.01"
                         min="0"
                         value={commissionFees}
-                        onChange={(e) => setCommissionFees(e.target.value)}
-                        placeholder="e.g. 0.19"
+                        onChange={(e) => {
+                          commissionEditedRef.current = true;
+                          setCommissionFees(e.target.value);
+                        }}
+                        placeholder={
+                          defaults.commissionPerContract !== undefined
+                            ? `e.g. ${commissionFeeTotal(defaults.commissionPerContract, contractsValue || 1)}`
+                            : "e.g. 1.30"
+                        }
                         className="w-full bg-transparent text-sm text-gray-900 placeholder:normal-case focus:outline-none"
                       />
                     </div>

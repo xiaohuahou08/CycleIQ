@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 const STORAGE_KEY = "cycleiq:trade_defaults";
+export const TRADE_DEFAULTS_UPDATED_EVENT = "cycleiq:trade_defaults_updated";
 
 export interface TradeDefaults {
   /** Commission per contract in dollars (e.g. 0.65). Undefined = no default. */
@@ -38,17 +39,39 @@ function save(defaults: TradeDefaults): void {
   }
 }
 
+/** Total opening commission for the leg (stored as `commission_fee` on the trade). */
+export function commissionFeeTotal(
+  perContract: number | undefined,
+  contracts: number
+): number | undefined {
+  if (perContract === undefined || !Number.isFinite(perContract)) return undefined;
+  const c = Math.max(1, Math.floor(Number(contracts)) || 1);
+  return Math.round(perContract * c * 100) / 100;
+}
+
 export function useTradeDefaults() {
-  const [defaults, setDefaultsState] = useState<TradeDefaults>(INITIAL_DEFAULTS);
+  const [defaults, setDefaultsState] = useState<TradeDefaults>(() =>
+    typeof window === "undefined" ? INITIAL_DEFAULTS : load()
+  );
 
   useEffect(() => {
-    setDefaultsState(load());
+    const refresh = () => setDefaultsState(load());
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) refresh();
+    };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener(TRADE_DEFAULTS_UPDATED_EVENT, refresh);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(TRADE_DEFAULTS_UPDATED_EVENT, refresh);
+    };
   }, []);
 
   const setDefaults = useCallback((next: TradeDefaults) => {
     save(next);
     setDefaultsState(next);
+    window.dispatchEvent(new Event(TRADE_DEFAULTS_UPDATED_EVENT));
   }, []);
 
-  return { defaults, setDefaults };
+  return { defaults, setDefaults, commissionFeeTotal };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useProtectedAuth } from "../auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useTradeDefaults } from "@/lib/hooks/useTradeDefaults";
@@ -148,6 +148,16 @@ function TradingDefaultsSection() {
     String(defaults.defaultDte ?? 45)
   );
 
+  useEffect(() => {
+    setCommissionPerContract(
+      defaults.commissionPerContract !== undefined
+        ? String(defaults.commissionPerContract)
+        : ""
+    );
+    setDefaultContracts(String(defaults.defaultContracts ?? 1));
+    setDefaultDte(String(defaults.defaultDte ?? 45));
+  }, [defaults]);
+
   const handleSave = () => {
     setDefaults({
       commissionPerContract:
@@ -169,7 +179,7 @@ function TradingDefaultsSection() {
     >
       <FieldRow
         label="Commission per contract"
-        hint="Auto-fills the commission/fees field when adding a trade. Leave blank to skip."
+        hint="Auto-fills total opening commission when adding a trade (per-contract rate × contracts). Leave blank to skip."
       >
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">$</span>
