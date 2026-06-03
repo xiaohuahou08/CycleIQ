@@ -73,9 +73,8 @@ export default function ActivePositionsTable({
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-        <h2 className="text-sm font-semibold text-slate-900">Active Positions</h2>
-        <div className="flex items-center gap-3">
+      {trades.length > 0 && (
+        <div className="flex items-center justify-end gap-3 border-b border-slate-200 px-5 py-2">
           {trades.length > 5 && (
             <span className="text-xs text-slate-400">{trades.length} total</span>
           )}
@@ -86,7 +85,7 @@ export default function ActivePositionsTable({
             View all trades →
           </Link>
         </div>
-      </div>
+      )}
 
       {loading ? (
         <div className="space-y-3 p-5">

@@ -388,18 +388,10 @@ export default function CyclesPage() {
   if (isAuthLoading) return null;
 
   return (
-    <main className="h-full bg-slate-50 px-4 py-4 sm:px-6 sm:py-6">
-      <div className="w-full space-y-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h1 className="text-xl font-semibold text-slate-900">Cycle</h1>
-              <p className="mt-1 text-sm text-slate-500">
-                {viewTab === "CC_COST_BASIS"
-                  ? "See how covered call premium reduces your cost basis"
-                  : "Visual lifecycle of every wheel strategy"}
-              </p>
-            </div>
+    <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-slate-50">
+      <div className="flex w-full min-h-0 flex-1 flex-col">
+        <div className="flex w-full flex-1 flex-col bg-white p-4 sm:p-6">
+          <div className="flex flex-wrap items-center justify-end gap-3">
             <div className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1 text-xs">
               {(
                 [
@@ -472,10 +464,9 @@ export default function CyclesPage() {
               </div>
             </div>
           )}
-        </div>
 
         {loading ? (
-          <div className="space-y-3">
+          <div className="mt-4 space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="h-24 animate-pulse rounded-xl border border-gray-200 bg-white" />
             ))}
@@ -983,6 +974,7 @@ export default function CyclesPage() {
             </div>
           </>
         )}
+        </div>
       </div>
     </main>
   );

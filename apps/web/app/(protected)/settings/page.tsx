@@ -283,15 +283,8 @@ export default function SettingsPage() {
   const { email, onLogout } = useProtectedAuth();
 
   return (
-    <main className="bg-slate-50 px-6 py-6">
-      <div className="mx-auto max-w-2xl space-y-6">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Settings</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Manage your account and trading preferences.
-          </p>
-        </div>
-
+    <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-slate-50 px-4 py-4 sm:px-6 sm:py-6">
+      <div className="mx-auto w-full max-w-2xl space-y-6">
         <AccountSection email={email} />
         <TradingDefaultsSection />
         <DangerZoneSection onLogout={onLogout} />

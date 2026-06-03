@@ -277,48 +277,44 @@ export default function TradesPage() {
   if (isAuthLoading) return null;
   return (
     <>
-      <main className="h-full bg-slate-50 px-4 py-4 sm:px-6 sm:py-6">
-        <div className="w-full">
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
         {saveError && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
+          <div className="shrink-0 border-b border-red-200 bg-red-50 px-4 py-2 text-[13px] text-red-700">
             {saveError}
           </div>
         )}
         {saveSuccess && (
-          <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] text-emerald-700">
+          <div className="shrink-0 border-b border-emerald-200 bg-emerald-50 px-4 py-2 text-[13px] text-emerald-700">
             {saveSuccess}
           </div>
         )}
 
-        <div className="mt-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <TradeFilters
-            embedded
-            onFilterChange={setFilters}
-            totalCount={allTrades.length}
-            filteredCount={filtered.length}
-            tickerSuggestions={tickerSuggestions}
-            onAddTrade={() => {
-              setSaveError(null);
-              setSaveSuccess(null);
-              setEditingTrade(null);
-              setModalOpen(true);
-            }}
+        <TradeFilters
+          embedded
+          onFilterChange={setFilters}
+          tickerSuggestions={tickerSuggestions}
+          onAddTrade={() => {
+            setSaveError(null);
+            setSaveSuccess(null);
+            setEditingTrade(null);
+            setModalOpen(true);
+          }}
+        />
+
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+          <TradeList
+            trades={filtered}
+            loading={tradesLoading}
+            prices={prices}
+            onDeleteTrade={onDeleteTrade}
+            onEditTrade={onEditTrade}
+            onAction={onAction}
+            statusFilter={filters.status}
           />
-          <div className="border-t border-slate-100">
-            <TradeList
-              trades={filtered}
-              loading={tradesLoading}
-              prices={prices}
-              onDeleteTrade={onDeleteTrade}
-              onEditTrade={onEditTrade}
-              onAction={onAction}
-              statusFilter={filters.status}
-            />
-          </div>
         </div>
 
         {pricesUpdatedAt && (
-          <div className="mt-3 flex items-center gap-1.5 rounded-lg border border-teal-100 bg-teal-50 px-4 py-2 text-[12px] text-teal-700">
+          <div className="flex shrink-0 items-center gap-1.5 border-t border-teal-100 bg-teal-50 px-4 py-2 text-[12px] text-teal-700">
             <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5 shrink-0" aria-hidden>
               <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4" />
               <path d="M8 5v3.5l2 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -327,7 +323,6 @@ export default function TradesPage() {
             {pricesUpdatedAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}.
           </div>
         )}
-        </div>
       </main>
 
       <AddTradeModal

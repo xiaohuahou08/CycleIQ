@@ -26,12 +26,26 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed = false, onToggleCollapsed }: SidebarProps) {
   const pathname = usePathname();
+  const iconOnly = collapsed;
 
   return (
-    <aside className={`flex h-full shrink-0 flex-col bg-slate-900 transition-all duration-200 ${collapsed ? "w-16" : "w-60"}`}>
-      <div className={`flex h-14 items-center ${collapsed ? "justify-center px-2" : "px-5"}`}>
+    <aside
+      className={`flex h-full shrink-0 flex-col bg-slate-900 transition-all duration-200 ${
+        iconOnly ? "w-16" : "w-16 lg:w-60"
+      }`}
+    >
+      <div
+        className={`flex h-14 items-center ${
+          iconOnly ? "justify-center px-2" : "justify-center px-2 lg:justify-start lg:px-5"
+        }`}
+      >
         <Link href="/dashboard" className="text-base font-bold tracking-tight text-white">
-          {collapsed ? "CIQ" : "CycleIQ"}
+          {iconOnly ? "CIQ" : (
+            <>
+              <span className="lg:hidden">CIQ</span>
+              <span className="hidden lg:inline">CycleIQ</span>
+            </>
+          )}
         </Link>
       </div>
 
@@ -47,11 +61,11 @@ export default function Sidebar({ collapsed = false, onToggleCollapsed }: Sideba
                 isActive
                   ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/20"
                   : "text-slate-400 hover:bg-slate-800 hover:text-white"
-              } ${collapsed ? "justify-center" : "gap-2.5"}`}
+              } ${iconOnly ? "justify-center" : "justify-center gap-2.5 lg:justify-start"}`}
               title={item.label}
             >
               <Icon className="h-4 w-4 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
+              {!iconOnly && <span className="hidden lg:inline">{item.label}</span>}
             </Link>
           );
         })}

@@ -30,17 +30,6 @@ function SvgFrame(props: React.PropsWithChildren<{ className?: string }>) {
   );
 }
 
-function IconFunnel({ className }: { className?: string }) {
-  return (
-    <SvgFrame className={className}>
-      <path
-        strokeLinejoin="round"
-        d="M3 7h18l-7 12v7l-4 2v-9L3 7z"
-      />
-    </SvgFrame>
-  );
-}
-
 function IconSearchSm({ className }: { className?: string }) {
   return (
     <SvgFrame className={className}>
@@ -136,8 +125,6 @@ const STATUS_ROW: ReadonlyArray<{
 
 interface TradeFiltersProps {
   onFilterChange: (filters: FilterState) => void;
-  totalCount: number;
-  filteredCount: number;
   tickerSuggestions?: string[];
   onAddTrade?: () => void;
   /** When wrapped in outer card (rounded border/shadow handled by parent) */
@@ -146,8 +133,6 @@ interface TradeFiltersProps {
 
 export default function TradeFilters({
   onFilterChange,
-  totalCount,
-  filteredCount,
   tickerSuggestions = [],
   onAddTrade,
   embedded = false,
@@ -220,39 +205,12 @@ export default function TradeFilters({
   const toggleCc = () => switchOptionType("CALL");
 
   const shell = embedded
-    ? "bg-white"
+    ? "shrink-0 border-b border-gray-100 bg-white"
     : "rounded-xl border border-gray-200 bg-white shadow-sm";
 
   return (
     <div className={shell}>
-      <div className="flex flex-wrap items-center gap-3 px-5 py-4">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#22c55e] text-white">
-          <IconFunnel className="text-white" />
-        </div>
-        <div className="flex flex-wrap items-baseline gap-2">
-          <h1 className="text-[18px] font-bold leading-none tracking-tight text-gray-900">
-            Positions
-          </h1>
-          <span className="rounded-md bg-gray-100 px-2 py-0.5 text-[12px] font-medium tabular-nums text-gray-600">
-            {filteredCount !== totalCount
-              ? `${filteredCount}/${totalCount}`
-              : filteredCount}
-          </span>
-        </div>
-        <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
-          {onAddTrade && !["CALLED_AWAY", "CLOSED", "EXPIRED", "ROLLED"].includes(filters.status) && (
-            <button
-              type="button"
-              onClick={onAddTrade}
-              className="rounded-lg bg-gray-900 px-3 py-2 text-[13px] font-medium text-white shadow-[0_1px_2px_rgba(15,23,42,0.2)] hover:bg-gray-800"
-            >
-              + Add trade
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 px-5 py-3">
+      <div className="flex w-full flex-wrap items-center gap-2 px-4 py-3 sm:px-5">
         <div
           ref={searchWrapRef}
           className="relative w-36 shrink-0"
@@ -422,6 +380,16 @@ export default function TradeFilters({
             />
           </div>
         </div>
+
+        {onAddTrade && !["CALLED_AWAY", "CLOSED", "EXPIRED", "ROLLED"].includes(filters.status) && (
+          <button
+            type="button"
+            onClick={onAddTrade}
+            className="ml-auto shrink-0 rounded-lg bg-gray-900 px-3 py-2 text-[13px] font-medium text-white shadow-[0_1px_2px_rgba(15,23,42,0.2)] hover:bg-gray-800"
+          >
+            + Add trade
+          </button>
+        )}
       </div>
 
     </div>
