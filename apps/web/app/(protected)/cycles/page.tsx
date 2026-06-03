@@ -20,12 +20,13 @@ function fmtMoney(value: number): string {
   });
 }
 
-/** Net cashflow for a single trade leg: gross premium − buyback (for rolls) − commission. */
+/** Net cashflow for a single trade leg (matches backend `_realized_cashflow`). */
 function netLegCashflow(t: Trade): number {
   const gross = t.premium * t.contracts * 100;
   const buyback = (t.buyback_cost_per_share ?? 0) * t.contracts * 100;
   const commission = t.commission_fee ?? 0;
-  return gross - buyback - commission;
+  const assignFees = t.fees_on_assignment ?? 0;
+  return gross - buyback - commission - assignFees;
 }
 
 /** CSP assignment cost per share (stored or computed — mirrors backend). */
@@ -46,11 +47,13 @@ function assignmentStockBasisPerShare(put: Trade): number | null {
 }
 
 /**
- * Wheel total realized P&L: sum of option leg cashflows plus stock gain/loss when
- * shares are called away (sale at CC strike vs assignment cost basis).
+ * Wheel total realized P&L: terminal option cashflows + stock gain/loss on call-away.
+ * ROLLED legs are excluded — their net premium is already embedded in the assignment
+ * put's `prior_roll_premium_per_share` (cost basis), so counting them again double-counts.
  */
 function wheelTotalNetPnl(legs: Trade[]): number {
-  let total = legs.reduce((sum, t) => sum + netLegCashflow(t), 0);
+  const optionLegs = legs.filter((t) => t.status !== "ROLLED");
+  let total = optionLegs.reduce((sum, t) => sum + netLegCashflow(t), 0);
 
   const stockPuts = legs.filter(
     (t) =>
