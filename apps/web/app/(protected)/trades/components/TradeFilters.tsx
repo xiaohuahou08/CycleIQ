@@ -154,7 +154,7 @@ export default function TradeFilters({
 }: TradeFiltersProps) {
   const [filters, setFilters] = useState<FilterState>({
     type: "PUT",
-    status: "OPEN",
+    status: "ALL",
     search: "",
     dateRangeType: "1M",
   });
@@ -166,7 +166,7 @@ export default function TradeFilters({
   const onFilterChangeRef = useRef(onFilterChange);
   onFilterChangeRef.current = onFilterChange;
   useEffect(() => {
-    onFilterChangeRef.current({ type: "PUT", status: "OPEN", search: "", dateRangeType: "1M" });
+    onFilterChangeRef.current({ type: "PUT", status: "ALL", search: "", dateRangeType: "1M" });
   }, []);
 
   const matchingTickers = useMemo(() => {
@@ -203,14 +203,6 @@ export default function TradeFilters({
     onFilterChange(next);
   };
 
-  const handleDateRangeTypeChange = (type: "1M" | "CUSTOM") => {
-    apply({ dateRangeType: type });
-  };
-
-  const handleDateChange = (key: "startDate" | "endDate", val: string) => {
-    apply({ [key]: val || undefined });
-  };
-
   const toggleCsp = () => {
     if (filters.type === "PUT") return;
     apply({ type: "PUT" });
@@ -242,6 +234,67 @@ export default function TradeFilters({
           </span>
         </div>
         <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => apply({ status: "ALL", dateRangeType: "1M" })}
+              className={`rounded-lg px-3 py-1.5 text-[12px] font-semibold transition ${
+                filters.status === "ALL" && filters.dateRangeType === "1M"
+                  ? "bg-gray-900 text-white shadow-sm"
+                  : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              Last month
+            </button>
+            <div className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2 py-1">
+              <span className="text-[11px] font-medium text-gray-500">Custom</span>
+              <input
+                type="date"
+                value={filters.startDate ?? ""}
+                onChange={(e) =>
+                  apply({
+                    status: "ALL",
+                    dateRangeType: "CUSTOM",
+                    startDate: e.target.value || undefined,
+                  })
+                }
+                onFocus={() => {
+                  if (filters.status !== "ALL" || filters.dateRangeType !== "CUSTOM") {
+                    apply({ status: "ALL", dateRangeType: "CUSTOM" });
+                  }
+                }}
+                className={`rounded border px-1.5 py-0.5 text-[12px] text-gray-900 focus:outline-none ${
+                  filters.status === "ALL" && filters.dateRangeType === "CUSTOM"
+                    ? "border-gray-400 bg-gray-50"
+                    : "border-transparent"
+                }`}
+                aria-label="From date"
+              />
+              <span className="text-gray-400">–</span>
+              <input
+                type="date"
+                value={filters.endDate ?? ""}
+                onChange={(e) =>
+                  apply({
+                    status: "ALL",
+                    dateRangeType: "CUSTOM",
+                    endDate: e.target.value || undefined,
+                  })
+                }
+                onFocus={() => {
+                  if (filters.status !== "ALL" || filters.dateRangeType !== "CUSTOM") {
+                    apply({ status: "ALL", dateRangeType: "CUSTOM" });
+                  }
+                }}
+                className={`rounded border px-1.5 py-0.5 text-[12px] text-gray-900 focus:outline-none ${
+                  filters.status === "ALL" && filters.dateRangeType === "CUSTOM"
+                    ? "border-gray-400 bg-gray-50"
+                    : "border-transparent"
+                }`}
+                aria-label="To date"
+              />
+            </div>
+          </div>
           {onAddTrade && filters.status !== "CALLED_AWAY" && (
             <button
               type="button"
@@ -348,76 +401,9 @@ export default function TradeFilters({
               </button>
             );
           })}
-          <div className="min-w-2 flex-1" aria-hidden />
-          <button
-            type="button"
-            onClick={() => apply({ status: "ALL", dateRangeType: "1M" })}
-            className={`mr-0.5 inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-[12px] font-semibold transition ${
-              filters.status === "ALL"
-                ? "border border-gray-200 bg-white text-gray-900 shadow-[0_1px_2px_rgba(15,23,42,0.06)] ring-1 ring-gray-100"
-                : "border border-transparent bg-transparent text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            <IconFunnel />
-            History
-          </button>
           </div>
         </div>
       </div>
-
-      {filters.status === "ALL" && (
-        <div className="flex flex-wrap items-center gap-4 border-t border-gray-100 bg-gray-50/80 px-5 py-3">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Time range</span>
-            <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 text-xs">
-              <button
-                type="button"
-                onClick={() => handleDateRangeTypeChange("1M")}
-                className={`rounded-md px-3 py-1 text-[11px] font-semibold transition ${
-                  filters.dateRangeType === "1M"
-                    ? "bg-gray-900 text-white"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                Last 1 month
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDateRangeTypeChange("CUSTOM")}
-                className={`rounded-md px-3 py-1 text-[11px] font-semibold transition ${
-                  filters.dateRangeType === "CUSTOM"
-                    ? "bg-gray-900 text-white"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                Custom
-              </button>
-            </div>
-          </div>
-          {filters.dateRangeType === "CUSTOM" && (
-            <div className="flex items-center gap-3 text-xs">
-              <div className="flex items-center gap-1.5">
-                <span className="text-gray-500">From</span>
-                <input
-                  type="date"
-                  value={filters.startDate ?? ""}
-                  onChange={(e) => handleDateChange("startDate", e.target.value)}
-                  className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-gray-900 focus:border-gray-300 focus:outline-none"
-                />
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-gray-500">To</span>
-                <input
-                  type="date"
-                  value={filters.endDate ?? ""}
-                  onChange={(e) => handleDateChange("endDate", e.target.value)}
-                  className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-gray-900 focus:border-gray-300 focus:outline-none"
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
     </div>
   );

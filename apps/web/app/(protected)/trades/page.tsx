@@ -95,7 +95,7 @@ export default function TradesPage() {
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     type: "PUT",
-    status: "OPEN",
+    status: "ALL",
     search: "",
     dateRangeType: "1M",
   });
