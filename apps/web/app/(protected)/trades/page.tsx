@@ -282,14 +282,14 @@ export default function TradesPage() {
   if (isAuthLoading) return null;
   return (
     <>
-      <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50/40">
         {saveError && (
-          <div className="shrink-0 border-b border-red-200 bg-red-50 px-4 py-2 text-[13px] text-red-700">
+          <div className="shrink-0 border-b border-red-200/80 bg-red-50 px-5 py-2.5 text-sm text-red-700">
             {saveError}
           </div>
         )}
         {saveSuccess && (
-          <div className="shrink-0 border-b border-emerald-200 bg-emerald-50 px-4 py-2 text-[13px] text-emerald-700">
+          <div className="shrink-0 border-b border-emerald-200/80 bg-emerald-50 px-5 py-2.5 text-sm text-emerald-700">
             {saveSuccess}
           </div>
         )}
@@ -307,7 +307,7 @@ export default function TradesPage() {
           }}
         />
 
-        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-white">
           <TradeList
             trades={filtered}
             loading={tradesLoading}
@@ -320,7 +320,7 @@ export default function TradesPage() {
         </div>
 
         {pricesUpdatedAt && (
-          <div className="flex shrink-0 items-center gap-1.5 border-t border-teal-100 bg-teal-50 px-4 py-2 text-[12px] text-teal-700">
+          <div className="flex shrink-0 items-center gap-1.5 border-t border-slate-200/80 bg-white px-5 py-2 text-xs text-slate-500">
             <Clock className={iconXs} strokeWidth={iconStroke} aria-hidden />
             Prices update once per hour. Last updated at{" "}
             {pricesUpdatedAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}.

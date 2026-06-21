@@ -111,84 +111,95 @@ export default function TradeFilters({
   const toggleCc = () => switchOptionType("CALL");
 
   const shell = embedded
-    ? "shrink-0 border-b border-gray-100 bg-white"
-    : "rounded-xl border border-gray-200 bg-white shadow-sm";
+    ? "shrink-0 border-b border-slate-200/80 bg-white"
+    : "rounded-xl border border-slate-200 bg-white shadow-sm";
+
+  const pillActive =
+    "bg-slate-900 text-white shadow-sm";
+  const pillIdle =
+    "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900";
 
   return (
     <div className={shell}>
-      <div className="flex w-full flex-wrap items-center gap-2 px-4 py-3 sm:px-5">
-        <div ref={searchWrapRef} className="relative w-36 shrink-0">
-          <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-gray-400">
-            <Search className={iconSm} strokeWidth={iconStroke} aria-hidden />
-          </span>
-          <input
-            type="text"
-            placeholder="Ticker…"
-            value={filters.search}
-            autoComplete="off"
-            onChange={(e) => {
-              apply({ search: e.target.value });
-              setSuggestOpen(true);
-            }}
-            onFocus={() => setSuggestOpen(true)}
-            className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-10 pr-3 text-[13px] text-gray-900 placeholder:text-gray-400 focus:border-gray-300 focus:outline-none"
-          />
-          {suggestOpen && matchingTickers.length > 0 && (
-            <ul
-              className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-auto rounded-lg border border-gray-200 bg-white py-1 text-[13px] shadow-lg"
-              role="listbox"
+      <div className="flex flex-col gap-3 px-4 py-3.5 sm:px-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <div ref={searchWrapRef} className="relative w-full min-w-[8.5rem] max-w-[10rem] shrink-0">
+            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
+              <Search className={iconSm} strokeWidth={iconStroke} aria-hidden />
+            </span>
+            <input
+              type="text"
+              placeholder="Search ticker…"
+              value={filters.search}
+              autoComplete="off"
+              onChange={(e) => {
+                apply({ search: e.target.value });
+                setSuggestOpen(true);
+              }}
+              onFocus={() => setSuggestOpen(true)}
+              className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/50 py-0 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            />
+            {suggestOpen && matchingTickers.length > 0 && (
+              <ul
+                className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-auto rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg ring-1 ring-slate-900/5"
+                role="listbox"
+              >
+                {matchingTickers.map((t) => (
+                  <li key={t}>
+                    <button
+                      type="button"
+                      className="w-full px-3 py-2 text-left text-sm font-medium tracking-tight text-slate-900 hover:bg-slate-50"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        apply({ search: t });
+                        setSuggestOpen(false);
+                      }}
+                    >
+                      {t}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              onClick={toggleCsp}
+              className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-3.5 text-xs font-semibold uppercase tracking-wide transition ${
+                filters.type === "PUT" ? pillActive : pillIdle
+              }`}
             >
-              {matchingTickers.map((t) => (
-                <li key={t}>
-                  <button
-                    type="button"
-                    className="w-full px-3 py-2 text-left text-[13px] font-semibold uppercase text-gray-900 hover:bg-gray-50"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      apply({ search: t });
-                      setSuggestOpen(false);
-                    }}
-                  >
-                    {t}
-                  </button>
-                </li>
-              ))}
-            </ul>
+              <CircleDot className={iconSm} strokeWidth={iconStroke} aria-hidden />
+              CSP
+            </button>
+            <button
+              type="button"
+              onClick={toggleCc}
+              className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-3.5 text-xs font-semibold uppercase tracking-wide transition ${
+                filters.type === "CALL" ? pillActive : pillIdle
+              }`}
+            >
+              <LineChart className={iconSm} strokeWidth={iconStroke} aria-hidden />
+              CC
+            </button>
+          </div>
+
+          {onAddTrade && (
+            <button
+              type="button"
+              onClick={onAddTrade}
+              className="ml-auto inline-flex h-9 shrink-0 items-center rounded-lg bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
+            >
+              + Add trade
+            </button>
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={toggleCsp}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] font-semibold uppercase tracking-wide transition ${
-              filters.type === "PUT"
-                ? "bg-gray-900 text-white shadow-sm"
-                : "border border-gray-200 bg-white text-gray-700 shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:bg-gray-50"
-            }`}
-          >
-            <CircleDot
-              className={iconSm}
-              strokeWidth={iconStroke}
-              aria-hidden
-            />
-            CSP
-          </button>
-          <button
-            type="button"
-            onClick={toggleCc}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] font-semibold uppercase tracking-wide transition ${
-              filters.type === "CALL"
-                ? "bg-gray-900 text-white shadow-sm"
-                : "border border-gray-200 bg-white text-gray-700 shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:bg-gray-50"
-            }`}
-          >
-            <LineChart className={iconSm} strokeWidth={iconStroke} aria-hidden />
-            CC
-          </button>
-        </div>
-        <div className="min-w-0 flex-1 overflow-x-auto">
-          <div className="flex w-max min-w-full items-center gap-1 rounded-full bg-[#eef0f4] p-1">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="min-w-0 flex-1 overflow-x-auto">
+            <div className="flex w-max min-w-full items-center gap-0.5 rounded-lg bg-slate-100/90 p-1">
             {STATUS_ROW.filter(({ key }) => {
               if (filters.type === "PUT" && key === "CALLED_AWAY") return false;
               if (filters.type === "CALL" && key === "ASSIGNED") return false;
@@ -207,10 +218,10 @@ export default function TradeFilters({
                       endDate: undefined,
                     })
                   }
-                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-[12px] font-semibold capitalize transition ${
+                  className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition ${
                     active
-                      ? "border border-transparent bg-white text-gray-900 shadow-[0_1px_2px_rgba(15,23,42,0.06)] ring-1 ring-gray-100"
-                      : "border border-transparent bg-transparent text-gray-600 hover:text-gray-900"
+                      ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80"
+                      : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
                   <Icon className={iconSm} strokeWidth={iconStroke} aria-hidden />
@@ -219,78 +230,68 @@ export default function TradeFilters({
               );
             })}
           </div>
-        </div>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-2 border-l border-gray-200 pl-3">
-          <button
-            type="button"
-            onClick={applySinceLastMonth}
-            className={`rounded-lg px-3 py-1.5 text-[12px] font-semibold transition ${
-              filters.dateRangeType === "1M"
-                ? "bg-gray-900 text-white shadow-sm"
-                : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            Since last month
-          </button>
-          <div
-            className={`flex flex-wrap items-center gap-1 rounded-lg border p-1 ${
-              filters.dateRangeType === "CUSTOM"
-                ? "border-gray-400 bg-gray-50 ring-1 ring-gray-200"
-                : "border-gray-200 bg-white"
-            }`}
-          >
+          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:ml-auto">
             <button
               type="button"
-              onClick={() => apply({ dateRangeType: "CUSTOM" })}
-              className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${
-                filters.dateRangeType === "CUSTOM"
-                  ? "text-gray-900"
-                  : "text-gray-500 hover:text-gray-700"
+              onClick={applySinceLastMonth}
+              className={`inline-flex h-8 items-center rounded-lg px-3 text-xs font-medium transition ${
+                filters.dateRangeType === "1M"
+                  ? "bg-slate-900 text-white shadow-sm"
+                  : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
               }`}
             >
-              Custom
+              Since last month
             </button>
-            <span className="text-gray-300" aria-hidden>
-              |
-            </span>
-            <DatePicker
-              value={filters.startDate}
-              placeholder="From"
-              emphasized={filters.dateRangeType === "CUSTOM"}
-              aria-label="From date"
-              onChange={(startDate) =>
-                apply({
-                  dateRangeType: "CUSTOM",
-                  startDate,
-                })
-              }
-            />
-            <span className="text-[11px] text-gray-400">–</span>
-            <DatePicker
-              value={filters.endDate}
-              placeholder="To"
-              emphasized={filters.dateRangeType === "CUSTOM"}
-              aria-label="To date"
-              onChange={(endDate) =>
-                apply({
-                  dateRangeType: "CUSTOM",
-                  endDate,
-                })
-              }
-            />
+            <div
+              className={`flex flex-wrap items-center gap-1 rounded-lg border p-1 ${
+                filters.dateRangeType === "CUSTOM"
+                  ? "border-slate-300 bg-slate-50 ring-1 ring-slate-200/80"
+                  : "border-slate-200 bg-white"
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => apply({ dateRangeType: "CUSTOM" })}
+                className={`rounded-md px-2 py-1 text-xs font-medium transition ${
+                  filters.dateRangeType === "CUSTOM"
+                    ? "text-slate-900"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Custom
+              </button>
+              <span className="text-slate-200" aria-hidden>
+                |
+              </span>
+              <DatePicker
+                value={filters.startDate}
+                placeholder="From"
+                emphasized={filters.dateRangeType === "CUSTOM"}
+                aria-label="From date"
+                onChange={(startDate) =>
+                  apply({
+                    dateRangeType: "CUSTOM",
+                    startDate,
+                  })
+                }
+              />
+              <span className="text-xs text-slate-400">–</span>
+              <DatePicker
+                value={filters.endDate}
+                placeholder="To"
+                emphasized={filters.dateRangeType === "CUSTOM"}
+                aria-label="To date"
+                onChange={(endDate) =>
+                  apply({
+                    dateRangeType: "CUSTOM",
+                    endDate,
+                  })
+                }
+              />
+            </div>
           </div>
         </div>
-
-        {onAddTrade && (
-          <button
-            type="button"
-            onClick={onAddTrade}
-            className="ml-auto shrink-0 rounded-lg bg-gray-900 px-3 py-2 text-[13px] font-medium text-white shadow-[0_1px_2px_rgba(15,23,42,0.2)] hover:bg-gray-800"
-          >
-            + Add trade
-          </button>
-        )}
       </div>
     </div>
   );

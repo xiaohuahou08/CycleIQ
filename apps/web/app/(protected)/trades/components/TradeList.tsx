@@ -203,10 +203,17 @@ function formatWeekLabel(weekKey: string): string {
   const fmt = (date: Date, withYear = false) =>
     new Intl.DateTimeFormat("en-US", {
       month: "short",
-      day: "2-digit",
+      day: "numeric",
       ...(withYear ? { year: "numeric" } : {}),
     }).format(date);
-  return `Week of ${fmt(monday).toUpperCase()} – ${fmt(friday, true).toUpperCase()}`;
+  return `Week of ${fmt(monday)} – ${fmt(friday, true)}`;
+}
+
+function fmtStatusLabel(status: TradeStatus): string {
+  return status
+    .replaceAll("_", " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 type SortKey =
@@ -274,7 +281,7 @@ function SortChevrons({
   if (dir === "asc") {
     return (
       <ChevronUp
-        className="ml-1 h-3.5 w-3.5 text-blue-600"
+        className="ml-1 h-3.5 w-3.5 text-emerald-600"
         strokeWidth={2.25}
         aria-hidden
       />
@@ -283,7 +290,7 @@ function SortChevrons({
 
   return (
     <ChevronDown
-      className="ml-1 h-3.5 w-3.5 text-blue-600"
+      className="ml-1 h-3.5 w-3.5 text-emerald-600"
       strokeWidth={2.25}
       aria-hidden
     />
@@ -295,7 +302,7 @@ function TickerLogo({ ticker }: { ticker: string }) {
 
   if (urlIndex >= LOGO_URL_BUILDERS.length) {
     return (
-      <span className="inline-flex h-[20px] w-[20px] items-center justify-center rounded bg-[#e8f4ff] text-[10px] font-bold text-[#1d4ed8]">
+      <span className="inline-flex h-[22px] w-[22px] items-center justify-center rounded-md bg-emerald-50 text-[10px] font-semibold text-emerald-700">
         {ticker[0]}
       </span>
     );
@@ -305,7 +312,7 @@ function TickerLogo({ ticker }: { ticker: string }) {
     <img
       src={LOGO_URL_BUILDERS[urlIndex](ticker)}
       alt=""
-      className="h-[20px] w-[20px] rounded object-cover ring-1 ring-gray-100"
+      className="h-[22px] w-[22px] rounded-md object-cover ring-1 ring-slate-200/80"
       onError={() => setUrlIndex((prev) => prev + 1)}
       loading="lazy"
     />
@@ -360,80 +367,80 @@ function TradeRow({
   return (
     <>
       <tr
-        className={`border-b border-gray-100 text-[13px] text-gray-900 transition hover:bg-[#fafbfc]/90 ${
-          rowTint ? "bg-[rgba(254,237,229,0.45)] hover:bg-[rgba(254,237,229,0.55)]" : ""
+        className={`border-b border-slate-100 text-sm text-slate-800 transition-colors hover:bg-slate-50/80 ${
+          rowTint ? "bg-orange-50/35 hover:bg-orange-50/50" : "bg-white"
         }`}
       >
-        <td className="px-4 py-3">
+        <td className="whitespace-nowrap px-5 py-3">
           <div className="flex items-center gap-2.5">
             <TickerLogo key={trade.ticker} ticker={trade.ticker} />
-            <span className="text-[13px] font-semibold uppercase tracking-wide">
+            <span className="font-semibold tracking-tight text-slate-900">
               {trade.ticker}
             </span>
           </div>
         </td>
-        <td className="px-4 py-3">
-          <span className="inline-flex rounded-md bg-[#eef0f4] px-2 py-0.5 text-[11px] font-semibold text-gray-700 ring-1 ring-gray-100/80">
+        <td className="whitespace-nowrap px-5 py-3">
+          <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
             {getStrategy(trade)}
           </span>
         </td>
-        <td className="px-4 py-3 tabular-nums text-gray-800">{trade.contracts}</td>
-        <td className="px-4 py-3 tabular-nums text-gray-800">
+        <td className="whitespace-nowrap px-5 py-3 tabular-nums text-slate-700">{trade.contracts}</td>
+        <td className="whitespace-nowrap px-5 py-3 tabular-nums text-slate-800">
           ${trade.strike.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </td>
-        <td className="px-4 py-3 tabular-nums text-gray-800">
+        <td className="whitespace-nowrap px-5 py-3 tabular-nums text-slate-700">
           {price != null
             ? `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-            : <span className="text-gray-300">—</span>}
+            : <span className="text-slate-300">—</span>}
         </td>
-        <td className="px-4 py-3 text-[12px]">
+        <td className="whitespace-nowrap px-5 py-3 text-xs">
           {trade.status === "OPEN" && price != null ? (() => {
             const m = computeMoneyness(trade, price);
             return (
               <span className="inline-flex items-center gap-1.5">
-                <span className={`font-semibold ${m.status === "ITM" ? "text-red-500" : "text-gray-400"}`}>
+                <span className={`font-medium ${m.status === "ITM" ? "text-red-600" : "text-slate-400"}`}>
                   {m.status}
                 </span>
-                <span className="font-medium text-emerald-600">
+                <span className="font-medium tabular-nums text-emerald-600">
                   ${m.amount.toFixed(2)}
                 </span>
               </span>
             );
-          })() : <span className="text-gray-300">—</span>}
+          })() : <span className="text-slate-300">—</span>}
         </td>
         <td
-          className={`px-4 py-3 text-[13px] font-medium ${
-            exp.accent ? "text-[#ea580c]" : "text-gray-800"
+          className={`whitespace-nowrap px-5 py-3 tabular-nums text-sm ${
+            exp.accent ? "font-medium text-orange-600" : "text-slate-700"
           }`}
         >
           {exp.label}
         </td>
-        <td className="px-4 py-3 tabular-nums text-gray-700">
-          {trade.status === "OPEN" ? getDte(trade.expiry) : <span className="text-gray-300">—</span>}
+        <td className="whitespace-nowrap px-5 py-3 tabular-nums text-slate-600">
+          {trade.status === "OPEN" ? getDte(trade.expiry) : <span className="text-slate-300">—</span>}
         </td>
-        <td className="px-4 py-3 text-[13px] font-semibold tabular-nums text-[#16a34a]">
+        <td className="whitespace-nowrap px-5 py-3 tabular-nums text-sm font-medium text-emerald-600">
           {fmtPremiumTotal(trade)}
         </td>
-        <td className="px-4 py-3 tabular-nums text-[13px] text-gray-800">
+        <td className="whitespace-nowrap px-5 py-3 tabular-nums text-sm">
           {trade.status === "ASSIGNED" && trade.option_type === "PUT" && trade.stock_cost_basis_per_share != null ? (
             <span className="font-medium text-orange-700">
               {fmtStockCostPerShare(trade)}
             </span>
           ) : (
-            <span className="text-gray-300">—</span>
+            <span className="text-slate-300">—</span>
           )}
         </td>
-        <td className="px-4 py-3">
+        <td className="whitespace-nowrap px-5 py-3">
           <span
-            className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${STATUS_STYLES[trade.status]}`}
+            className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-inset ${STATUS_STYLES[trade.status]}`}
           >
-            {trade.status.replaceAll("_", " ")}
+            {fmtStatusLabel(trade.status)}
           </span>
         </td>
-        <td className="px-4 py-3 text-right text-[13px] font-semibold tabular-nums tracking-tight text-gray-900">
+        <td className="whitespace-nowrap px-5 py-3 text-right text-sm font-semibold tabular-nums tracking-tight text-slate-900">
           {fmtRoi(trade)}
         </td>
-        <td className="relative px-4 py-3 text-right">
+        <td className="relative whitespace-nowrap px-5 py-3 text-right">
           <button
             ref={triggerRef}
             type="button"
@@ -578,7 +585,7 @@ function TradeRow({
 }
 
 const theadBtn =
-  "inline-flex cursor-pointer items-center gap-1 select-none text-left uppercase tracking-[0.08em] text-[#6b7280] hover:text-[#4b5563]";
+  "group inline-flex cursor-pointer items-center gap-0.5 select-none text-left text-[11px] font-medium uppercase tracking-wider text-slate-500 transition-colors hover:text-slate-700";
 
 export default function TradeList({
   trades,
@@ -641,7 +648,7 @@ export default function TradeList({
     label: ReactNode
   ) => (
     <th
-      className={`border-b border-gray-200 bg-[#fafbfc] px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6b7280] ${
+      className={`sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-slate-500 backdrop-blur-sm ${
         align === "right" ? "text-right" : "text-left"
       }`}
     >
@@ -657,7 +664,7 @@ export default function TradeList({
     label: ReactNode
   ) => (
     <th
-      className={`border-b border-gray-200 bg-[#fafbfc] px-4 py-2.5 text-[11px] font-semibold tracking-[0.08em] uppercase text-[#6b7280] ${
+      className={`sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-slate-500 backdrop-blur-sm ${
         align === "right" ? "text-right" : "text-left"
       }`}
     >
@@ -667,24 +674,27 @@ export default function TradeList({
 
   if (loading) {
     return (
-      <div className="space-y-4 px-4 py-8">
-        <div className="h-8 w-full max-w-xl animate-pulse rounded bg-gray-100" />
-        <div className="h-[180px] w-full animate-pulse rounded-none bg-[#fafbfc]" />
+      <div className="space-y-3 px-5 py-8">
+        <div className="h-9 w-full max-w-md animate-pulse rounded-lg bg-slate-100" />
+        <div className="h-48 w-full animate-pulse rounded-xl bg-slate-50 ring-1 ring-slate-100" />
       </div>
     );
   }
 
   if (trades.length === 0) {
     return (
-      <div className="flex items-center justify-center py-16 text-center">
-        <p className="text-[15px] font-semibold text-gray-900">No positions yet</p>
+      <div className="flex flex-col items-center justify-center gap-2 px-6 py-20 text-center">
+        <p className="text-base font-semibold text-slate-900">No trades match your filters</p>
+        <p className="max-w-sm text-sm text-slate-500">
+          Try a wider date range, a different status tab, or add a new trade.
+        </p>
       </div>
     );
   }
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-[13px]">
+      <table className="w-full min-w-[960px] border-collapse text-sm">
         <thead>
           <tr>
             {th("ticker", "left", "Ticker")}
@@ -698,7 +708,7 @@ export default function TradeList({
             {th("premium", "left", "Premium")}
             {thInactive("left", "Stock Cost")}
             {thInactive("left", "Status")}
-            {th("roi", "right", "Roi (ANN.)")}
+            {th("roi", "right", "ROI (Ann.)")}
             {thInactive("right", "")}
           </tr>
         </thead>
@@ -707,10 +717,10 @@ export default function TradeList({
           const rowTint = wi % 2 === 1;
           return (
             <tbody key={weekKey}>
-              <tr className="bg-[#f3f4f6]/90">
+              <tr className="bg-slate-100/70">
                 <td
                   colSpan={13}
-                  className="border-l-[3px] border-l-[#3b82f6] px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-[#374151]"
+                  className="border-y border-slate-200/80 border-l-[3px] border-l-emerald-500 px-5 py-2 text-xs font-semibold tracking-wide text-slate-600"
                 >
                   {formatWeekLabel(weekKey)}
                 </td>
