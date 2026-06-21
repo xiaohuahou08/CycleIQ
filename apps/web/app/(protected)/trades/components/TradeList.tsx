@@ -302,7 +302,7 @@ function TickerLogo({ ticker }: { ticker: string }) {
 
   if (urlIndex >= LOGO_URL_BUILDERS.length) {
     return (
-      <span className="inline-flex h-[22px] w-[22px] items-center justify-center rounded-md bg-emerald-50 text-[10px] font-semibold text-emerald-700">
+      <span className="inline-flex h-[26px] w-[26px] items-center justify-center rounded-md bg-emerald-50 text-[11px] font-semibold text-emerald-700">
         {ticker[0]}
       </span>
     );
@@ -312,7 +312,7 @@ function TickerLogo({ ticker }: { ticker: string }) {
     <img
       src={LOGO_URL_BUILDERS[urlIndex](ticker)}
       alt=""
-      className="h-[22px] w-[22px] rounded-md object-cover ring-1 ring-slate-200/80"
+      className="h-[26px] w-[26px] rounded-md object-cover ring-1 ring-slate-200/80"
       onError={() => setUrlIndex((prev) => prev + 1)}
       loading="lazy"
     />
@@ -367,33 +367,33 @@ function TradeRow({
   return (
     <>
       <tr
-        className={`border-b border-slate-100 text-sm text-slate-800 transition-colors hover:bg-slate-50/80 ${
+        className={`border-b border-slate-100 text-base text-slate-800 transition-colors hover:bg-slate-50/80 ${
           rowTint ? "bg-orange-50/35 hover:bg-orange-50/50" : "bg-white"
         }`}
       >
-        <td className="whitespace-nowrap px-5 py-3">
+        <td className="whitespace-nowrap px-5 py-3.5">
           <div className="flex items-center gap-2.5">
             <TickerLogo key={trade.ticker} ticker={trade.ticker} />
-            <span className="font-semibold tracking-tight text-slate-900">
+            <span className="text-base font-semibold tracking-tight text-slate-900">
               {trade.ticker}
             </span>
           </div>
         </td>
-        <td className="whitespace-nowrap px-5 py-3">
-          <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+        <td className="whitespace-nowrap px-5 py-3.5">
+          <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
             {getStrategy(trade)}
           </span>
         </td>
-        <td className="whitespace-nowrap px-5 py-3 tabular-nums text-slate-700">{trade.contracts}</td>
-        <td className="whitespace-nowrap px-5 py-3 tabular-nums text-slate-800">
+        <td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-slate-700">{trade.contracts}</td>
+        <td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-slate-800">
           ${trade.strike.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </td>
-        <td className="whitespace-nowrap px-5 py-3 tabular-nums text-slate-700">
+        <td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-slate-700">
           {price != null
             ? `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
             : <span className="text-slate-300">—</span>}
         </td>
-        <td className="whitespace-nowrap px-5 py-3 text-xs">
+        <td className="whitespace-nowrap px-5 py-3.5 text-sm">
           {trade.status === "OPEN" && price != null ? (() => {
             const m = computeMoneyness(trade, price);
             return (
@@ -409,19 +409,19 @@ function TradeRow({
           })() : <span className="text-slate-300">—</span>}
         </td>
         <td
-          className={`whitespace-nowrap px-5 py-3 tabular-nums text-sm ${
+          className={`whitespace-nowrap px-5 py-3.5 tabular-nums text-base ${
             exp.accent ? "font-medium text-orange-600" : "text-slate-700"
           }`}
         >
           {exp.label}
         </td>
-        <td className="whitespace-nowrap px-5 py-3 tabular-nums text-slate-600">
+        <td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-slate-600">
           {trade.status === "OPEN" ? getDte(trade.expiry) : <span className="text-slate-300">—</span>}
         </td>
-        <td className="whitespace-nowrap px-5 py-3 tabular-nums text-sm font-medium text-emerald-600">
+        <td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-base font-medium text-emerald-600">
           {fmtPremiumTotal(trade)}
         </td>
-        <td className="whitespace-nowrap px-5 py-3 tabular-nums text-sm">
+        <td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-base">
           {trade.status === "ASSIGNED" && trade.option_type === "PUT" && trade.stock_cost_basis_per_share != null ? (
             <span className="font-medium text-orange-700">
               {fmtStockCostPerShare(trade)}
@@ -430,17 +430,17 @@ function TradeRow({
             <span className="text-slate-300">—</span>
           )}
         </td>
-        <td className="whitespace-nowrap px-5 py-3">
+        <td className="whitespace-nowrap px-5 py-3.5">
           <span
-            className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-inset ${STATUS_STYLES[trade.status]}`}
+            className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${STATUS_STYLES[trade.status]}`}
           >
             {fmtStatusLabel(trade.status)}
           </span>
         </td>
-        <td className="whitespace-nowrap px-5 py-3 text-right text-sm font-semibold tabular-nums tracking-tight text-slate-900">
+        <td className="whitespace-nowrap px-5 py-3.5 text-right text-base font-semibold tabular-nums tracking-tight text-slate-900">
           {fmtRoi(trade)}
         </td>
-        <td className="relative whitespace-nowrap px-5 py-3 text-right">
+        <td className="relative whitespace-nowrap px-5 py-3.5 text-right">
           <button
             ref={triggerRef}
             type="button"
@@ -585,7 +585,7 @@ function TradeRow({
 }
 
 const theadBtn =
-  "group inline-flex cursor-pointer items-center gap-0.5 select-none text-left text-[11px] font-medium uppercase tracking-wider text-slate-500 transition-colors hover:text-slate-700";
+  "group inline-flex cursor-pointer items-center gap-0.5 select-none text-left text-xs font-semibold uppercase tracking-wider text-slate-700 transition-colors hover:text-slate-900";
 
 export default function TradeList({
   trades,
@@ -648,7 +648,7 @@ export default function TradeList({
     label: ReactNode
   ) => (
     <th
-      className={`sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-slate-500 backdrop-blur-sm ${
+      className={`sticky top-0 z-10 border-b border-slate-300/80 bg-slate-100/95 px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-700 backdrop-blur-sm ${
         align === "right" ? "text-right" : "text-left"
       }`}
     >
@@ -664,7 +664,7 @@ export default function TradeList({
     label: ReactNode
   ) => (
     <th
-      className={`sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-slate-500 backdrop-blur-sm ${
+      className={`sticky top-0 z-10 border-b border-slate-300/80 bg-slate-100/95 px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-700 backdrop-blur-sm ${
         align === "right" ? "text-right" : "text-left"
       }`}
     >
@@ -694,7 +694,7 @@ export default function TradeList({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[960px] border-collapse text-sm">
+      <table className="w-full min-w-[960px] border-collapse text-base">
         <thead>
           <tr>
             {th("ticker", "left", "Ticker")}
@@ -720,7 +720,7 @@ export default function TradeList({
               <tr className="bg-slate-100/70">
                 <td
                   colSpan={13}
-                  className="border-y border-slate-200/80 border-l-[3px] border-l-emerald-500 px-5 py-2 text-xs font-semibold tracking-wide text-slate-600"
+                  className="border-y border-slate-200/80 border-l-[3px] border-l-emerald-500 px-5 py-2.5 text-sm font-semibold tracking-wide text-slate-700"
                 >
                   {formatWeekLabel(weekKey)}
                 </td>
