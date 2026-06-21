@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import {
   ArrowDownToLine,
   Calendar,
@@ -39,7 +39,8 @@ const STATUS_ROW: ReadonlyArray<{
 ];
 
 interface TradeFiltersProps {
-  onFilterChange: (filters: FilterState) => void;
+  filters: FilterState;
+  onFilterChange: Dispatch<SetStateAction<FilterState>>;
   tickerSuggestions?: string[];
   onAddTrade?: () => void;
   /** When wrapped in outer card (rounded border/shadow handled by parent) */
@@ -47,25 +48,14 @@ interface TradeFiltersProps {
 }
 
 export default function TradeFilters({
+  filters,
   onFilterChange,
   tickerSuggestions = [],
   onAddTrade,
   embedded = false,
 }: TradeFiltersProps) {
-  const [filters, setFilters] = useState<FilterState>({
-    type: "PUT",
-    status: "OPEN",
-    search: "",
-    dateRangeType: "1M",
-  });
   const [suggestOpen, setSuggestOpen] = useState(false);
   const searchWrapRef = useRef<HTMLDivElement>(null);
-
-  const onFilterChangeRef = useRef(onFilterChange);
-  onFilterChangeRef.current = onFilterChange;
-  useEffect(() => {
-    onFilterChangeRef.current({ type: "PUT", status: "OPEN", search: "", dateRangeType: "1M" });
-  }, []);
 
   const matchingTickers = useMemo(() => {
     const raw = filters.search.trim();
@@ -96,9 +86,11 @@ export default function TradeFilters({
   }, [suggestOpen]);
 
   const apply = (patch: Partial<FilterState>) => {
-    const next = { ...filters, ...patch };
-    setFilters(next);
-    onFilterChange(next);
+    onFilterChange((prev) => ({ ...prev, ...patch }));
+  };
+
+  const applySinceLastMonth = () => {
+    apply({ dateRangeType: "1M", startDate: undefined, endDate: undefined });
   };
 
   const switchOptionType = (type: "PUT" | "CALL") => {
@@ -110,6 +102,8 @@ export default function TradeFilters({
       type,
       status,
       dateRangeType: "1M",
+      startDate: undefined,
+      endDate: undefined,
     });
   };
 
@@ -209,6 +203,8 @@ export default function TradeFilters({
                     apply({
                       status: key,
                       dateRangeType: "1M",
+                      startDate: undefined,
+                      endDate: undefined,
                     })
                   }
                   className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-[12px] font-semibold capitalize transition ${
@@ -228,14 +224,14 @@ export default function TradeFilters({
         <div className="flex shrink-0 flex-wrap items-center gap-2 border-l border-gray-200 pl-3">
           <button
             type="button"
-            onClick={() => apply({ dateRangeType: "1M" })}
+            onClick={applySinceLastMonth}
             className={`rounded-lg px-3 py-1.5 text-[12px] font-semibold transition ${
               filters.dateRangeType === "1M"
                 ? "bg-gray-900 text-white shadow-sm"
                 : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
             }`}
           >
-            Last month
+            Since last month
           </button>
           <div
             className={`flex flex-wrap items-center gap-1 rounded-lg border p-1 ${

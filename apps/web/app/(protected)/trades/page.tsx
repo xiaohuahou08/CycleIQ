@@ -31,6 +31,15 @@ function todayIso(): string {
   return `${y}-${m}-${day}`;
 }
 
+function oneMonthAgoIso(): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function getClosedCycleIds(trades: Trade[]): Set<string> {
   const cycleTrades = trades.reduce<Record<string, Trade[]>>((acc, t) => {
     if (!t.cycle_id) return acc;
@@ -60,15 +69,12 @@ function applyFilters(trades: Trade[], f: FilterState, closedCycleIds: Set<strin
     
     if (f.status !== "ALL" && t.status !== f.status) return false;
 
-    // Date range stacks with status (e.g. Open + Last month).
+    // Since last month: trade_date on or after one month ago; OPEN legs always listed.
     if (f.dateRangeType === "1M") {
-      const oneMonthAgo = new Date();
-      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-      const y = oneMonthAgo.getFullYear();
-      const m = String(oneMonthAgo.getMonth() + 1).padStart(2, "0");
-      const day = String(oneMonthAgo.getDate()).padStart(2, "0");
-      const oneMonthAgoStr = `${y}-${m}-${day}`;
-      if (t.trade_date < oneMonthAgoStr) return false;
+      if (t.status !== "OPEN") {
+        const since = oneMonthAgoIso();
+        if (t.trade_date < since) return false;
+      }
     } else if (f.dateRangeType === "CUSTOM") {
       if (f.startDate && t.trade_date < f.startDate) return false;
       if (f.endDate && t.trade_date > f.endDate) return false;
@@ -290,6 +296,7 @@ export default function TradesPage() {
 
         <TradeFilters
           embedded
+          filters={filters}
           onFilterChange={setFilters}
           tickerSuggestions={tickerSuggestions}
           onAddTrade={() => {
