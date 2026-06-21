@@ -85,15 +85,32 @@ function isCompletedWheel(state: string): boolean {
   return state === "EXIT" || state === "CSP_CLOSED";
 }
 
-function stateBadgeStyle(state: string): string {
-  if (state === "IDLE") return "bg-gray-100 text-gray-700";
-  if (state === "CSP_OPEN") return "bg-blue-100 text-blue-700";
-  if (state === "STOCK_HELD") return "bg-purple-100 text-purple-700";
-  if (state === "CC_OPEN") return "bg-amber-100 text-amber-700";
-  if (state === "EXIT") return "bg-amber-100 text-amber-900 ring-1 ring-amber-400/60 font-semibold";
-  if (state === "CSP_CLOSED") return "bg-slate-200 text-slate-800 ring-1 ring-slate-400/50 font-semibold";
-  return "bg-slate-100 text-slate-700";
+function fmtStatusLabel(status: string): string {
+  return status
+    .replaceAll("_", " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+function stateBadgeStyle(state: string): string {
+  if (state === "IDLE") return "bg-slate-200/70 text-slate-800 ring-slate-200";
+  if (state === "CSP_OPEN") return "bg-blue-50 text-blue-800 ring-blue-100";
+  if (state === "STOCK_HELD") return "bg-purple-50 text-purple-800 ring-purple-100";
+  if (state === "CC_OPEN") return "bg-amber-50 text-amber-800 ring-amber-100";
+  if (state === "EXIT") return "bg-amber-50 text-amber-900 ring-amber-200 font-semibold";
+  if (state === "CSP_CLOSED") return "bg-slate-200/70 text-slate-800 ring-slate-200 font-semibold";
+  return "bg-slate-100 text-slate-800 ring-slate-200";
+}
+
+const SEARCH_INPUT_CLS =
+  "h-9 w-full rounded-lg border border-slate-300 bg-white py-0 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/25";
+
+const PILL_ACTIVE = "bg-slate-900 text-white shadow-sm";
+const PILL_IDLE =
+  "border border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:text-slate-950";
+
+const STAT_LABEL = "text-xs font-medium text-slate-600";
+const STAT_VALUE = "mt-1 text-2xl font-semibold tabular-nums text-slate-900";
 
 const NOW_TS = Date.now();
 
@@ -106,13 +123,14 @@ const LOGO_URL_BUILDERS = [
 
 function TickerLogo({ ticker, size = "sm" }: { ticker: string; size?: "sm" | "lg" }) {
   const [urlIndex, setUrlIndex] = useState(0);
-  const dim = size === "lg" ? "h-10 w-10 rounded-xl" : "h-6 w-6 rounded-lg";
-  const fallbackDim = size === "lg" ? "h-10 w-10 rounded-xl text-sm" : "h-6 w-6 rounded-lg text-[10px]";
+  const dim = size === "lg" ? "h-10 w-10 rounded-lg" : "h-[26px] w-[26px] rounded-md";
+  const fallbackDim =
+    size === "lg" ? "h-10 w-10 rounded-lg text-sm" : "h-[26px] w-[26px] rounded-md text-[11px]";
 
   if (urlIndex >= LOGO_URL_BUILDERS.length) {
     return (
       <span
-        className={`inline-flex items-center justify-center bg-blue-100 font-bold text-blue-700 ${fallbackDim}`}
+        className={`inline-flex items-center justify-center bg-emerald-50 font-semibold text-emerald-700 ring-1 ring-slate-200/80 ${fallbackDim}`}
       >
         {ticker[0]}
       </span>
@@ -123,7 +141,7 @@ function TickerLogo({ ticker, size = "sm" }: { ticker: string; size?: "sm" | "lg
     <img
       src={LOGO_URL_BUILDERS[urlIndex](ticker)}
       alt=""
-      className={`object-cover ring-1 ring-gray-100 ${dim}`}
+      className={`object-cover ring-1 ring-slate-200/80 ${dim}`}
       onError={() => setUrlIndex((prev) => prev + 1)}
       loading="lazy"
     />
@@ -133,7 +151,7 @@ function TickerLogo({ ticker, size = "sm" }: { ticker: string; size?: "sm" | "lg
 function MoneyIcon() {
   return (
     <CircleDollarSign
-      className={`${iconSm} text-gray-400`}
+      className={`${iconSm} text-slate-500`}
       strokeWidth={iconStroke}
       aria-hidden
     />
@@ -213,9 +231,7 @@ export default function CyclesPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedWheelId, setSelectedWheelId] = useState<string | null>(null);
-  const [viewTab, setViewTab] = useState<"WHEELS" | "CC_COST_BASIS" | "CSP_PREMIUM" | "DTE_TIMELINE">(
-    "WHEELS"
-  );
+  const [viewTab, setViewTab] = useState<"WHEELS" | "CC_COST_BASIS">("WHEELS");
   const [tab, setTab] = useState<"ALL" | "ACTIVE" | "COMPLETED">("ACTIVE");
   const [ccTab, setCcTab] = useState<"ACTIVE" | "COMPLETED">("ACTIVE");
   const [timeRange, setTimeRange] = useState<"ALL" | "WEEK" | "MONTH" | "YEAR">("ALL");
@@ -391,27 +407,23 @@ export default function CyclesPage() {
   if (isAuthLoading) return null;
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-slate-50">
-      <div className="flex w-full min-h-0 flex-1 flex-col">
-        <div className="flex w-full flex-1 flex-col bg-white p-4 sm:p-6">
-          <div className="flex flex-wrap items-center justify-end gap-3">
-            <div className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1 text-xs">
+    <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50/40">
+      <div className="shrink-0 border-b border-slate-200/80 bg-white">
+        <div className="flex flex-col gap-3 px-4 py-3.5 sm:px-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="inline-flex items-center gap-1.5">
               {(
                 [
                   ["WHEELS", "Wheels"],
                   ["CC_COST_BASIS", "CC Cost Basis"],
-                  ["CSP_PREMIUM", "CSP Premium"],
-                  ["DTE_TIMELINE", "DTE Timeline"],
                 ] as const
               ).map(([key, label]) => (
                 <button
                   key={key}
                   type="button"
                   onClick={() => setViewTab(key)}
-                  className={`rounded-lg px-3 py-1.5 font-medium transition ${
-                    viewTab === key
-                      ? "bg-emerald-500 text-white shadow-sm"
-                      : "text-gray-500 hover:bg-white hover:text-gray-700"
+                  className={`inline-flex h-9 items-center rounded-lg px-3.5 text-xs font-semibold uppercase tracking-wide transition ${
+                    viewTab === key ? PILL_ACTIVE : PILL_IDLE
                   }`}
                 >
                   {label}
@@ -419,36 +431,41 @@ export default function CyclesPage() {
               ))}
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-white">
+        <div className="px-4 py-4 sm:px-6 sm:py-5">
           {viewTab === "CC_COST_BASIS" ? (
-            <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
-              <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-                <p className="text-xs text-gray-500">Tickers Tracked</p>
-                <p className="mt-1 text-2xl font-semibold text-gray-900">{ccHeadline.tickersTracked}</p>
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+              <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
+                <p className={STAT_LABEL}>Tickers Tracked</p>
+                <p className={STAT_VALUE}>{ccHeadline.tickersTracked}</p>
               </div>
-              <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-                <p className="text-xs text-gray-500">Total CC Premium</p>
-                <p className="mt-1 text-2xl font-semibold text-gray-900">
+              <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
+                <p className={STAT_LABEL}>Total CC Premium</p>
+                <p className={STAT_VALUE}>
                   ${ccHeadline.totalCcPremium.toFixed(0)}
                 </p>
               </div>
-              <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-                <p className="text-xs text-gray-500">Avg Reduction</p>
-                <p className="mt-1 text-2xl font-semibold text-gray-900">{ccHeadline.avgReduction.toFixed(1)}%</p>
+              <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
+                <p className={STAT_LABEL}>Avg Reduction</p>
+                <p className={STAT_VALUE}>{ccHeadline.avgReduction.toFixed(1)}%</p>
               </div>
             </div>
           ) : (
-            <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-                <p className="text-xs text-gray-500">Active Wheels</p>
-                <p className="mt-1 text-2xl font-semibold text-gray-900">{activeCycles.length}</p>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
+                <p className={STAT_LABEL}>Active Wheels</p>
+                <p className={STAT_VALUE}>{activeCycles.length}</p>
               </div>
-              <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-                <p className="text-xs text-gray-500">Completed</p>
-                <p className="mt-1 text-2xl font-semibold text-gray-900">{completedCycles.length}</p>
+              <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
+                <p className={STAT_LABEL}>Completed</p>
+                <p className={STAT_VALUE}>{completedCycles.length}</p>
               </div>
-              <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-                <p className="text-xs text-gray-500">Net Premium</p>
-                <p className="mt-1 text-2xl font-semibold text-gray-900">
+              <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
+                <p className={STAT_LABEL}>Net Premium</p>
+                <p className={STAT_VALUE}>
                   $
                   {tabCycles
                     .reduce(
@@ -459,9 +476,9 @@ export default function CyclesPage() {
                     .toFixed(0)}
                 </p>
               </div>
-              <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-                <p className="text-xs text-gray-500">Ticker</p>
-                <p className="mt-1 text-2xl font-semibold text-gray-900">
+              <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
+                <p className={STAT_LABEL}>Ticker</p>
+                <p className={STAT_VALUE}>
                   {new Set(tabCycles.map((cycle) => cycle.ticker)).size}
                 </p>
               </div>
@@ -469,46 +486,48 @@ export default function CyclesPage() {
           )}
 
         {loading ? (
-          <div className="mt-4 space-y-3">
+          <div className="mt-5 space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-24 animate-pulse rounded-xl border border-gray-200 bg-white" />
+              <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-100 ring-1 ring-slate-100" />
             ))}
           </div>
         ) : cycles.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-12 text-center text-sm text-gray-500">
-            No cycles yet. Create trades to auto-link cycles.
+          <div className="mt-5 flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-16 text-center">
+            <p className="text-base font-semibold text-slate-900">No cycles yet</p>
+            <p className="max-w-sm text-sm text-slate-600">
+              Create trades to auto-link cycles.
+            </p>
           </div>
         ) : viewTab === "CC_COST_BASIS" ? (
-          <div className="space-y-3">
-            <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
-              <div className="flex flex-wrap items-center gap-3">
-                {/* Active / Completed tab */}
-                <div className="inline-flex items-center rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs">
-                  {(["ACTIVE", "COMPLETED"] as const).map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setCcTab(t)}
-                      className={`rounded-md px-3 py-1 font-medium transition ${
-                        ccTab === t ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                      }`}
-                    >
-                      {t === "ACTIVE" ? "Active" : "Completed"}
-                    </button>
-                  ))}
-                </div>
-                <div className="relative min-w-[200px] flex-1">
-                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
-                    <Search className={iconSm} strokeWidth={iconStroke} aria-hidden />
-                  </span>
-                  <input
-                    type="text"
-                    value={searchTicker}
-                    onChange={(e) => setSearchTicker(e.target.value.toUpperCase())}
-                    placeholder="Search ticker..."
-                    className="w-full rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-9 pr-3 text-sm text-gray-800 outline-none transition focus:border-gray-300 focus:bg-white"
-                  />
-                </div>
+          <div className="mt-5 space-y-4">
+            <div className="flex flex-wrap items-center gap-3 border-b border-slate-200/80 pb-3">
+              <div className="flex items-center gap-0.5 rounded-lg bg-slate-200/50 p-1">
+                {(["ACTIVE", "COMPLETED"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setCcTab(t)}
+                    className={`inline-flex h-8 items-center rounded-md px-3 text-xs font-medium transition ${
+                      ccTab === t
+                        ? "bg-white text-slate-950 shadow-sm ring-1 ring-slate-300/80"
+                        : "text-slate-700 hover:text-slate-950"
+                    }`}
+                  >
+                    {t === "ACTIVE" ? "Active" : "Completed"}
+                  </button>
+                ))}
+              </div>
+              <div className="relative min-w-[8.5rem] max-w-[12rem] flex-1">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-500">
+                  <Search className={iconSm} strokeWidth={iconStroke} aria-hidden />
+                </span>
+                <input
+                  type="text"
+                  value={searchTicker}
+                  onChange={(e) => setSearchTicker(e.target.value.toUpperCase())}
+                  placeholder="Search ticker…"
+                  className={SEARCH_INPUT_CLS}
+                />
               </div>
             </div>
             {(() => {
@@ -517,45 +536,48 @@ export default function CyclesPage() {
               );
               const filteredCcRows = ccCostBasisRows.filter((r) => ccTabTickers.has(r.ticker));
               return filteredCcRows.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-10 text-center text-sm text-gray-500">
-                No {ccTab === "ACTIVE" ? "active" : "completed"} assigned positions yet.
+              <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-14 text-center">
+                <p className="text-base font-semibold text-slate-900">No assigned positions</p>
+                <p className="text-sm text-slate-600">
+                  No {ccTab === "ACTIVE" ? "active" : "completed"} assigned positions yet.
+                </p>
               </div>
             ) : (
               filteredCcRows.map((row) => (
-                <div key={row.ticker} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div key={row.ticker} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                       <TickerLogo ticker={row.ticker} />
-                      <span className="text-base font-semibold text-gray-900">{row.ticker}</span>
+                      <span className="text-base font-semibold text-slate-900">{row.ticker}</span>
                     </div>
-                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                    <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
                       {row.reductionPct.toFixed(1)}% reduced
                     </span>
                   </div>
-                  <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                      <p className="text-[10px] uppercase tracking-wide text-gray-500">Initial Cost</p>
-                      <p className="mt-1 text-lg font-semibold text-gray-900">${row.initialCost.toFixed(2)}</p>
-                      <p className="text-[10px] text-gray-500">per share</p>
+                  <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-slate-600">Initial Cost</p>
+                      <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">${row.initialCost.toFixed(2)}</p>
+                      <p className="text-xs text-slate-600">per share</p>
                     </div>
-                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
-                      <p className="text-[10px] uppercase tracking-wide text-emerald-600">Current Cost</p>
-                      <p className="mt-1 text-lg font-semibold text-emerald-700">${row.currentCost.toFixed(2)}</p>
-                      <p className="text-[10px] text-emerald-600">per share</p>
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-emerald-700">Current Cost</p>
+                      <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-700">${row.currentCost.toFixed(2)}</p>
+                      <p className="text-xs text-emerald-700">per share</p>
                     </div>
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                      <p className="text-[10px] uppercase tracking-wide text-gray-500">Premium Received</p>
-                      <p className="mt-1 text-lg font-semibold text-gray-900">${row.ccPremiumTotal.toFixed(0)}</p>
-                      <p className="text-[10px] text-gray-500">total</p>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-slate-600">Premium Received</p>
+                      <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">${row.ccPremiumTotal.toFixed(0)}</p>
+                      <p className="text-xs text-slate-600">total</p>
                     </div>
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                      <p className="text-[10px] uppercase tracking-wide text-gray-500">CC Positions</p>
-                      <p className="mt-1 text-lg font-semibold text-gray-900">{row.ccPositions}</p>
-                      <p className="text-[10px] text-gray-500">{row.assignedShares} shares</p>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-slate-600">CC Positions</p>
+                      <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">{row.ccPositions}</p>
+                      <p className="text-xs text-slate-600">{row.assignedShares} shares</p>
                     </div>
                   </div>
-                  <div className="mt-4 rounded-xl border border-gray-200 bg-white p-3">
-                    <p className="text-center text-[10px] uppercase tracking-wide text-gray-500">
+                  <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
+                    <p className="text-center text-[11px] font-medium uppercase tracking-wider text-slate-600">
                       Cost Basis Over Time
                     </p>
                     <div className="mt-3 flex items-end justify-center gap-28">
@@ -570,7 +592,7 @@ export default function CyclesPage() {
                         }}
                       />
                     </div>
-                    <div className="mt-2 flex items-center justify-center gap-20 text-[10px] text-gray-500">
+                    <div className="mt-2 flex items-center justify-center gap-20 text-xs text-slate-600">
                       <span>Purchase</span>
                       <span>{fmtDate(new Date(row.recentTradeDate).toISOString().slice(0, 10))}</span>
                     </div>
@@ -580,41 +602,37 @@ export default function CyclesPage() {
             );
             })()}
           </div>
-        ) : viewTab !== "WHEELS" ? (
-          <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-12 text-center text-sm text-gray-500">
-            {viewTab === "CSP_PREMIUM" ? "CSP Premium view is coming next." : "DTE Timeline view is coming next."}
-          </div>
         ) : selectedWheel ? (
           <>
           <div
-            className={`overflow-hidden rounded-2xl border shadow-sm ${
+            className={`mt-5 overflow-hidden rounded-xl border shadow-sm ${
               isCompletedWheel(selectedWheel.state)
                 ? "border-amber-300 bg-gradient-to-b from-amber-50 via-white to-white ring-1 ring-amber-200/80"
-                : "border-gray-200 bg-white"
+                : "border-slate-200 bg-white"
             }`}
           >
             <div
               className={`flex h-[58px] items-center justify-between border-b px-5 ${
                 isCompletedWheel(selectedWheel.state)
                   ? "border-amber-200 bg-amber-50/90"
-                  : "border-gray-200 bg-[#f5f8f8]"
+                  : "border-slate-200 bg-slate-50"
               }`}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <button
                   type="button"
                   onClick={() => setSelectedWheelId(null)}
-                  className="rounded-full p-1 text-gray-500 hover:bg-white hover:text-gray-700"
+                  className="rounded-full p-1 text-slate-600 hover:bg-white hover:text-slate-900"
                   title="Back"
                 >
                   ←
                 </button>
                 <TickerLogo ticker={selectedWheel.ticker} size="lg" />
                 <div>
-                  <p className="text-[26px] font-semibold leading-none text-gray-900">
+                  <p className="text-xl font-semibold leading-none text-slate-900">
                     {selectedWheel.ticker} Wheel
                   </p>
-                  <p className="text-xs font-medium text-gray-500">
+                  <p className="mt-0.5 text-sm font-medium text-slate-600">
                     {selectedWheel.trades.length} legs ·{" "}
                     {selectedWheel.trades.filter((t) => t.option_type === "PUT").length} CSP
                     {" · "}
@@ -632,9 +650,9 @@ export default function CyclesPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 text-xs text-gray-500">
+              <div className="flex items-center gap-3 text-sm text-slate-600">
                 <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${stateBadgeStyle(selectedWheel.state)}`}
+                  className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${stateBadgeStyle(selectedWheel.state)}`}
                 >
                   {isCompletedWheel(selectedWheel.state) ? "Completed" : "Active"}
                 </span>
@@ -742,7 +760,7 @@ export default function CyclesPage() {
                         </span>
                       )}
                       <TickerLogo ticker={selectedWheel.ticker} size="sm" />
-                      <div className={`font-bold text-gray-900 ${completed ? "mt-1 text-[13px]" : "mt-0.5 text-[12px]"}`}>
+                      <div className={`font-bold text-slate-900 ${completed ? "mt-1 text-sm" : "mt-0.5 text-xs"}`}>
                         {selectedWheel.ticker}
                       </div>
                       <div
@@ -770,22 +788,22 @@ export default function CyclesPage() {
                           <div className={`rounded-xl border-2 bg-white px-3 py-2.5 shadow-sm ${
                             trade.option_type === "PUT" ? "border-[#c7b8ef]" : "border-[#9fd8ca]"}`}>
                             <div className="mb-1 flex items-center gap-1.5">
-                              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-700 text-[10px] font-bold text-white">
+                              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-800 text-[10px] font-bold text-white">
                                 {idx + 1}
                               </span>
-                              <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">
                                 {trade.option_type === "PUT" ? "Cash Secured Put" : "Covered Call"}
                               </p>
                             </div>
-                            <p className="text-[28px] font-bold leading-none text-gray-900">
+                            <p className="text-[28px] font-bold leading-none tabular-nums text-slate-900">
                               ${trade.strike.toFixed(0)}
                             </p>
-                            <p className={`text-[12px] font-semibold ${isDebit ? "text-red-600" : "text-emerald-700"}`}>
+                            <p className={`text-sm font-semibold tabular-nums ${isDebit ? "text-red-600" : "text-emerald-700"}`}>
                               {isDebit ? "−" : "+"}${Math.abs(net).toFixed(2)}
                             </p>
-                            <p className="text-[10px] text-gray-500">{fmtDate(trade.expiry)}</p>
-                            <span className="mt-1 inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
-                              {trade.status}
+                            <p className="text-xs text-slate-600">{fmtDate(trade.expiry)}</p>
+                            <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-800 ring-1 ring-slate-200/80">
+                              {fmtStatusLabel(trade.status)}
                             </span>
                           </div>
                         </div>
@@ -816,30 +834,30 @@ export default function CyclesPage() {
           </>
         ) : (
           <>
-            <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="relative min-w-[220px] flex-1">
-                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
+            <div className="mt-5 flex flex-col gap-3 border-b border-slate-200/80 pb-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative min-w-[8.5rem] max-w-[14rem] flex-1">
+                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-500">
                     <Search className={iconSm} strokeWidth={iconStroke} aria-hidden />
                   </span>
                   <input
                     type="text"
                     value={searchTicker}
                     onChange={(e) => setSearchTicker(e.target.value.toUpperCase())}
-                    placeholder="Search by ticker..."
-                    className="w-full rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-9 pr-3 text-sm text-gray-800 outline-none transition focus:border-gray-300 focus:bg-white"
+                    placeholder="Search ticker…"
+                    className={SEARCH_INPUT_CLS}
                   />
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-0.5 rounded-lg bg-slate-200/50 p-1">
                   {(["ALL", "ACTIVE", "COMPLETED"] as const).map((item) => (
                     <button
                       key={item}
                       type="button"
                       onClick={() => setTab(item)}
-                      className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                      className={`inline-flex h-8 items-center rounded-md px-3 text-xs font-medium transition ${
                         tab === item
-                          ? "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          ? "bg-white text-slate-950 shadow-sm ring-1 ring-slate-300/80"
+                          : "text-slate-700 hover:text-slate-950"
                       }`}
                     >
                       {item === "ALL"
@@ -851,30 +869,27 @@ export default function CyclesPage() {
                   ))}
                 </div>
               </div>
-              <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {(["ALL", "WEEK", "MONTH", "YEAR"] as const).map((item) => (
                   <button
                     key={item}
                     type="button"
                     onClick={() => setTimeRange(item)}
-                    className={`rounded-md px-2.5 py-1 text-xs transition ${
-                      timeRange === item
-                        ? "bg-violet-100 text-violet-700 ring-1 ring-violet-200"
-                        : "text-gray-500 hover:bg-gray-100"
+                    className={`inline-flex h-8 items-center rounded-lg px-3 text-xs font-medium transition ${
+                      timeRange === item ? PILL_ACTIVE : PILL_IDLE
                     }`}
                   >
                     {item === "ALL" ? "All Time" : item[0] + item.slice(1).toLowerCase()}
                   </button>
                 ))}
+                <span className="mx-1 text-slate-300" aria-hidden>|</span>
                 {(["LATEST", "PREMIUM", "TICKER"] as const).map((item) => (
                   <button
                     key={item}
                     type="button"
                     onClick={() => setSortBy(item)}
-                    className={`rounded-md px-2.5 py-1 text-xs transition ${
-                      sortBy === item
-                        ? "bg-indigo-100 text-indigo-700 ring-1 ring-indigo-200"
-                        : "text-gray-500 hover:bg-gray-100"
+                    className={`inline-flex h-8 items-center rounded-lg px-3 text-xs font-medium transition ${
+                      sortBy === item ? PILL_ACTIVE : PILL_IDLE
                     }`}
                   >
                     {item[0] + item.slice(1).toLowerCase()}
@@ -883,10 +898,11 @@ export default function CyclesPage() {
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="mt-4 space-y-4">
               {visibleCycles.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-10 text-center text-sm text-gray-500">
-                  No cycles in this tab yet.
+                <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-14 text-center">
+                  <p className="text-base font-semibold text-slate-900">No cycles in this tab</p>
+                  <p className="text-sm text-slate-600">Try another filter or time range.</p>
                 </div>
               ) : (
                 visibleCycles.map((cycle) => {
@@ -903,69 +919,69 @@ export default function CyclesPage() {
                       className={`overflow-hidden rounded-xl border shadow-sm ${
                         cycleCompleted
                           ? "border-amber-300 bg-gradient-to-r from-amber-50/90 to-white ring-1 ring-amber-200/60"
-                          : "border-gray-200 bg-white"
+                          : "border-slate-200 bg-white"
                       }`}
                     >
                       <div
-                        className={`flex items-center justify-between border-b px-4 py-3 ${
-                          cycleCompleted ? "border-amber-200/80 bg-amber-50/50" : "border-gray-100"
+                        className={`flex items-center justify-between border-b px-5 py-3.5 ${
+                          cycleCompleted ? "border-amber-200/80 bg-amber-50/50" : "border-slate-200/80"
                         }`}
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2.5">
                           <TickerLogo ticker={cycle.ticker} />
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="text-lg font-semibold text-gray-900">{cycle.ticker}</span>
-                              <span className="text-xs text-gray-500">
+                              <span className="text-base font-semibold text-slate-900">{cycle.ticker}</span>
+                              <span className="text-sm text-slate-600">
                                 {linkedTrades.length} legs · {openCount} open
                               </span>
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-5 text-xs text-gray-500">
-                          <span>{fmtDate(cycle.updated_at?.slice(0, 10) ?? cycle.created_at?.slice(0, 10) ?? "1970-01-01")}</span>
+                        <div className="flex items-center gap-4 text-sm text-slate-600">
+                          <span className="tabular-nums">{fmtDate(cycle.updated_at?.slice(0, 10) ?? cycle.created_at?.slice(0, 10) ?? "1970-01-01")}</span>
                           <span
-                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${stateBadgeStyle(cycle.state)}`}
+                            className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${stateBadgeStyle(cycle.state)}`}
                           >
                             {tab === "COMPLETED" ? "Completed" : "Active"}
                           </span>
                           <button
                             type="button"
                             onClick={() => setSelectedWheelId(cycle.id)}
-                            className="rounded-full border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-800 hover:border-slate-400 hover:bg-slate-50"
                           >
                             View Wheel
                           </button>
                         </div>
                       </div>
 
-                      <div className="overflow-x-auto px-4 py-3">
+                      <div className="overflow-x-auto px-5 py-4">
                         <div className="flex min-w-max items-center gap-2">
                           {sortedLegs.map((trade, index) => (
                             <div key={trade.id} className="flex items-center gap-2">
                               <div
-                                className={`w-40 rounded-xl border px-3 py-2 ${
+                                className={`w-44 rounded-xl border px-3 py-2.5 ${
                                   trade.option_type === "PUT"
                                     ? "border-violet-200 bg-violet-50/50"
                                     : "border-emerald-200 bg-emerald-50/50"
                                 }`}
                               >
-                                <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-500">
+                                <p className="text-[11px] font-medium uppercase tracking-wider text-slate-600">
                                   {trade.option_type === "PUT" ? "Cash Secured Put" : "Covered Call"}
                                 </p>
-                                <p className="mt-1 text-2xl font-semibold text-gray-900">
+                                <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
                                   ${trade.strike.toFixed(2)}
                                 </p>
-                                <p className="text-[11px] font-medium text-emerald-700">
+                                <p className="text-sm font-semibold tabular-nums text-emerald-700">
                                   +${(trade.premium * trade.contracts * 100).toFixed(0)}
                                 </p>
-                                <p className="mt-1 text-[10px] text-gray-500">{fmtDate(trade.expiry)}</p>
-                                <span className="mt-1 inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-600">
-                                  {trade.status}
+                                <p className="mt-1 text-xs text-slate-600">{fmtDate(trade.expiry)}</p>
+                                <span className="mt-1.5 inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-800 ring-1 ring-slate-200/80">
+                                  {fmtStatusLabel(trade.status)}
                                 </span>
                               </div>
                               {index < sortedLegs.length - 1 && (
-                                <span className="text-gray-400">→</span>
+                                <span className="text-slate-400">→</span>
                               )}
                             </div>
                           ))}
