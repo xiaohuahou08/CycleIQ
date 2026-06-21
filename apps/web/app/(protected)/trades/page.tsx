@@ -60,11 +60,8 @@ function applyFilters(trades: Trade[], f: FilterState, closedCycleIds: Set<strin
     
     if (f.status !== "ALL" && t.status !== f.status) return false;
 
-    // Date range stacks with status (e.g. Open + Today)
-    const todayStr = todayIso();
-    if (f.dateRangeType === "TODAY") {
-      if (t.expiry < todayStr) return false;
-    } else if (f.dateRangeType === "1M") {
+    // Date range stacks with status (e.g. Open + Last month).
+    if (f.dateRangeType === "1M") {
       const oneMonthAgo = new Date();
       oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
       const y = oneMonthAgo.getFullYear();
@@ -105,7 +102,7 @@ export default function TradesPage() {
     type: "PUT",
     status: "OPEN",
     search: "",
-    dateRangeType: "TODAY",
+    dateRangeType: "1M",
   });
 
   useEffect(() => {

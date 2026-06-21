@@ -20,7 +20,7 @@ export interface FilterState {
   type: string;
   status: string;
   search: string;
-  dateRangeType?: "TODAY" | "1M" | "CUSTOM";
+  dateRangeType?: "1M" | "CUSTOM";
   startDate?: string;
   endDate?: string;
 }
@@ -56,7 +56,7 @@ export default function TradeFilters({
     type: "PUT",
     status: "OPEN",
     search: "",
-    dateRangeType: "TODAY",
+    dateRangeType: "1M",
   });
   const [suggestOpen, setSuggestOpen] = useState(false);
   const searchWrapRef = useRef<HTMLDivElement>(null);
@@ -64,7 +64,7 @@ export default function TradeFilters({
   const onFilterChangeRef = useRef(onFilterChange);
   onFilterChangeRef.current = onFilterChange;
   useEffect(() => {
-    onFilterChangeRef.current({ type: "PUT", status: "OPEN", search: "", dateRangeType: "TODAY" });
+    onFilterChangeRef.current({ type: "PUT", status: "OPEN", search: "", dateRangeType: "1M" });
   }, []);
 
   const matchingTickers = useMemo(() => {
@@ -109,7 +109,7 @@ export default function TradeFilters({
     apply({
       type,
       status,
-      dateRangeType: status === "OPEN" ? "TODAY" : "1M",
+      dateRangeType: "1M",
     });
   };
 
@@ -208,7 +208,7 @@ export default function TradeFilters({
                   onClick={() =>
                     apply({
                       status: key,
-                      dateRangeType: key === "OPEN" ? "TODAY" : "1M",
+                      dateRangeType: "1M",
                     })
                   }
                   className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-[12px] font-semibold capitalize transition ${
@@ -226,17 +226,6 @@ export default function TradeFilters({
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2 border-l border-gray-200 pl-3">
-          <button
-            type="button"
-            onClick={() => apply({ dateRangeType: "TODAY" })}
-            className={`rounded-lg px-3 py-1.5 text-[12px] font-semibold transition ${
-              filters.dateRangeType === "TODAY"
-                ? "bg-gray-900 text-white shadow-sm"
-                : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            Today
-          </button>
           <button
             type="button"
             onClick={() => apply({ dateRangeType: "1M" })}
