@@ -117,14 +117,14 @@ export default function TradeFilters({
   const pillActive =
     "bg-slate-900 text-white shadow-sm";
   const pillIdle =
-    "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900";
+    "border border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:text-slate-950";
 
   return (
     <div className={shell}>
       <div className="flex flex-col gap-3 px-4 py-3.5 sm:px-6">
         <div className="flex flex-wrap items-center gap-3">
           <div ref={searchWrapRef} className="relative w-full min-w-[8.5rem] max-w-[10rem] shrink-0">
-            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
+            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-500">
               <Search className={iconSm} strokeWidth={iconStroke} aria-hidden />
             </span>
             <input
@@ -137,7 +137,7 @@ export default function TradeFilters({
                 setSuggestOpen(true);
               }}
               onFocus={() => setSuggestOpen(true)}
-              className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/50 py-0 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="h-9 w-full rounded-lg border border-slate-300 bg-white py-0 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/25"
             />
             {suggestOpen && matchingTickers.length > 0 && (
               <ul
@@ -199,7 +199,7 @@ export default function TradeFilters({
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="min-w-0 flex-1 overflow-x-auto">
-            <div className="flex w-max min-w-full items-center gap-0.5 rounded-lg bg-slate-100/90 p-1">
+            <div className="flex w-max min-w-full items-center gap-0.5 rounded-lg bg-slate-200/50 p-1">
             {STATUS_ROW.filter(({ key }) => {
               if (filters.type === "PUT" && key === "CALLED_AWAY") return false;
               if (filters.type === "CALL" && key === "ASSIGNED") return false;
@@ -220,8 +220,8 @@ export default function TradeFilters({
                   }
                   className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition ${
                     active
-                      ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80"
-                      : "text-slate-600 hover:text-slate-900"
+                      ? "bg-white text-slate-950 shadow-sm ring-1 ring-slate-300/80"
+                      : "text-slate-700 hover:text-slate-950"
                   }`}
                 >
                   <Icon className={iconSm} strokeWidth={iconStroke} aria-hidden />
@@ -239,7 +239,7 @@ export default function TradeFilters({
               className={`inline-flex h-8 items-center rounded-lg px-3 text-xs font-medium transition ${
                 filters.dateRangeType === "1M"
                   ? "bg-slate-900 text-white shadow-sm"
-                  : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                  : "border border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:text-slate-950"
               }`}
             >
               Since last month
@@ -247,8 +247,8 @@ export default function TradeFilters({
             <div
               className={`flex flex-wrap items-center gap-1 rounded-lg border p-1 ${
                 filters.dateRangeType === "CUSTOM"
-                  ? "border-slate-300 bg-slate-50 ring-1 ring-slate-200/80"
-                  : "border-slate-200 bg-white"
+                  ? "border-slate-400 bg-slate-100 ring-1 ring-slate-300/80"
+                  : "border-slate-300 bg-white"
               }`}
             >
               <button
@@ -256,13 +256,13 @@ export default function TradeFilters({
                 onClick={() => apply({ dateRangeType: "CUSTOM" })}
                 className={`rounded-md px-2 py-1 text-xs font-medium transition ${
                   filters.dateRangeType === "CUSTOM"
-                    ? "text-slate-900"
-                    : "text-slate-500 hover:text-slate-700"
+                    ? "text-slate-950"
+                    : "text-slate-700 hover:text-slate-900"
                 }`}
               >
                 Custom
               </button>
-              <span className="text-slate-200" aria-hidden>
+              <span className="text-slate-300" aria-hidden>
                 |
               </span>
               <DatePicker
@@ -277,7 +277,7 @@ export default function TradeFilters({
                   })
                 }
               />
-              <span className="text-xs text-slate-400">–</span>
+              <span className="text-xs font-medium text-slate-600">–</span>
               <DatePicker
                 value={filters.endDate}
                 placeholder="To"

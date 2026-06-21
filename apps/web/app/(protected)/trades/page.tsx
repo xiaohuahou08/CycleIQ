@@ -320,7 +320,7 @@ export default function TradesPage() {
         </div>
 
         {pricesUpdatedAt && (
-          <div className="flex shrink-0 items-center gap-1.5 border-t border-slate-200/80 bg-white px-5 py-2 text-xs text-slate-500">
+          <div className="flex shrink-0 items-center gap-1.5 border-t border-slate-200 bg-white px-5 py-2 text-xs font-medium text-slate-600">
             <Clock className={iconXs} strokeWidth={iconStroke} aria-hidden />
             Prices update once per hour. Last updated at{" "}
             {pricesUpdatedAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}.
