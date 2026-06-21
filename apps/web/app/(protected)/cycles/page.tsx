@@ -225,6 +225,125 @@ function splitCycleIntoWheels(cycle: CycleSummary, linkedTrades: Trade[]): Wheel
   });
 }
 
+interface CcCostBasisRow {
+  wheelId: string;
+  ticker: string;
+  /** e.g. UNH · $390 CSP · May 2025 */
+  subtitle: string;
+  initialCost: number;
+  currentCost: number;
+  ccPremiumTotal: number;
+  assignedShares: number;
+  ccPositions: number;
+  reductionPct: number;
+  recentTradeDate: number;
+}
+
+function assignedPutsWithBasis(trades: Trade[]): Trade[] {
+  return trades.filter(
+    (t) =>
+      t.option_type === "PUT" &&
+      t.status === "ASSIGNED" &&
+      t.stock_cost_basis_per_share != null &&
+      Number.isFinite(t.stock_cost_basis_per_share)
+  );
+}
+
+/** CC legs that actually reduce held-stock basis (matches dashboard). */
+function basisReducingCcPremium(trades: Trade[]): number {
+  return trades
+    .filter(
+      (t) =>
+        t.option_type === "CALL" &&
+        (t.status === "EXPIRED" || t.status === "CLOSED" || t.status === "ROLLED")
+    )
+    .reduce((sum, t) => sum + netLegCashflow(t), 0);
+}
+
+function buildCcCostBasisRow(
+  wheelId: string,
+  ticker: string,
+  wheelTrades: Trade[],
+  assignDate?: string
+): CcCostBasisRow | null {
+  const assignedPuts = assignedPutsWithBasis(wheelTrades);
+  if (assignedPuts.length === 0) return null;
+
+  const assignedShares = assignedPuts.reduce((sum, t) => sum + t.contracts * 100, 0);
+  if (assignedShares <= 0) return null;
+
+  const weightedInitialCost =
+    assignedPuts.reduce(
+      (sum, t) => sum + (t.stock_cost_basis_per_share ?? 0) * t.contracts * 100,
+      0
+    ) / assignedShares;
+
+  const ccPremiumTotal = basisReducingCcPremium(wheelTrades);
+  const reductionPerShare = ccPremiumTotal / assignedShares;
+  const currentCost = Math.max(0, weightedInitialCost - reductionPerShare);
+  const reductionPct =
+    weightedInitialCost > 0 ? (reductionPerShare / weightedInitialCost) * 100 : 0;
+
+  const primaryPut = assignedPuts[assignedPuts.length - 1]!;
+  const assignIso = assignDate ?? primaryPut.trade_date;
+  const subtitle = `$${primaryPut.strike.toFixed(0)} CSP · ${fmtDate(assignIso)}`;
+
+  const recentTradeDate = wheelTrades
+    .map((t) => new Date(t.trade_date).getTime())
+    .filter((ts) => Number.isFinite(ts))
+    .sort((a, b) => b - a)[0];
+
+  return {
+    wheelId,
+    ticker,
+    subtitle,
+    initialCost: weightedInitialCost,
+    currentCost,
+    ccPremiumTotal,
+    assignedShares,
+    ccPositions: wheelTrades.filter((t) => t.option_type === "CALL").length,
+    reductionPct,
+    recentTradeDate: recentTradeDate ?? 0,
+  };
+}
+
+function buildCcCostBasisRows(
+  wheels: WheelSummary[],
+  allTrades: Trade[]
+): CcCostBasisRow[] {
+  const rows: CcCostBasisRow[] = [];
+
+  for (const wheel of wheels) {
+    if (isCompletedWheel(wheel.state)) continue;
+    const row = buildCcCostBasisRow(
+      wheel.id,
+      wheel.ticker,
+      wheel.trades,
+      wheel.created_at?.slice(0, 10)
+    );
+    if (row) rows.push(row);
+  }
+
+  const wheelTradeIds = new Set(wheels.flatMap((w) => w.trades.map((t) => t.id)));
+  const orphanAssigned = assignedPutsWithBasis(allTrades).filter((t) => !wheelTradeIds.has(t.id));
+
+  for (const put of orphanAssigned) {
+    const scopeTrades =
+      put.cycle_id != null
+        ? allTrades.filter((t) => t.cycle_id === put.cycle_id)
+        : [put];
+    const row = buildCcCostBasisRow(
+      `orphan:${put.id}`,
+      put.ticker,
+      scopeTrades,
+      put.trade_date
+    );
+    if (row) rows.push(row);
+  }
+
+  return rows;
+}
+
 export default function CyclesPage() {
   const { token, isAuthLoading } = useProtectedAuth();
   const [cycles, setCycles] = useState<CycleSummary[]>([]);
@@ -233,7 +352,6 @@ export default function CyclesPage() {
   const [selectedWheelId, setSelectedWheelId] = useState<string | null>(null);
   const [viewTab, setViewTab] = useState<"WHEELS" | "CC_COST_BASIS">("WHEELS");
   const [tab, setTab] = useState<"ALL" | "ACTIVE" | "COMPLETED">("ACTIVE");
-  const [ccTab, setCcTab] = useState<"ACTIVE" | "COMPLETED">("ACTIVE");
   const [timeRange, setTimeRange] = useState<"ALL" | "WEEK" | "MONTH" | "YEAR">("ALL");
   const [sortBy, setSortBy] = useState<"LATEST" | "PREMIUM" | "TICKER">("LATEST");
   const [searchTicker, setSearchTicker] = useState("");
@@ -324,72 +442,21 @@ export default function CyclesPage() {
   }, [searchTicker, sortBy, tabCycles, timeRange, tradesByCycle]);
 
   const ccCostBasisRows = useMemo(() => {
-    const grouped = trades.reduce<Record<string, Trade[]>>((acc, trade) => {
-      if (!acc[trade.ticker]) acc[trade.ticker] = [];
-      acc[trade.ticker].push(trade);
-      return acc;
-    }, {});
-
-    return Object.entries(grouped)
-      .map(([ticker, tickerTrades]) => {
-        const assignedPuts = tickerTrades.filter(
-          (t) =>
-            t.option_type === "PUT" &&
-            t.status === "ASSIGNED" &&
-            t.stock_cost_basis_per_share != null &&
-            Number.isFinite(t.stock_cost_basis_per_share)
-        );
-        if (assignedPuts.length === 0) return null;
-
-        const assignedShares = assignedPuts.reduce((sum, t) => sum + t.contracts * 100, 0);
-        if (assignedShares <= 0) return null;
-
-        const weightedInitialCost =
-          assignedPuts.reduce(
-            (sum, t) => sum + (t.stock_cost_basis_per_share ?? 0) * t.contracts * 100,
-            0
-          ) / assignedShares;
-
-        // Net CC cashflow: deduct buyback for rolled legs so the basis-reduction number
-        // reflects what was actually kept, not just the gross premiums collected.
-        const ccPremiumTotal = tickerTrades
-          .filter((t) => t.option_type === "CALL")
-          .reduce((sum, t) => sum + netLegCashflow(t), 0);
-
-        const reductionPerShare = ccPremiumTotal / assignedShares;
-        const currentCost = Math.max(0, weightedInitialCost - reductionPerShare);
-        const reductionPct =
-          weightedInitialCost > 0 ? (reductionPerShare / weightedInitialCost) * 100 : 0;
-
-        const recentTradeDate = tickerTrades
-          .map((t) => new Date(t.trade_date).getTime())
-          .filter((ts) => Number.isFinite(ts))
-          .sort((a, b) => b - a)[0];
-
-        return {
-          ticker,
-          initialCost: weightedInitialCost,
-          currentCost,
-          ccPremiumTotal,
-          assignedShares,
-          ccPositions: tickerTrades.filter((t) => t.option_type === "CALL").length,
-          reductionPct,
-          recentTradeDate: recentTradeDate ?? 0,
-        };
-      })
-      .filter((row): row is NonNullable<typeof row> => row != null)
-      .filter((row) => row.ticker.toLowerCase().includes(searchTicker.trim().toLowerCase()))
+    return buildCcCostBasisRows(wheels, trades)
+      .filter((row) =>
+        row.ticker.toLowerCase().includes(searchTicker.trim().toLowerCase())
+      )
       .sort((a, b) => b.reductionPct - a.reductionPct);
-  }, [searchTicker, trades]);
+  }, [searchTicker, trades, wheels]);
 
   const ccHeadline = useMemo(() => {
-    const tickersTracked = ccCostBasisRows.length;
+    const positionsTracked = ccCostBasisRows.length;
     const totalCcPremium = ccCostBasisRows.reduce((sum, row) => sum + row.ccPremiumTotal, 0);
     const avgReduction =
-      tickersTracked > 0
-        ? ccCostBasisRows.reduce((sum, row) => sum + row.reductionPct, 0) / tickersTracked
+      positionsTracked > 0
+        ? ccCostBasisRows.reduce((sum, row) => sum + row.reductionPct, 0) / positionsTracked
         : 0;
-    return { tickersTracked, totalCcPremium, avgReduction };
+    return { positionsTracked, totalCcPremium, avgReduction };
   }, [ccCostBasisRows]);
 
   const selectedWheel = useMemo(
@@ -439,8 +506,8 @@ export default function CyclesPage() {
           {viewTab === "CC_COST_BASIS" ? (
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
               <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
-                <p className={STAT_LABEL}>Tickers Tracked</p>
-                <p className={STAT_VALUE}>{ccHeadline.tickersTracked}</p>
+                <p className={STAT_LABEL}>Open Positions</p>
+                <p className={STAT_VALUE}>{ccHeadline.positionsTracked}</p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
                 <p className={STAT_LABEL}>Total CC Premium</p>
@@ -501,23 +568,7 @@ export default function CyclesPage() {
         ) : viewTab === "CC_COST_BASIS" ? (
           <div className="mt-5 space-y-4">
             <div className="flex flex-wrap items-center gap-3 border-b border-slate-200/80 pb-3">
-              <div className="flex items-center gap-0.5 rounded-lg bg-slate-200/50 p-1">
-                {(["ACTIVE", "COMPLETED"] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setCcTab(t)}
-                    className={`inline-flex h-8 items-center rounded-md px-3 text-xs font-medium transition ${
-                      ccTab === t
-                        ? "bg-white text-slate-950 shadow-sm ring-1 ring-slate-300/80"
-                        : "text-slate-700 hover:text-slate-950"
-                    }`}
-                  >
-                    {t === "ACTIVE" ? "Active" : "Completed"}
-                  </button>
-                ))}
-              </div>
-              <div className="relative min-w-[8.5rem] max-w-[12rem] flex-1">
+              <div className="relative min-w-[8.5rem] max-w-[14rem] flex-1">
                 <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-500">
                   <Search className={iconSm} strokeWidth={iconStroke} aria-hidden />
                 </span>
@@ -530,25 +581,24 @@ export default function CyclesPage() {
                 />
               </div>
             </div>
-            {(() => {
-              const ccTabTickers = new Set(
-                (ccTab === "ACTIVE" ? activeCycles : completedCycles).map((c) => c.ticker)
-              );
-              const filteredCcRows = ccCostBasisRows.filter((r) => ccTabTickers.has(r.ticker));
-              return filteredCcRows.length === 0 ? (
+            {ccCostBasisRows.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-14 text-center">
-                <p className="text-base font-semibold text-slate-900">No assigned positions</p>
-                <p className="text-sm text-slate-600">
-                  No {ccTab === "ACTIVE" ? "active" : "completed"} assigned positions yet.
+                <p className="text-base font-semibold text-slate-900">No open stock positions</p>
+                <p className="max-w-md text-sm text-slate-600">
+                  Assigned CSP holdings appear here. Wheels that exited (called away or closed) are
+                  not shown.
                 </p>
               </div>
             ) : (
-              filteredCcRows.map((row) => (
-                <div key={row.ticker} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              ccCostBasisRows.map((row) => (
+                <div key={row.wheelId} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
                       <TickerLogo ticker={row.ticker} />
-                      <span className="text-base font-semibold text-slate-900">{row.ticker}</span>
+                      <div>
+                        <span className="text-base font-semibold text-slate-900">{row.ticker}</span>
+                        <p className="text-sm text-slate-600">{row.subtitle}</p>
+                      </div>
                     </div>
                     <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
                       {row.reductionPct.toFixed(1)}% reduced
@@ -566,7 +616,7 @@ export default function CyclesPage() {
                       <p className="text-xs text-emerald-700">per share</p>
                     </div>
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-slate-600">Premium Received</p>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-slate-600">CC Premium (Realized)</p>
                       <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">${row.ccPremiumTotal.toFixed(0)}</p>
                       <p className="text-xs text-slate-600">total</p>
                     </div>
@@ -599,8 +649,7 @@ export default function CyclesPage() {
                   </div>
                 </div>
               ))
-            );
-            })()}
+            )}
           </div>
         ) : selectedWheel ? (
           <>
