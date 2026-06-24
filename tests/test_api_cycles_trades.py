@@ -400,3 +400,116 @@ def test_expire_trade_requires_open_status(client):
         headers=h,
     )
     assert expired.status_code == 400
+
+
+def test_call_away_cc_updates_assigned_put_and_cycle_exit(client):
+    """Marking a CC CALLED_AWAY cascades to the assigned PUT and sets cycle EXIT."""
+    h = auth_headers("dddddddd-dddd-dddd-dddd-dddddddddddd")
+
+    put_payload = {
+        "ticker": "UNH",
+        "option_type": "PUT",
+        "strike": 390,
+        "expiry": "2026-06-20",
+        "trade_date": "2026-04-01",
+        "premium": 2.5,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    put_created = client.post("/api/trades", json=put_payload, headers=h)
+    assert put_created.status_code == 201
+    put_body = put_created.get_json()
+    put_id = put_body["id"]
+    cycle_id = put_body["cycle_id"]
+    assert cycle_id is not None
+
+    assign = client.put(
+        f"/api/trades/{put_id}",
+        json={"status": "ASSIGNED", "trade_date": "2026-04-29"},
+        headers=h,
+    )
+    assert assign.status_code == 200
+    basis = assign.get_json()["stock_cost_basis_per_share"]
+    assert basis is not None
+
+    cc_payload = {
+        "ticker": "UNH",
+        "option_type": "CALL",
+        "strike": 400,
+        "expiry": "2026-07-18",
+        "trade_date": "2026-05-01",
+        "premium": 3.0,
+        "contracts": 1,
+        "status": "OPEN",
+        "cycle_id": cycle_id,
+    }
+    cc_created = client.post("/api/trades", json=cc_payload, headers=h)
+    assert cc_created.status_code == 201
+    cc_id = cc_created.get_json()["id"]
+
+    called = client.put(
+        f"/api/trades/{cc_id}",
+        json={
+            "status": "CALLED_AWAY",
+            "trade_date": "2026-05-15",
+            "called_away_at": "2026-05-15",
+        },
+        headers=h,
+    )
+    assert called.status_code == 200
+
+    trades = client.get("/api/trades", headers=h).get_json()["trades"]
+    put_after = next(t for t in trades if t["id"] == put_id)
+    assert put_after["status"] == "CALLED_AWAY"
+    assert put_after["stock_cost_basis_per_share"] == pytest.approx(basis, abs=1e-4)
+
+    cycle = client.get(f"/api/cycles/{cycle_id}", headers=h).get_json()
+    assert cycle["state"] == "EXIT"
+
+
+def test_dashboard_expired_cc_reduces_stock_effective_cost(client):
+    """Expired CC premium lowers total_stock_effective_cost for held stock."""
+    h = auth_headers("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
+
+    put_payload = {
+        "ticker": "UNH",
+        "option_type": "PUT",
+        "strike": 390,
+        "expiry": "2026-06-20",
+        "trade_date": "2026-04-01",
+        "premium": 2.5,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    put_created = client.post("/api/trades", json=put_payload, headers=h)
+    assert put_created.status_code == 201
+    put_id = put_created.get_json()["id"]
+    cycle_id = put_created.get_json()["cycle_id"]
+
+    assign = client.put(
+        f"/api/trades/{put_id}",
+        json={"status": "ASSIGNED", "trade_date": "2026-04-29"},
+        headers=h,
+    )
+    assert assign.status_code == 200
+    basis = assign.get_json()["stock_cost_basis_per_share"]
+
+    cc_payload = {
+        "ticker": "UNH",
+        "option_type": "CALL",
+        "strike": 400,
+        "expiry": "2026-07-18",
+        "trade_date": "2026-05-01",
+        "premium": 2.0,
+        "contracts": 1,
+        "status": "EXPIRED",
+        "cycle_id": cycle_id,
+    }
+    cc_created = client.post("/api/trades", json=cc_payload, headers=h)
+    assert cc_created.status_code == 201
+
+    kpis = client.get("/api/dashboard/insights", headers=h).get_json()["kpis"]
+    cc_reduction = 2.0 * 100
+    expected_cost = (basis - cc_reduction / 100) * 100
+    assert kpis["total_cc_basis_reduction"] == pytest.approx(cc_reduction, abs=0.01)
+    assert kpis["total_stock_effective_cost"] == pytest.approx(expected_cost, abs=0.01)

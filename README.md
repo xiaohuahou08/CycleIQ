@@ -37,13 +37,13 @@ Sell CSP → (Assigned) → Hold Stock → Sell CC → (Called Away / Expired) �
 
 ## Features
 
-- **Wheel Cycle tracking** — Full CSP → Assignment → CC → Exit lifecycle per ticker
-- **State machine** — 6-state FSM automatically transitions cycles based on trade events
-- **Dashboard** — KPI cards (premium, ROI, win rate, active trades), income bar charts
-- **Trade log** — Add, edit, expire, roll, and assign trades with live price context
-- **Cycle view** — Timeline visualization of every wheel with per-leg cost basis
+- **Wheel cycle tracking** — CSP → assignment → CC → exit lifecycle per ticker, with roll chains preserved
+- **Dashboard** — Capital invested, total premium, realized P&L, win rate, open premium yield, and income charts
+- **Trade log** — Manual entry with expire, roll, assign, buy-to-close, and live quote context
+- **Cycles view** — Wheel fan diagram, per-leg net P&L, and **CC cost basis** per open wheel
+- **Trading defaults** — Per-contract commission and defaults stored in browser localStorage
 - **Real-time prices** — Stock quotes fetched hourly via `/api/quote`
-- **Per-user isolation** — Supabase RLS ensures users only see their own data
+- **Per-user isolation** — Supabase RLS; JWT validated on Flask API (ES256 JWKS)
 
 ---
 
@@ -53,10 +53,10 @@ Sell CSP → (Assigned) → Hold Stock → Sell CC → (Called Away / Expired) �
 CycleIQ/
 ├── apps/web/                  # Active frontend (Next.js 16)
 │   ├── app/
-│   │   ├── (protected)/       # Auth-gated pages: dashboard, trades, cycles, reports, settings
-│   │   ├── components/        # Shared UI (Sidebar, etc.)
-│   │   ├── login/ register/   # Public auth pages
-│   │   └── page.tsx           # Landing page
+│   │   ├── (protected)/       # Auth-gated: dashboard, trades, cycles, settings
+│   │   ├── components/        # Sidebar, AuthShell, DatePicker, icons
+│   │   ├── login/ register/   # Branded auth pages
+│   │   └── page.tsx           # Marketing landing page
 │   ├── lib/
 │   │   ├── api/trades.ts      # All API client functions
 │   │   └── supabase/          # Supabase client helpers

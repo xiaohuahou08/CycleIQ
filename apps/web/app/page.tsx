@@ -1,12 +1,26 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   BarChart2,
-  Bell,
   CheckCircle2,
   ClipboardList,
+  LayoutDashboard,
   RefreshCw,
   TrendingUp,
 } from "lucide-react";
+import { CycleIQMark, iconMd, iconSm, iconStroke } from "@/app/components/icons";
+
+export const metadata: Metadata = {
+  title: "Wheel Strategy Tracker",
+  description:
+    "Track cash-secured puts and covered calls as full wheel cycles. Log trades, visualize lifecycles, and monitor premium, realized P&L, and CC cost basis.",
+};
+
+const BTN_PRIMARY =
+  "inline-flex items-center justify-center rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800";
+
+const BTN_SECONDARY =
+  "inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-800 transition hover:border-slate-400 hover:bg-slate-50";
 
 function FeatureCard({
   icon: Icon,
@@ -18,12 +32,12 @@ function FeatureCard({
   description: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50">
-        <Icon className="h-5 w-5 text-emerald-600" />
+    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm ring-1 ring-slate-900/5">
+      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 ring-1 ring-emerald-100/80">
+        <Icon className={`${iconMd} text-emerald-600`} strokeWidth={iconStroke} aria-hidden />
       </div>
-      <div className="mt-4 text-sm font-semibold text-slate-900">{title}</div>
-      <div className="mt-2 text-sm leading-relaxed text-slate-500">{description}</div>
+      <h3 className="mt-4 text-base font-semibold text-slate-900">{title}</h3>
+      <p className="mt-2 text-sm leading-relaxed text-slate-600">{description}</p>
     </div>
   );
 }
@@ -40,165 +54,146 @@ function StepCard({
   description: string;
 }) {
   return (
-    <div className="flex flex-col items-start">
+    <div className="rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm">
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-700">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
           {step}
-        </div>
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100">
-          <Icon className="h-4 w-4 text-slate-600" />
-        </div>
+        </span>
+        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100">
+          <Icon className={`${iconSm} text-slate-700`} strokeWidth={iconStroke} aria-hidden />
+        </span>
       </div>
-      <div className="mt-4 text-sm font-semibold text-slate-900">{title}</div>
-      <div className="mt-2 text-sm leading-relaxed text-slate-500">{description}</div>
+      <h3 className="mt-4 text-base font-semibold text-slate-900">{title}</h3>
+      <p className="mt-2 text-sm leading-relaxed text-slate-600">{description}</p>
     </div>
   );
 }
 
+const KPI_PREVIEW = [
+  { label: "Realized P&L", value: "$4,280", sub: "Options + call-away stock", accent: "bg-emerald-400" },
+  { label: "Total Premium", value: "$12,480", sub: "Gross, all legs", accent: "bg-emerald-400" },
+  { label: "Win Rate", value: "68%", sub: "Terminal outcomes", accent: "bg-blue-400" },
+  { label: "Active Trades", value: "7", sub: "Open legs", accent: "bg-violet-400" },
+] as const;
+
 export default function Home() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-slate-50/40">
       {/* Nav */}
-      <header className="sticky top-0 z-10 border-b border-slate-100 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-          <Link href="/" className="text-sm font-bold tracking-tight text-slate-900">
-            CycleIQ
+      <header className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/95 backdrop-blur-sm">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
+          <Link href="/" className="flex items-center gap-2.5 text-slate-900">
+            <CycleIQMark className="h-8 w-8 text-emerald-500" />
+            <span className="text-base font-bold tracking-tight">CycleIQ</span>
           </Link>
           <nav className="flex items-center gap-2 text-sm">
             <Link
               href="/login"
-              className="rounded-lg px-3 py-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+              className="rounded-lg px-3 py-2 font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
             >
               Sign in
             </Link>
-            <Link
-              href="/register"
-              className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-2 font-medium text-white hover:bg-emerald-700 transition-colors"
-            >
-              Get started free
+            <Link href="/register" className={BTN_PRIMARY}>
+              Get started
             </Link>
           </nav>
         </div>
       </header>
 
       {/* Hero */}
-      <section className="bg-gradient-to-b from-slate-50 via-white to-white">
-        <div className="mx-auto max-w-6xl px-4 py-16 lg:py-20">
-          <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
-            {/* Left: copy */}
+      <section className="border-b border-slate-200/80 bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:py-20">
+          <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                <RefreshCw className="h-3 w-3" />
-                Wheel Strategy Tracker
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200/80 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
+                <RefreshCw className="h-3.5 w-3.5" strokeWidth={iconStroke} aria-hidden />
+                Wheel strategy tracker
               </div>
 
-              <h1 className="mt-5 text-4xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-5xl">
-                See your entire wheel
-                <br />
-                <span className="text-emerald-600">at a glance.</span>
+              <h1 className="mt-5 text-4xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-[2.75rem] sm:leading-[1.1]">
+                Your full options wheel,
+                <span className="text-emerald-600"> one clear view.</span>
               </h1>
 
-              <p className="mt-5 text-base leading-relaxed text-slate-500">
-                CycleIQ reconstructs your options trades into clear cycles — from cash-secured
-                puts through assignment to covered calls — so you can track premium, P&L, and
-                next steps without spreadsheets.
+              <p className="mt-5 max-w-lg text-base leading-relaxed text-slate-600">
+                CycleIQ connects cash-secured puts, assignments, and covered calls into wheel
+                cycles — so you can track premium, realized P&amp;L, cost basis, and open
+                positions without spreadsheets or broker tab-hopping.
               </p>
 
-              <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                <Link
-                  href="/register"
-                  className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
-                >
-                  Get started free
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Link href="/register" className={BTN_PRIMARY}>
+                  Create free account
                 </Link>
-                <Link
-                  href="#how-it-works"
-                  className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-                >
-                  See how it works
+                <Link href="#how-it-works" className={BTN_SECONDARY}>
+                  How it works
                 </Link>
               </div>
 
               <ul className="mt-8 space-y-3">
                 {[
-                  "Cycle-centric view of open positions and strategy stage",
-                  "Premium, P&L, and annualized ROI calculated automatically",
-                  "Roll, assign, and expire trades with a single click",
+                  "Manual trade log — no broker API required",
+                  "Wheel cycles with roll chains and per-leg net P&L",
+                  "Dashboard KPIs aligned to how you actually run the wheel",
                 ].map((text) => (
-                  <li key={text} className="flex items-start gap-3 text-sm text-slate-600">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                  <li key={text} className="flex items-start gap-3 text-sm text-slate-700">
+                    <CheckCircle2
+                      className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"
+                      strokeWidth={iconStroke}
+                      aria-hidden
+                    />
                     {text}
                   </li>
                 ))}
               </ul>
             </div>
 
-            {/* Right: dashboard preview */}
-            <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-lg">
-              {/* Mock sidebar strip + header */}
-              <div className="flex h-10 items-center gap-3 bg-slate-900 px-4">
-                <div className="flex gap-1.5">
-                  <div className="h-2.5 w-2.5 rounded-full bg-slate-600" />
-                  <div className="h-2.5 w-2.5 rounded-full bg-slate-600" />
-                  <div className="h-2.5 w-2.5 rounded-full bg-slate-600" />
-                </div>
-                <span className="text-xs font-medium text-slate-400">CycleIQ — Dashboard</span>
+            {/* Dashboard preview */}
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg ring-1 ring-slate-900/5">
+              <div className="flex h-11 items-center gap-3 border-b border-slate-800 bg-slate-900 px-4">
+                <CycleIQMark className="h-6 w-6 text-emerald-400" />
+                <span className="text-xs font-medium text-slate-300">Dashboard</span>
               </div>
 
-              <div className="bg-slate-50 p-5">
-                {/* KPI tiles */}
+              <div className="bg-slate-50/80 p-5">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                    <div className="h-1 bg-emerald-400" />
-                    <div className="p-3">
-                      <div className="text-[10px] font-medium text-slate-400">Total Premium</div>
-                      <div className="mt-1.5 text-xl font-semibold text-slate-900">$12,480</div>
-                      <div className="mt-0.5 text-[10px] text-slate-400">All time</div>
+                  {KPI_PREVIEW.map((kpi) => (
+                    <div
+                      key={kpi.label}
+                      className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                    >
+                      <div className={`h-1 ${kpi.accent}`} />
+                      <div className="p-3.5">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-600">
+                          {kpi.label}
+                        </p>
+                        <p className="mt-1.5 text-xl font-semibold tabular-nums text-slate-900">
+                          {kpi.value}
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-slate-500">{kpi.sub}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                    <div className="h-1 bg-blue-400" />
-                    <div className="p-3">
-                      <div className="text-[10px] font-medium text-slate-400">Ann. ROI</div>
-                      <div className="mt-1.5 text-xl font-semibold text-slate-900">21.4%</div>
-                      <div className="mt-0.5 text-[10px] text-slate-400">Capital deployed</div>
-                    </div>
-                  </div>
-                  <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                    <div className="h-1 bg-blue-400" />
-                    <div className="p-3">
-                      <div className="text-[10px] font-medium text-slate-400">Win Rate</div>
-                      <div className="mt-1.5 text-xl font-semibold text-slate-900">68%</div>
-                      <div className="mt-0.5 text-[10px] text-slate-400">Expired OTM</div>
-                    </div>
-                  </div>
-                  <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                    <div className="h-1 bg-violet-400" />
-                    <div className="p-3">
-                      <div className="text-[10px] font-medium text-slate-400">Active Trades</div>
-                      <div className="mt-1.5 text-xl font-semibold text-slate-900">7</div>
-                      <div className="mt-0.5 text-[10px] text-slate-400">OPEN positions</div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
 
-                {/* Active cycles list */}
-                <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-[11px] font-semibold text-slate-700">Active Positions</span>
-                    <span className="text-[10px] text-emerald-600">View all →</span>
+                <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm">
+                  <div className="mb-2.5 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-800">Active positions</span>
+                    <span className="text-[11px] font-medium text-emerald-700">Trades →</span>
                   </div>
                   <div className="space-y-2">
                     {[
-                      { ticker: "AAPL", strategy: "CSP", badge: "bg-amber-100 text-amber-800", label: "CSP open" },
-                      { ticker: "MSFT", strategy: "CC", badge: "bg-sky-100 text-sky-800", label: "Stock held" },
-                      { ticker: "NVDA", strategy: "CC", badge: "bg-emerald-100 text-emerald-800", label: "CC open" },
+                      { ticker: "AAPL", label: "CSP open", badge: "bg-amber-50 text-amber-800 ring-amber-100" },
+                      { ticker: "MSFT", label: "Stock held", badge: "bg-purple-50 text-purple-800 ring-purple-100" },
+                      { ticker: "NVDA", label: "CC open", badge: "bg-blue-50 text-blue-800 ring-blue-100" },
                     ].map((row) => (
-                      <div key={row.ticker} className="flex items-center justify-between text-xs">
-                        <div className="font-medium text-slate-800">{row.ticker}</div>
-                        <div className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${row.badge}`}>
+                      <div key={row.ticker} className="flex items-center justify-between text-sm">
+                        <span className="font-semibold text-slate-900">{row.ticker}</span>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${row.badge}`}
+                        >
                           {row.label}
-                        </div>
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -210,75 +205,79 @@ export default function Home() {
       </section>
 
       {/* How it works */}
-      <section id="how-it-works" className="border-t border-slate-100 bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-16">
-          <div className="mb-10 text-center">
-            <h2 className="text-2xl font-semibold text-slate-900">How it works</h2>
-            <p className="mt-2 text-sm text-slate-500">
-              From your first trade to a full cycle view in three steps.
+      <section id="how-it-works" className="border-b border-slate-200/80 bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <div className="mx-auto mb-10 max-w-2xl text-center">
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-900">How it works</h2>
+            <p className="mt-3 text-base text-slate-600">
+              Log trades manually. CycleIQ links legs into cycles and keeps analytics in sync.
             </p>
           </div>
-          <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
             <StepCard
               step={1}
               icon={ClipboardList}
               title="Log your trades"
-              description="Enter wheel trades manually — option type, strike, expiry, premium, and contracts. No broker integration needed."
+              description="Enter CSPs and CCs with strike, expiry, premium, contracts, and fees. Set trading defaults for faster entry."
             />
             <StepCard
               step={2}
               icon={RefreshCw}
-              title="Cycles are reconstructed"
-              description="CycleIQ groups activity into a clean CSP → Assignment → CC lifecycle per ticker using a state machine."
+              title="Cycles link up"
+              description="Trades auto-attach to wheel cycles. Rolls stay on the same chain; assignments and call-aways update cycle state."
             />
             <StepCard
               step={3}
-              icon={TrendingUp}
-              title="Track and optimize"
-              description="See open positions, net premium per cycle, annualized returns, and what action is next for each ticker."
+              icon={LayoutDashboard}
+              title="Review and act"
+              description="Use the dashboard for P&L and capital, the trade log to expire or roll, and Cycles for wheel visuals and CC cost basis."
             />
           </div>
         </div>
       </section>
 
-      {/* Why CycleIQ */}
-      <section className="border-t border-slate-100 bg-slate-50">
-        <div className="mx-auto max-w-6xl px-4 py-16">
-          <div className="mb-10 text-center">
-            <h2 className="text-2xl font-semibold text-slate-900">Why CycleIQ?</h2>
+      {/* Problem / solution */}
+      <section className="border-b border-slate-200/80 bg-slate-50/60">
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <div className="mx-auto mb-10 max-w-2xl text-center">
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
+              Built for the wheel — not generic options
+            </h2>
           </div>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 The problem
-              </div>
-              <ul className="space-y-2.5 text-sm text-slate-600">
+              </p>
+              <ul className="mt-4 space-y-3 text-sm text-slate-700">
                 {[
-                  "Broker data is fragmented across tabs and screens",
-                  "No tool tracks the full CSP → CC lifecycle",
-                  "Manual spreadsheets break when you roll or get assigned",
-                  "Hard to know your real annualized return per cycle",
+                  "Brokers list legs separately — hard to see the full CSP → CC story",
+                  "Spreadsheets break when you roll, get assigned, or run multiple wheels",
+                  "Realized P&L and cost basis get messy across rolls and call-aways",
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2.5">
-                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" aria-hidden />
                     {item}
                   </li>
                 ))}
               </ul>
             </div>
-            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-6 shadow-sm">
-              <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-emerald-600">
-                The solution
-              </div>
-              <ul className="space-y-2.5 text-sm text-slate-600">
+            <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/40 p-6 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wider text-emerald-800">
+                With CycleIQ
+              </p>
+              <ul className="mt-4 space-y-3 text-sm text-slate-700">
                 {[
-                  "Cycle-centric view ties all legs of a wheel together",
-                  "State machine tracks CSP, assignment, CC, and exit automatically",
-                  "Premium, P&L, and ROI recalculated whenever you update a trade",
-                  "Roll and assign actions built into the trade workflow",
+                  "One cycle per wheel with CSP, assignment, CC legs and roll history",
+                  "Realized P&L includes option cashflow and stock gain on call-away",
+                  "CC cost basis tracked per open wheel — aligned with dashboard logic",
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2.5">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                    <CheckCircle2
+                      className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"
+                      strokeWidth={iconStroke}
+                      aria-hidden
+                    />
                     {item}
                   </li>
                 ))}
@@ -289,56 +288,59 @@ export default function Home() {
       </section>
 
       {/* Features */}
-      <section className="border-t border-slate-100 bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-16">
-          <div className="mb-10 text-center">
-            <h2 className="text-2xl font-semibold text-slate-900">Key features</h2>
-            <p className="mt-2 text-sm text-slate-500">Everything you need to run a disciplined wheel strategy.</p>
+      <section className="border-b border-slate-200/80 bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <div className="mx-auto mb-10 max-w-2xl text-center">
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-900">What you get</h2>
+            <p className="mt-3 text-base text-slate-600">
+              Everything in the app today — no vaporware feature list.
+            </p>
           </div>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <FeatureCard
               icon={RefreshCw}
-              title="Cycle tracking"
-              description="Track CSP → assignment → CC → exit as one coherent lifecycle per ticker. Roll chains are preserved automatically."
+              title="Wheel & cycle view"
+              description="Visual fan diagram per wheel, completed vs active states, and net P&L between legs including roll buybacks."
             />
             <FeatureCard
               icon={BarChart2}
-              title="Smart analytics"
-              description="Premium income, annualized ROI, win rate, and capital efficiency — updated live as you log trades."
+              title="Dashboard analytics"
+              description="Capital invested, realized P&L, win rate, open premium yield, and daily/weekly/monthly premium charts."
             />
             <FeatureCard
-              icon={ClipboardList}
+              icon={TrendingUp}
               title="Trade workflow"
-              description="Expire, roll, assign, or close trades directly from the trade log. No double-entry, no drift."
+              description="Filter by CSP/CC and status, expire, roll, assign, or buy to close — with live quotes on open legs."
             />
             <FeatureCard
-              icon={Bell}
-              title="Alerts (coming soon)"
-              description="DTE reminders and assignment-risk nudges so you never miss an action on an expiring contract."
+              icon={LayoutDashboard}
+              title="CC cost basis"
+              description="Per-wheel initial vs current stock cost after realized CC premium — only for open assigned positions."
             />
           </div>
         </div>
       </section>
 
-      {/* CTA strip */}
-      <section className="bg-emerald-600">
-        <div className="mx-auto max-w-6xl px-4 py-14 text-center">
-          <h2 className="text-2xl font-semibold text-white">
-            Start tracking your wheel today.
+      {/* CTA */}
+      <section className="bg-slate-900">
+        <div className="mx-auto max-w-6xl px-4 py-14 text-center sm:px-6">
+          <CycleIQMark className="mx-auto h-10 w-10 text-emerald-400" />
+          <h2 className="mt-4 text-2xl font-semibold tracking-tight text-white">
+            Start tracking your wheel today
           </h2>
-          <p className="mt-3 text-sm text-emerald-100">
-            Free to use. No broker connection required. Takes 2 minutes to log your first trade.
+          <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-slate-400">
+            Free to use. No broker connection. Log your first CSP in minutes.
           </p>
-          <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href="/register"
-              className="inline-flex items-center justify-center rounded-lg bg-white px-5 py-2.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50 transition-colors"
+              className="inline-flex items-center justify-center rounded-lg bg-white px-5 py-2.5 text-sm font-medium text-slate-900 shadow-sm transition hover:bg-slate-100"
             >
               Create your account
             </Link>
             <Link
               href="/login"
-              className="inline-flex items-center justify-center rounded-lg border border-emerald-400 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
+              className="inline-flex items-center justify-center rounded-lg border border-slate-600 px-5 py-2.5 text-sm font-medium text-white transition hover:border-slate-500 hover:bg-slate-800"
             >
               Sign in
             </Link>
@@ -347,35 +349,36 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-slate-900">
-        <div className="mx-auto max-w-6xl px-4 py-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="text-sm font-bold text-white">CycleIQ</div>
-              <div className="mt-1 text-xs text-slate-400">
-                Wheel strategy tracking for disciplined traders.
+      <footer className="border-t border-slate-800 bg-slate-950">
+        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2.5">
+              <CycleIQMark className="h-8 w-8 text-emerald-400" />
+              <div>
+                <p className="text-sm font-bold text-white">CycleIQ</p>
+                <p className="text-xs text-slate-500">Wheel strategy tracking for retail traders</p>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-5 text-xs text-slate-400">
-              <Link href="/login" className="hover:text-white transition-colors">
+            <div className="flex flex-wrap items-center gap-5 text-sm text-slate-400">
+              <Link href="/login" className="transition hover:text-white">
                 Sign in
               </Link>
-              <Link href="/register" className="hover:text-white transition-colors">
+              <Link href="/register" className="transition hover:text-white">
                 Register
               </Link>
               <a
                 href="https://github.com/xiaohuahou08/CycleIQ"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-white transition-colors"
+                className="transition hover:text-white"
               >
                 GitHub
               </a>
             </div>
           </div>
-          <div className="mt-6 border-t border-slate-800 pt-6 text-xs text-slate-500">
-            © {new Date().getFullYear()} CycleIQ. MIT License.
-          </div>
+          <p className="mt-6 border-t border-slate-800 pt-6 text-xs text-slate-600">
+            © {new Date().getFullYear()} CycleIQ · MIT License
+          </p>
         </div>
       </footer>
     </div>

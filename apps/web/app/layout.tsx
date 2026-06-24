@@ -12,8 +12,18 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "CycleIQ Web",
-  description: "CycleIQ web app scaffold with Supabase authentication",
+  title: {
+    default: "CycleIQ — Wheel Strategy Tracker",
+    template: "%s · CycleIQ",
+  },
+  description:
+    "Track cash-secured puts and covered calls as full wheel cycles. Log trades, visualize CSP → assignment → CC lifecycles, and monitor premium, realized P&L, and cost basis — no spreadsheets.",
+  openGraph: {
+    title: "CycleIQ — Wheel Strategy Tracker",
+    description:
+      "Track cash-secured puts and covered calls as full wheel cycles with premium, P&L, and cost basis analytics.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

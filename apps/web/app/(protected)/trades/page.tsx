@@ -20,6 +20,7 @@ import ExpireTradeModal from "./components/ExpireTradeModal";
 import RollTradeModal from "./components/RollTradeModal";
 import { Clock } from "lucide-react";
 import { iconXs, iconStroke } from "@/app/components/icons";
+import { applyFilters, getClosedCycleIds } from "@/lib/trades/filters";
 import TradeFilters, { type FilterState } from "./components/TradeFilters";
 import TradeList from "./components/TradeList";
 
@@ -29,66 +30,6 @@ function todayIso(): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
-}
-
-function oneMonthAgoIso(): string {
-  const d = new Date();
-  d.setMonth(d.getMonth() - 1);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function getClosedCycleIds(trades: Trade[]): Set<string> {
-  const cycleTrades = trades.reduce<Record<string, Trade[]>>((acc, t) => {
-    if (!t.cycle_id) return acc;
-    if (!acc[t.cycle_id]) acc[t.cycle_id] = [];
-    acc[t.cycle_id].push(t);
-    return acc;
-  }, {});
-
-  return new Set(
-    Object.entries(cycleTrades)
-      .filter(([, ts]) => {
-        const hasCalledAway = ts.some(
-          (t) =>
-            (t.option_type === "CALL" || t.option_type === "PUT") &&
-            t.status === "CALLED_AWAY"
-        );
-        const hasOpen = ts.some((t) => t.status === "OPEN");
-        return hasCalledAway || !hasOpen;
-      })
-      .map(([cycleId]) => cycleId)
-  );
-}
-
-function applyFilters(trades: Trade[], f: FilterState, closedCycleIds: Set<string>): Trade[] {
-  return trades.filter((t) => {
-    if (f.type !== "ALL" && t.option_type !== f.type) return false;
-    
-    if (f.status !== "ALL" && t.status !== f.status) return false;
-
-    // Since last month: trade_date on or after one month ago; OPEN legs always listed.
-    if (f.dateRangeType === "1M") {
-      if (t.status !== "OPEN") {
-        const since = oneMonthAgoIso();
-        if (t.trade_date < since) return false;
-      }
-    } else if (f.dateRangeType === "CUSTOM") {
-      if (f.startDate && t.trade_date < f.startDate) return false;
-      if (f.endDate && t.trade_date > f.endDate) return false;
-    }
-
-    if (
-      f.search &&
-      !t.ticker.toLowerCase().includes(f.search.toLowerCase()) &&
-      !(t.notes ?? "").toLowerCase().includes(f.search.toLowerCase())
-    ) {
-      return false;
-    }
-    return true;
-  });
 }
 
 export default function TradesPage() {
