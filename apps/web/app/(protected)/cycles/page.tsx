@@ -176,8 +176,6 @@ export default function CyclesPage() {
   const [selectedWheelId, setSelectedWheelId] = useState<string | null>(null);
   const [viewTab, setViewTab] = useState<"WHEELS" | "CC_COST_BASIS">("WHEELS");
   const [tab, setTab] = useState<"ALL" | "ACTIVE" | "COMPLETED">("ACTIVE");
-  const [timeRange, setTimeRange] = useState<"ALL" | "WEEK" | "MONTH" | "YEAR">("ALL");
-  const [sortBy, setSortBy] = useState<"LATEST" | "PREMIUM" | "TICKER">("LATEST");
   const [searchTicker, setSearchTicker] = useState("");
 
   useEffect(() => {
@@ -230,40 +228,16 @@ export default function CyclesPage() {
   const tabCycles =
     tab === "ACTIVE" ? activeCycles : tab === "COMPLETED" ? completedCycles : sortedCycles;
   const visibleCycles = useMemo(() => {
-    const rangeMs =
-      timeRange === "WEEK"
-        ? 7 * 24 * 60 * 60 * 1000
-        : timeRange === "MONTH"
-          ? 30 * 24 * 60 * 60 * 1000
-          : timeRange === "YEAR"
-            ? 365 * 24 * 60 * 60 * 1000
-            : null;
-
     const searched = tabCycles.filter((cycle) =>
       cycle.ticker.toLowerCase().includes(searchTicker.trim().toLowerCase())
     );
 
-    const ranged =
-      rangeMs == null
-        ? searched
-        : searched.filter((cycle) => {
-            const ts = new Date(cycle.updated_at ?? cycle.created_at ?? 0).getTime();
-            return Number.isFinite(ts) && NOW_TS - ts <= rangeMs;
-          });
-
-    return ranged.slice().sort((a, b) => {
-      if (sortBy === "TICKER") return a.ticker.localeCompare(b.ticker);
-      if (sortBy === "PREMIUM") {
-        const aPremium = a.trades.reduce((sum, t) => sum + netLegCashflow(t), 0);
-        const bPremium = b.trades.reduce((sum, t) => sum + netLegCashflow(t), 0);
-        return bPremium - aPremium;
-      }
-      return (
+    return searched.slice().sort(
+      (a, b) =>
         new Date(b.updated_at ?? b.created_at ?? 0).getTime() -
         new Date(a.updated_at ?? a.created_at ?? 0).getTime()
-      );
-    });
-  }, [searchTicker, sortBy, tabCycles, timeRange, tradesByCycle]);
+    );
+  }, [searchTicker, tabCycles]);
 
   const ccCostBasisRows = useMemo(() => {
     return buildCcCostBasisRows(wheels, trades)
@@ -361,7 +335,7 @@ export default function CyclesPage() {
           </div>
         ) : viewTab === "CC_COST_BASIS" ? (
           <div className="mt-5 space-y-4">
-            <div className="flex flex-wrap items-center gap-3 border-b border-slate-200/80 pb-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="relative min-w-[8.5rem] max-w-[14rem] flex-1">
                 <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-500">
                   <Search className={iconSm} strokeWidth={iconStroke} aria-hidden />
@@ -677,65 +651,36 @@ export default function CyclesPage() {
           </>
         ) : (
           <>
-            <div className="mt-5 flex flex-col gap-3 border-b border-slate-200/80 pb-3">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="relative min-w-[8.5rem] max-w-[14rem] flex-1">
-                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-500">
-                    <Search className={iconSm} strokeWidth={iconStroke} aria-hidden />
-                  </span>
-                  <input
-                    type="text"
-                    value={searchTicker}
-                    onChange={(e) => setSearchTicker(e.target.value.toUpperCase())}
-                    placeholder="Search ticker…"
-                    className={SEARCH_INPUT_CLS}
-                  />
-                </div>
-                <div className="flex flex-wrap items-center gap-0.5 rounded-lg bg-slate-200/50 p-1">
-                  {(["ALL", "ACTIVE", "COMPLETED"] as const).map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => setTab(item)}
-                      className={`inline-flex h-8 items-center rounded-md px-3 text-xs font-medium transition ${
-                        tab === item
-                          ? "bg-white text-slate-950 shadow-sm ring-1 ring-slate-300/80"
-                          : "text-slate-700 hover:text-slate-950"
-                      }`}
-                    >
-                      {item === "ALL"
-                        ? `All (${sortedCycles.length})`
-                        : item === "ACTIVE"
-                          ? `Active (${activeCycles.length})`
-                          : `Completed (${completedCycles.length})`}
-                    </button>
-                  ))}
-                </div>
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <div className="relative min-w-[8.5rem] max-w-[14rem] flex-1">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-500">
+                  <Search className={iconSm} strokeWidth={iconStroke} aria-hidden />
+                </span>
+                <input
+                  type="text"
+                  value={searchTicker}
+                  onChange={(e) => setSearchTicker(e.target.value.toUpperCase())}
+                  placeholder="Search ticker…"
+                  className={SEARCH_INPUT_CLS}
+                />
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {(["ALL", "WEEK", "MONTH", "YEAR"] as const).map((item) => (
+              <div className="flex flex-wrap items-center gap-0.5 rounded-lg bg-slate-200/50 p-1">
+                {(["ALL", "ACTIVE", "COMPLETED"] as const).map((item) => (
                   <button
                     key={item}
                     type="button"
-                    onClick={() => setTimeRange(item)}
-                    className={`inline-flex h-8 items-center rounded-lg px-3 text-xs font-medium transition ${
-                      timeRange === item ? PILL_ACTIVE : PILL_IDLE
+                    onClick={() => setTab(item)}
+                    className={`inline-flex h-8 items-center rounded-md px-3 text-xs font-medium transition ${
+                      tab === item
+                        ? "bg-white text-slate-950 shadow-sm ring-1 ring-slate-300/80"
+                        : "text-slate-700 hover:text-slate-950"
                     }`}
                   >
-                    {item === "ALL" ? "All Time" : item[0] + item.slice(1).toLowerCase()}
-                  </button>
-                ))}
-                <span className="mx-1 text-slate-300" aria-hidden>|</span>
-                {(["LATEST", "PREMIUM", "TICKER"] as const).map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setSortBy(item)}
-                    className={`inline-flex h-8 items-center rounded-lg px-3 text-xs font-medium transition ${
-                      sortBy === item ? PILL_ACTIVE : PILL_IDLE
-                    }`}
-                  >
-                    {item[0] + item.slice(1).toLowerCase()}
+                    {item === "ALL"
+                      ? `All (${sortedCycles.length})`
+                      : item === "ACTIVE"
+                        ? `Active (${activeCycles.length})`
+                        : `Completed (${completedCycles.length})`}
                   </button>
                 ))}
               </div>
@@ -745,7 +690,7 @@ export default function CyclesPage() {
               {visibleCycles.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-14 text-center">
                   <p className="text-base font-semibold text-slate-900">No cycles in this tab</p>
-                  <p className="text-sm text-slate-600">Try another filter or time range.</p>
+                  <p className="text-sm text-slate-600">Try another tab or search term.</p>
                 </div>
               ) : (
                 visibleCycles.map((cycle) => {
