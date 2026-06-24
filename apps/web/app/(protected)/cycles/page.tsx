@@ -9,7 +9,6 @@ import {
   isCompletedWheel,
   netLegCashflow,
   wheelTotalNetPnl,
-  type WheelSummary,
 } from "@/lib/cycles/ccCostBasis";
 import { useProtectedAuth } from "../auth-context";
 
@@ -102,8 +101,9 @@ function MoneyIcon() {
   );
 }
 
-interface CycleWheelSummary extends WheelSummary {
+interface CycleWheelSummary extends CycleSummary {
   source_cycle_id: string;
+  trades: Trade[];
 }
 
 function deriveWheelState(wheelTrades: Trade[], cycleState: string): string {

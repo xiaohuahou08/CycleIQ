@@ -4,7 +4,7 @@ export interface WheelSummary {
   id: string;
   ticker: string;
   state: string;
-  created_at?: string;
+  created_at?: string | null;
   trades: Trade[];
 }
 
