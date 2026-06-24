@@ -103,14 +103,28 @@ export default function ActivePositionsTable({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-100 text-left text-xs font-medium uppercase tracking-wide text-slate-400">
-                <th className="px-5 py-3">Ticker</th>
-                <th className="px-5 py-3">Strategy</th>
-                <th className="px-5 py-3">Strike</th>
-                <th className="px-5 py-3">Expiry</th>
-                <th className="px-5 py-3">DTE</th>
-                <th className="px-5 py-3">Premium</th>
-                <th className="px-5 py-3">Status</th>
+              <tr>
+                <th className="border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-800">
+                  Ticker
+                </th>
+                <th className="border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-800">
+                  Strategy
+                </th>
+                <th className="border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-800">
+                  Strike
+                </th>
+                <th className="border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-800">
+                  Expiry
+                </th>
+                <th className="border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-800">
+                  DTE
+                </th>
+                <th className="border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-800">
+                  Premium
+                </th>
+                <th className="border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-800">
+                  Status
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

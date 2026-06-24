@@ -327,7 +327,7 @@ export default function CyclesPage() {
 
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-white">
         <div className="px-4 py-4 sm:px-6 sm:py-5">
-          {viewTab === "CC_COST_BASIS" ? (
+          {viewTab === "CC_COST_BASIS" && (
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
               <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
                 <p className={STAT_LABEL}>Open Positions</p>
@@ -342,36 +342,6 @@ export default function CyclesPage() {
               <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
                 <p className={STAT_LABEL}>Avg Reduction</p>
                 <p className={STAT_VALUE}>{ccHeadline.avgReduction.toFixed(1)}%</p>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
-                <p className={STAT_LABEL}>Active Wheels</p>
-                <p className={STAT_VALUE}>{activeCycles.length}</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
-                <p className={STAT_LABEL}>Completed</p>
-                <p className={STAT_VALUE}>{completedCycles.length}</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
-                <p className={STAT_LABEL}>Net Premium</p>
-                <p className={STAT_VALUE}>
-                  $
-                  {tabCycles
-                    .reduce(
-                      (sum, cycle) =>
-                        sum + cycle.trades.reduce((tradeSum, t) => tradeSum + netLegCashflow(t), 0),
-                      0
-                    )
-                    .toFixed(0)}
-                </p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
-                <p className={STAT_LABEL}>Ticker</p>
-                <p className={STAT_VALUE}>
-                  {new Set(tabCycles.map((cycle) => cycle.ticker)).size}
-                </p>
               </div>
             </div>
           )}
