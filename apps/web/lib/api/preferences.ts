@@ -1,7 +1,6 @@
 import type { TradeDefaults } from "@/lib/hooks/useTradeDefaults";
 
-/** Same-origin proxy route — avoids browser CORS / cross-origin fetch failures. */
-const PREFERENCES_URL = "/api/me/preferences";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 export interface TradeDefaultsApi {
   commission_per_contract: number | null;
@@ -20,11 +19,11 @@ async function getErrorMessage(res: Response, fallback: string): Promise<string>
   try {
     const data = (await res.json()) as { error?: string; message?: string };
     const detail = data.error || data.message;
-    if (detail) return detail;
+    if (detail) return `${fallback}: ${detail}`;
   } catch {
     // ignore
   }
-  return `${fallback} (${res.status})`;
+  return `${fallback}: ${res.status}`;
 }
 
 export function apiToTradeDefaults(data: TradeDefaultsApi): TradeDefaults {
@@ -46,13 +45,9 @@ export function tradeDefaultsToApi(defaults: TradeDefaults): TradeDefaultsApi {
 }
 
 export async function getTradeDefaults(token: string): Promise<TradeDefaults> {
-  let res: Response;
-  try {
-    res = await fetch(PREFERENCES_URL, { headers: authHeaders(token) });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Network error";
-    throw new Error(`Could not reach the server: ${message}`);
-  }
+  const res = await fetch(`${API_BASE}/api/me/preferences`, {
+    headers: authHeaders(token),
+  });
   if (!res.ok) throw new Error(await getErrorMessage(res, "Failed to load trading defaults"));
   const data = (await res.json()) as TradeDefaultsApi;
   return apiToTradeDefaults(data);
@@ -62,17 +57,11 @@ export async function updateTradeDefaults(
   token: string,
   defaults: TradeDefaults
 ): Promise<TradeDefaults> {
-  let res: Response;
-  try {
-    res = await fetch(PREFERENCES_URL, {
-      method: "PUT",
-      headers: authHeaders(token),
-      body: JSON.stringify(tradeDefaultsToApi(defaults)),
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Network error";
-    throw new Error(`Could not reach the server: ${message}`);
-  }
+  const res = await fetch(`${API_BASE}/api/me/preferences`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify(tradeDefaultsToApi(defaults)),
+  });
   if (!res.ok) throw new Error(await getErrorMessage(res, "Failed to save trading defaults"));
   const data = (await res.json()) as TradeDefaultsApi;
   return apiToTradeDefaults(data);
