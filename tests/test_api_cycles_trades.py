@@ -631,3 +631,52 @@ def test_production_app_init_registers_preferences():
     text = init_path.read_text(encoding="utf-8")
     assert "register_preferences_routes(preferences_bp)" in text
     assert "app.register_blueprint(preferences_bp)" in text
+    assert "register_account_routes(account_bp)" in text
+    assert "app.register_blueprint(account_bp)" in text
+
+
+def test_reset_trading_data_deletes_only_calling_user(client):
+    h1 = auth_headers("11111111-1111-1111-1111-111111111111")
+    h2 = auth_headers("22222222-2222-2222-2222-222222222222")
+
+    for h in (h1, h2):
+        r = client.post(
+            "/api/trades",
+            json={
+                "ticker": "AAPL",
+                "option_type": "PUT",
+                "strike": 50,
+                "expiry": "2027-06-20",
+                "trade_date": "2026-04-01",
+                "premium": 1.0,
+                "contracts": 1,
+                "status": "OPEN",
+            },
+            headers=h,
+        )
+        assert r.status_code == 201
+
+    assert client.get("/api/trades", headers=h1).get_json()["total"] == 1
+    assert client.get("/api/trades", headers=h2).get_json()["total"] == 1
+    assert client.get("/api/cycles", headers=h1).get_json() != []
+
+    bad = client.post("/api/me/reset-trading-data", json={}, headers=h1)
+    assert bad.status_code == 400
+
+    reset = client.post("/api/me/reset-trading-data", json={"confirm": True}, headers=h1)
+    assert reset.status_code == 200
+    body = reset.get_json()
+    assert body["trades_deleted"] == 1
+    assert body["cycles_deleted"] >= 1
+
+    assert client.get("/api/trades", headers=h1).get_json()["total"] == 0
+    assert client.get("/api/cycles", headers=h1).get_json()["total"] == 0
+    assert client.get("/api/trades", headers=h2).get_json()["total"] == 1
+
+    prefs = client.put(
+        "/api/me/preferences",
+        json={"default_contracts": 3},
+        headers=h1,
+    )
+    assert prefs.status_code == 200
+    assert prefs.get_json()["default_contracts"] == 3

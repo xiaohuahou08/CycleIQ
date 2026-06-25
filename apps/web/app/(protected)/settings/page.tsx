@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Check, X } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
+import { resetTradingData } from "@/lib/api/account";
 import { useProtectedAuth } from "../auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useTradeDefaults } from "@/lib/hooks/useTradeDefaults";
@@ -282,6 +284,106 @@ function TradingDefaultsSection() {
   );
 }
 
+// ─── Danger zone ──────────────────────────────────────────────────────────────
+function DangerZoneSection() {
+  const router = useRouter();
+  const { token } = useProtectedAuth();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const handleReset = async () => {
+    if (!token) return;
+    setResetting(true);
+    setError(null);
+    try {
+      const result = await resetTradingData(token);
+      setConfirmOpen(false);
+      setToast(
+        `Deleted ${result.trades_deleted} trade(s) and ${result.cycles_deleted} cycle(s).`
+      );
+      setTimeout(() => {
+        router.push("/dashboard");
+        router.refresh();
+      }, 1200);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Reset failed. Please try again.");
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  return (
+    <>
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-medium text-white shadow-lg">
+          <Check className={iconSm} strokeWidth={iconStroke} aria-hidden />
+          {toast}
+        </div>
+      )}
+      <Section
+        title="Danger zone"
+        description="Irreversible actions for your trading data."
+      >
+        <FieldRow
+          label="Reset all trading data"
+          hint="Permanently delete every trade and wheel cycle on your account. Trading defaults in Settings are kept."
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setConfirmOpen(true);
+            }}
+            className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 shadow-sm hover:bg-red-50"
+          >
+            Reset data
+          </button>
+        </FieldRow>
+      </Section>
+
+      {confirmOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reset-data-title"
+        >
+          <div className="animate-scale-in w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h2 id="reset-data-title" className="text-base font-semibold text-gray-900">
+              Reset all trading data?
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-gray-600">
+              This will permanently delete all your trades and wheel cycles. Your account,
+              login, and trading defaults will not be affected.
+            </p>
+            {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(false)}
+                disabled={resetting}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleReset()}
+                disabled={resetting}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                {resetting ? "Deleting…" : "Delete all data"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const { email, onLogout } = useProtectedAuth();
@@ -291,6 +393,7 @@ export default function SettingsPage() {
       <div className="mx-auto w-full max-w-2xl space-y-6">
         <AccountSection email={email} />
         <TradingDefaultsSection />
+        <DangerZoneSection />
 
         <div className="flex flex-col items-center gap-4 pt-2 pb-4">
           <button
