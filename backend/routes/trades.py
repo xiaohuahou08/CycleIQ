@@ -13,6 +13,7 @@ from decimal import Decimal
 
 from backend.services.trade_cost_basis import apply_stock_cost_basis
 from backend.services.csp_capital import capital_budget_error, get_capital_budget, capital_utilization_pct
+from backend.services.trade_limits import trade_limit_error
 from backend.services.capital_invested import (
     compute_open_csp_capital,
     compute_stock_effective_cost,
@@ -75,6 +76,10 @@ def register_trades_routes(trades_bp):
     @trades_bp.route("", methods=["POST"])
     @require_auth
     def create_trade(user_id: str):
+        limit_err = trade_limit_error(user_id)
+        if limit_err:
+            return jsonify({"error": limit_err}), 403
+
         data = request.get_json() or {}
         required = ["ticker", "option_type", "strike", "expiry", "trade_date", "premium"]
         for field in required:

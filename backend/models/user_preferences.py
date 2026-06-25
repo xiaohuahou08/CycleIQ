@@ -10,6 +10,8 @@ from backend.models import db
 DEFAULT_CONTRACTS = 1
 DEFAULT_DTE = 45
 DEFAULT_TOTAL_CAPITAL_BUDGET = 10000.0
+DEFAULT_PLAN = "basic"
+ALLOWED_PLANS = frozenset({"basic", "premium"})
 
 
 class UserPreferences(db.Model):
@@ -24,6 +26,7 @@ class UserPreferences(db.Model):
     total_capital_budget: Mapped[float] = mapped_column(
         Numeric(14, 2), nullable=False, default=DEFAULT_TOTAL_CAPITAL_BUDGET
     )
+    plan: Mapped[str] = mapped_column(String(20), nullable=False, default=DEFAULT_PLAN)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

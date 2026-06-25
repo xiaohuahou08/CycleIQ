@@ -9,18 +9,18 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { CycleIQMark, iconMd, iconSm, iconStroke } from "@/app/components/icons";
+import MarketingFooter from "@/app/components/marketing/MarketingFooter";
+import MarketingHeader from "@/app/components/marketing/MarketingHeader";
+import { BTN_PRIMARY, BTN_SECONDARY } from "@/app/components/marketing/styles";
+import { JsonLd } from "@/lib/seo/json-ld";
+import { createPageMetadata } from "@/lib/seo/metadata";
+import { DEFAULT_DESCRIPTION, SITE_NAME, SITE_TAGLINE, getSiteUrl } from "@/lib/seo/site";
 
-export const metadata: Metadata = {
-  title: "Wheel Strategy Tracker",
-  description:
-    "Track cash-secured puts and covered calls as full wheel cycles. Log trades, visualize lifecycles, and monitor premium, realized P&L, and CC cost basis.",
-};
-
-const BTN_PRIMARY =
-  "inline-flex items-center justify-center rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md active:translate-y-0";
-
-const BTN_SECONDARY =
-  "inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-800 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-400 hover:bg-slate-50 hover:shadow-sm active:translate-y-0";
+export const metadata: Metadata = createPageMetadata({
+  title: SITE_TAGLINE,
+  description: DEFAULT_DESCRIPTION,
+  path: "/",
+});
 
 function FeatureCard({
   icon: Icon,
@@ -76,25 +76,47 @@ const KPI_PREVIEW = [
   { label: "Active Trades", value: "7", sub: "Open legs", accent: "bg-violet-400" },
 ] as const;
 
+const siteUrl = getSiteUrl();
+
+const HOME_JSON_LD = [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_NAME,
+    url: siteUrl,
+    description: DEFAULT_DESCRIPTION,
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: SITE_NAME,
+    applicationCategory: "FinanceApplication",
+    operatingSystem: "Web",
+    url: siteUrl,
+    description: DEFAULT_DESCRIPTION,
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+      description: "Basic plan — free with 20 trades per month",
+    },
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: SITE_NAME,
+    url: siteUrl,
+    logo: `${siteUrl}/icon`,
+  },
+];
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-slate-50/40">
-      {/* Nav */}
-      <header className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2.5 text-slate-900">
-            <CycleIQMark className="h-8 w-8 text-emerald-500" />
-            <span className="text-base font-bold tracking-tight">CycleIQ</span>
-          </Link>
-          <nav className="flex items-center gap-2 text-sm">
-            <Link href="/login" className={BTN_PRIMARY}>
-              Sign in / Register
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <JsonLd data={HOME_JSON_LD} />
+      <MarketingHeader activePage="home" />
 
-      {/* Hero */}
+      <main id="main-content">
       <section className="border-b border-slate-200/80 bg-white">
         <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:py-20">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
@@ -335,22 +357,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+      </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-800 bg-slate-950">
-        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-          <div className="flex items-center gap-2.5">
-            <CycleIQMark className="h-8 w-8 text-emerald-400" />
-            <div>
-              <p className="text-sm font-bold text-white">CycleIQ</p>
-              <p className="text-xs text-slate-500">Wheel strategy tracking for retail traders</p>
-            </div>
-          </div>
-          <p className="mt-6 border-t border-slate-800 pt-6 text-xs text-slate-600">
-            © {new Date().getFullYear()} CycleIQ · MIT License
-          </p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   );
 }

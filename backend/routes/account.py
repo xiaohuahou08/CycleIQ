@@ -6,9 +6,15 @@ from backend.auth.supabase import require_auth
 from backend.models import db
 from backend.models.trade import Trade
 from backend.models.wheel_cycle import WheelCycle
+from backend.services.trade_limits import trade_limit_snapshot
 
 
 def register_account_routes(account_bp):
+    @account_bp.route("/plan", methods=["GET"])
+    @require_auth
+    def get_plan(user_id: str):
+        return jsonify(trade_limit_snapshot(user_id))
+
     @account_bp.route("/reset-trading-data", methods=["POST"])
     @require_auth
     def reset_trading_data(user_id: str):

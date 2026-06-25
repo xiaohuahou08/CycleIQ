@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   createTrade,
   deleteTrade,
@@ -13,6 +14,7 @@ import {
   type TradeStatus,
   type UpdateTradeInput,
 } from "@/lib/api/trades";
+import { fetchPlanUsage, type PlanUsage } from "@/lib/api/plan";
 import { useProtectedAuth } from "../auth-context";
 import AddTradeModal from "../dashboard/components/AddTradeModal";
 import AssignTradeModal from "./components/AssignTradeModal";
@@ -45,6 +47,7 @@ export default function TradesPage() {
   const [pricesUpdatedAt, setPricesUpdatedAt] = useState<Date | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [planUsage, setPlanUsage] = useState<PlanUsage | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     type: "PUT",
     status: "OPEN",
@@ -58,6 +61,21 @@ export default function TradesPage() {
       .then((trades) => setAllTrades(trades))
       .catch(() => setAllTrades([]))
       .finally(() => setTradesLoading(false));
+  }, [token]);
+
+  const refreshPlanUsage = async () => {
+    if (!token) return;
+    try {
+      const usage = await fetchPlanUsage(token);
+      setPlanUsage(usage);
+    } catch {
+      setPlanUsage(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!token) return;
+    void refreshPlanUsage();
   }, [token]);
 
   useEffect(() => {
@@ -142,6 +160,7 @@ export default function TradesPage() {
         status: created.status === "OPEN" ? "OPEN" : prev.status,
       }));
       setSaveSuccess("Trade saved successfully.");
+      await refreshPlanUsage();
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save trade.");
     } finally {
@@ -220,6 +239,16 @@ export default function TradesPage() {
 
   const filtered = applyFilters(allTrades, filters, closedCycleIds);
 
+  const tradesUsageLabel = planUsage
+    ? planUsage.trades_limit != null
+      ? `${planUsage.trades_this_month}/${planUsage.trades_limit} trades this month · Basic`
+      : `${planUsage.trades_this_month} trades this month · Premium`
+    : undefined;
+
+  const addTradeDisabled = Boolean(planUsage?.limit_reached);
+  const addTradeDisabledReason =
+    "Monthly trade limit reached (Basic plan: 20/month). Upgrade to Premium or wait until next month.";
+
   if (isAuthLoading) return null;
   return (
     <>
@@ -234,13 +263,27 @@ export default function TradesPage() {
             {saveSuccess}
           </div>
         )}
+        {planUsage?.limit_reached && (
+          <div className="shrink-0 border-b border-amber-200/80 bg-amber-50 px-5 py-2.5 text-sm text-amber-900">
+            You&apos;ve used all {planUsage.trades_limit} trades for this month on the Basic
+            plan.{" "}
+            <Link href="/pricing" className="font-medium underline underline-offset-2 hover:text-amber-950">
+              View pricing
+            </Link>{" "}
+            or wait until the next calendar month.
+          </div>
+        )}
 
         <TradeFilters
           embedded
           filters={filters}
           onFilterChange={setFilters}
           tickerSuggestions={tickerSuggestions}
+          tradesUsageLabel={tradesUsageLabel}
+          addTradeDisabled={addTradeDisabled}
+          addTradeDisabledReason={addTradeDisabledReason}
           onAddTrade={() => {
+            if (addTradeDisabled) return;
             setSaveError(null);
             setSaveSuccess(null);
             setEditingTrade(null);
@@ -426,6 +469,7 @@ export default function TradesPage() {
             ]);
             setRollingTrade(null);
             setSaveSuccess("Trade rolled successfully. New leg added as OPEN position.");
+            await refreshPlanUsage();
           } catch (err) {
             setSaveError(err instanceof Error ? err.message : "Failed to roll trade.");
             throw err;

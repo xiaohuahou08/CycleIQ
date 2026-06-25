@@ -43,6 +43,9 @@ interface TradeFiltersProps {
   onFilterChange: Dispatch<SetStateAction<FilterState>>;
   tickerSuggestions?: string[];
   onAddTrade?: () => void;
+  addTradeDisabled?: boolean;
+  addTradeDisabledReason?: string;
+  tradesUsageLabel?: string;
   /** When wrapped in outer card (rounded border/shadow handled by parent) */
   embedded?: boolean;
 }
@@ -52,6 +55,9 @@ export default function TradeFilters({
   onFilterChange,
   tickerSuggestions = [],
   onAddTrade,
+  addTradeDisabled = false,
+  addTradeDisabledReason,
+  tradesUsageLabel,
   embedded = false,
 }: TradeFiltersProps) {
   const [suggestOpen, setSuggestOpen] = useState(false);
@@ -187,13 +193,22 @@ export default function TradeFilters({
           </div>
 
           {onAddTrade && (
-            <button
-              type="button"
-              onClick={onAddTrade}
-              className="ml-auto inline-flex h-9 shrink-0 items-center rounded-lg bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
-            >
-              + Add trade
-            </button>
+            <div className="ml-auto flex shrink-0 items-center gap-3">
+              {tradesUsageLabel && (
+                <span className="hidden rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium tabular-nums text-slate-600 ring-1 ring-slate-900/5 sm:inline">
+                  {tradesUsageLabel}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={onAddTrade}
+                disabled={addTradeDisabled}
+                title={addTradeDisabled ? addTradeDisabledReason : undefined}
+                className="inline-flex h-9 shrink-0 items-center rounded-lg bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400 disabled:hover:bg-slate-400"
+              >
+                + Add trade
+              </button>
+            </div>
           )}
         </div>
 

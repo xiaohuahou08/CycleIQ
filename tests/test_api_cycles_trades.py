@@ -62,6 +62,17 @@ def set_capital_budget(client, headers, amount: float = 250_000) -> None:
     assert res.status_code == 200
 
 
+def set_user_plan(app, user_id: str, plan: str) -> None:
+    with app.app_context():
+        row = UserPreferences.query.filter_by(user_id=user_id).first()
+        if not row:
+            row = UserPreferences(user_id=user_id, plan=plan)
+            db.session.add(row)
+        else:
+            row.plan = plan
+        db.session.commit()
+
+
 def test_create_cycle_and_transition(client):
     h = auth_headers()
     r = client.post("/api/cycles", json={"ticker": "aapl"}, headers=h)
@@ -680,3 +691,78 @@ def test_reset_trading_data_deletes_only_calling_user(client):
     )
     assert prefs.status_code == 200
     assert prefs.get_json()["default_contracts"] == 3
+
+
+def test_plan_usage_endpoint(client):
+    h = auth_headers()
+    set_capital_budget(client, h)
+    r = client.get("/api/me/plan", headers=h)
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["plan"] == "basic"
+    assert body["plan_label"] == "Basic"
+    assert body["trades_limit"] == 20
+    assert body["trades_this_month"] == 0
+    assert body["limit_reached"] is False
+    assert body["trades_remaining"] == 20
+    assert body["price_usd"] == 0
+
+
+def test_monthly_trade_limit_enforced(client):
+    from backend.services.trade_limits import BASIC_MONTHLY_TRADE_LIMIT
+
+    h = auth_headers()
+    set_capital_budget(client, h, 500_000)
+    payload = {
+        "ticker": "AAPL",
+        "option_type": "PUT",
+        "strike": 150,
+        "expiry": future_expiry(),
+        "trade_date": "2026-04-01",
+        "premium": 2.5,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    for _ in range(BASIC_MONTHLY_TRADE_LIMIT):
+        r = client.post("/api/trades", json=payload, headers=h)
+        assert r.status_code == 201, r.get_json()
+
+    over = client.post("/api/trades", json=payload, headers=h)
+    assert over.status_code == 403
+    assert "Basic plan" in over.get_json()["error"]
+
+    plan = client.get("/api/me/plan", headers=h)
+    assert plan.get_json()["trades_this_month"] == BASIC_MONTHLY_TRADE_LIMIT
+    assert plan.get_json()["limit_reached"] is True
+    assert plan.get_json()["trades_remaining"] == 0
+
+
+def test_premium_plan_has_unlimited_trades(client, app):
+    from backend.services.trade_limits import BASIC_MONTHLY_TRADE_LIMIT
+
+    user_id = "00000000-0000-0000-0000-000000000099"
+    h = auth_headers(user_id)
+    set_capital_budget(client, h, 2_000_000)
+    set_user_plan(app, user_id, "premium")
+
+    plan = client.get("/api/me/plan", headers=h)
+    body = plan.get_json()
+    assert body["plan"] == "premium"
+    assert body["plan_label"] == "Premium"
+    assert body["trades_limit"] is None
+    assert body["limit_reached"] is False
+    assert body["price_usd"] is None
+
+    payload = {
+        "ticker": "AAPL",
+        "option_type": "PUT",
+        "strike": 150,
+        "expiry": future_expiry(),
+        "trade_date": "2026-04-01",
+        "premium": 2.5,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    for _ in range(BASIC_MONTHLY_TRADE_LIMIT + 1):
+        r = client.post("/api/trades", json=payload, headers=h)
+        assert r.status_code == 201, r.get_json()
