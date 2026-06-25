@@ -83,8 +83,8 @@ export function useTradeDefaults() {
 
   const setDefaults = useCallback(
     async (next: TradeDefaults) => {
-      setDefaultsState(next);
       if (!token) {
+        setDefaultsState(next);
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
         } catch {
@@ -99,11 +99,14 @@ export function useTradeDefaults() {
         const saved = await updateTradeDefaults(token, next);
         setDefaultsState(saved);
         window.dispatchEvent(new Event(TRADE_DEFAULTS_UPDATED_EVENT));
+      } catch (err) {
+        await refresh();
+        throw err;
       } finally {
         setSaving(false);
       }
     },
-    [token]
+    [token, refresh]
   );
 
   return { defaults, setDefaults, commissionFeeTotal, loading, saving };

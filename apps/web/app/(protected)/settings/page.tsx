@@ -179,8 +179,9 @@ function TradingDefaultsSection() {
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    } catch {
-      setSaveError("Failed to save. Please try again.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save. Please try again.";
+      setSaveError(message);
     }
   };
 

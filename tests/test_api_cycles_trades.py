@@ -562,3 +562,10 @@ def test_put_preferences_rejects_invalid_values(client):
         headers=h,
     )
     assert res.status_code == 400
+
+
+def test_production_app_init_registers_preferences():
+    init_path = Path(__file__).resolve().parents[1] / "backend" / "app" / "__init__.py"
+    text = init_path.read_text(encoding="utf-8")
+    assert "register_preferences_routes(preferences_bp)" in text
+    assert "app.register_blueprint(preferences_bp)" in text
