@@ -52,8 +52,9 @@ export default function ProtectedLayout({
 
   if (isAuthLoading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50">
-        <p className="text-slate-500">Loading…</p>
+      <main className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50">
+        <div className="loading-spinner" aria-hidden />
+        <p className="animate-fade-in text-sm text-slate-500">Loading…</p>
       </main>
     );
   }
@@ -67,7 +68,7 @@ export default function ProtectedLayout({
         />
 
         {/* Main content column */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="animate-page-enter flex min-h-0 flex-1 flex-col overflow-hidden">
           {children}
         </div>
       </div>

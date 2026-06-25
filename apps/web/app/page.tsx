@@ -17,10 +17,10 @@ export const metadata: Metadata = {
 };
 
 const BTN_PRIMARY =
-  "inline-flex items-center justify-center rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800";
+  "inline-flex items-center justify-center rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md active:translate-y-0";
 
 const BTN_SECONDARY =
-  "inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-800 transition hover:border-slate-400 hover:bg-slate-50";
+  "inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-800 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-400 hover:bg-slate-50 hover:shadow-sm active:translate-y-0";
 
 function FeatureCard({
   icon: Icon,
@@ -32,7 +32,7 @@ function FeatureCard({
   description: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm ring-1 ring-slate-900/5">
+    <div className="card-hover-lift rounded-xl border border-slate-200 bg-white p-6 shadow-sm ring-1 ring-slate-900/5">
       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 ring-1 ring-emerald-100/80">
         <Icon className={`${iconMd} text-emerald-600`} strokeWidth={iconStroke} aria-hidden />
       </div>
@@ -54,7 +54,7 @@ function StepCard({
   description: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm">
+    <div className="card-hover-lift rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm">
       <div className="flex items-center gap-3">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
           {step}
@@ -98,7 +98,7 @@ export default function Home() {
       <section className="border-b border-slate-200/80 bg-white">
         <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:py-20">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
-            <div>
+            <div className="animate-page-enter">
               <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200/80 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
                 <RefreshCw className="h-3.5 w-3.5" strokeWidth={iconStroke} aria-hidden />
                 Wheel strategy tracker
@@ -143,7 +143,7 @@ export default function Home() {
             </div>
 
             {/* Dashboard preview */}
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg ring-1 ring-slate-900/5">
+            <div className="animate-scale-in overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg ring-1 ring-slate-900/5" style={{ animationDelay: "120ms" }}>
               <div className="flex h-11 items-center gap-3 border-b border-slate-800 bg-slate-900 px-4">
                 <CycleIQMark className="h-6 w-6 text-emerald-400" />
                 <span className="text-xs font-medium text-slate-300">Dashboard</span>
@@ -207,7 +207,7 @@ export default function Home() {
               Log trades manually. CycleIQ links legs into cycles and keeps analytics in sync.
             </p>
           </div>
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+          <div className="animate-stagger-fade-up grid grid-cols-1 gap-5 md:grid-cols-3">
             <StepCard
               step={1}
               icon={ClipboardList}
@@ -290,7 +290,7 @@ export default function Home() {
               Everything in the app today — no vaporware feature list.
             </p>
           </div>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div className="animate-stagger-fade-up grid grid-cols-1 gap-5 sm:grid-cols-2">
             <FeatureCard
               icon={RefreshCw}
               title="Wheel & cycle view"

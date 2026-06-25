@@ -75,13 +75,13 @@ export default function Sidebar({ collapsed = false, onToggleCollapsed }: Sideba
               key={item.href}
               href={item.href}
               title={narrow ? item.label : undefined}
-              className={`flex w-full items-center justify-center rounded-lg font-medium transition-colors ${
+              className={`flex w-full items-center justify-center rounded-lg font-medium transition-all duration-200 ${
                 narrow ? "px-0 py-2.5" : "gap-2.5 px-2 py-3"
               } ${
                 isActive
                   ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/20"
                   : "text-slate-400 hover:bg-slate-800 hover:text-white"
-              }`}
+              } ${isActive ? "" : "hover:translate-x-0.5"}`}
             >
               <Icon
                 className={`shrink-0 ${narrow ? sb.navIcon.narrow : sb.navIcon.wide}`}

@@ -79,15 +79,13 @@ export function TradeModalShell({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 animate-fade-in"
       role="dialog"
       aria-modal="true"
       aria-labelledby={labelledById}
     >
-      <div
-        className="relative w-full max-w-lg rounded-2xl bg-white shadow-xl"
-        style={{ transform: `translate(${modalOffset.x}px, ${modalOffset.y}px)` }}
-      >
+      <div style={{ transform: `translate(${modalOffset.x}px, ${modalOffset.y}px)` }}>
+        <div className="animate-scale-in relative w-full max-w-lg rounded-2xl bg-white shadow-xl">
         <div
           className={`flex items-start justify-between gap-3 border-b border-gray-200 px-6 py-4 ${
             draggable ? "cursor-grab active:cursor-grabbing" : ""
@@ -120,6 +118,7 @@ export function TradeModalShell({
           </button>
         </div>
         {children}
+        </div>
       </div>
     </div>
   );

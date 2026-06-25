@@ -26,7 +26,7 @@ export const AUTH_INPUT_CLS =
 export const AUTH_LABEL_CLS = "mb-1.5 block text-sm font-medium text-slate-800";
 
 export const AUTH_PRIMARY_BTN_CLS =
-  "w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60";
+  "w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0";
 
 interface AuthShellProps {
   title: string;
@@ -86,7 +86,7 @@ export default function AuthShell({ title, subtitle, children, footer }: AuthShe
 
       <section className="flex flex-1 items-center justify-center bg-slate-50/80 px-4 py-10 sm:px-8 lg:px-12">
         <div className="w-full max-w-[26rem]">
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-8 shadow-sm ring-1 ring-slate-900/5 sm:p-9">
+          <div className="animate-scale-in rounded-2xl border border-slate-200/80 bg-white p-8 shadow-sm ring-1 ring-slate-900/5 sm:p-9">
             <header className="mb-6">
               <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
               {subtitle ? (
@@ -104,8 +104,9 @@ export default function AuthShell({ title, subtitle, children, footer }: AuthShe
 
 export function AuthLoadingShell() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50/80 px-4">
-      <p className="text-sm font-medium text-slate-600">Loading…</p>
+    <main className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50/80 px-4">
+      <div className="loading-spinner" aria-hidden />
+      <p className="animate-fade-in text-sm font-medium text-slate-600">Loading…</p>
     </main>
   );
 }

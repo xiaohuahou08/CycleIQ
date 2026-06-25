@@ -124,14 +124,14 @@ function BarChartCard({
         {points.length === 0 ? (
           <p className="text-sm text-slate-400">No data</p>
         ) : (
-          points.map((p) => {
+          points.map((p, i) => {
             const height = Math.max(16, Math.round((p.value / max) * 128));
             return (
               <div key={p.label} className="flex min-w-0 flex-1 flex-col items-center gap-1">
                 <span className="text-[10px] font-semibold text-slate-600">{fmtCurrency(p.value)}</span>
                 <div
-                  className={`w-full rounded-md ${gradient}`}
-                  style={{ height: `${height}px` }}
+                  className={`animate-bar-grow w-full rounded-md ${gradient}`}
+                  style={{ height: `${height}px`, animationDelay: `${i * 60}ms` }}
                   title={`${p.label}: ${fmtCurrency(p.value)}`}
                 />
                 <span className="truncate text-[10px] text-slate-400">{p.label}</span>
@@ -173,7 +173,7 @@ function StatCard({
   tip?: string;
 }) {
   return (
-    <div className="relative overflow-visible rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md">
+    <div className="card-hover-lift relative overflow-visible rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className={`absolute left-0 top-0 h-1 w-full rounded-t-2xl ${accent}`} />
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
@@ -217,7 +217,7 @@ export default function DashboardInsights({
   return (
     <div className="space-y-4">
       {/* KPI cards — 4-column grid */}
-      <div className="grid grid-cols-2 gap-4 overflow-visible md:grid-cols-3 lg:grid-cols-4">
+      <div className="animate-stagger-fade-up grid grid-cols-2 gap-4 overflow-visible md:grid-cols-3 lg:grid-cols-4">
         <StatCard
           label="Total Capital Invested"
           value={fmtCurrency(kpis?.total_capital_invested ?? 0)}
@@ -288,7 +288,7 @@ export default function DashboardInsights({
       </div>
 
       {/* Charts — 3-column row on large screens */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="animate-stagger-fade-up grid grid-cols-1 gap-4 lg:grid-cols-3">
         <BarChartCard
           title="Daily Premium (by open date)"
           points={charts?.daily_premium_income ?? []}
