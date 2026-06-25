@@ -87,14 +87,8 @@ export default function Home() {
             <span className="text-base font-bold tracking-tight">CycleIQ</span>
           </Link>
           <nav className="flex items-center gap-2 text-sm">
-            <Link
-              href="/login"
-              className="rounded-lg px-3 py-2 font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
-            >
-              Sign in
-            </Link>
-            <Link href="/register" className={BTN_PRIMARY}>
-              Get started
+            <Link href="/login" className={BTN_PRIMARY}>
+              Sign in / Register
             </Link>
           </nav>
         </div>
@@ -122,8 +116,8 @@ export default function Home() {
               </p>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Link href="/register" className={BTN_PRIMARY}>
-                  Create free account
+                <Link href="/login" className={BTN_PRIMARY}>
+                  Sign in / Register
                 </Link>
                 <Link href="#how-it-works" className={BTN_SECONDARY}>
                   How it works
@@ -333,16 +327,10 @@ export default function Home() {
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
-              href="/register"
+              href="/login"
               className="inline-flex items-center justify-center rounded-lg bg-white px-5 py-2.5 text-sm font-medium text-slate-900 shadow-sm transition hover:bg-slate-100"
             >
-              Create your account
-            </Link>
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center rounded-lg border border-slate-600 px-5 py-2.5 text-sm font-medium text-white transition hover:border-slate-500 hover:bg-slate-800"
-            >
-              Sign in
+              Sign in / Register
             </Link>
           </div>
         </div>
@@ -351,29 +339,11 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-slate-800 bg-slate-950">
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2.5">
-              <CycleIQMark className="h-8 w-8 text-emerald-400" />
-              <div>
-                <p className="text-sm font-bold text-white">CycleIQ</p>
-                <p className="text-xs text-slate-500">Wheel strategy tracking for retail traders</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-5 text-sm text-slate-400">
-              <Link href="/login" className="transition hover:text-white">
-                Sign in
-              </Link>
-              <Link href="/register" className="transition hover:text-white">
-                Register
-              </Link>
-              <a
-                href="https://github.com/xiaohuahou08/CycleIQ"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="transition hover:text-white"
-              >
-                GitHub
-              </a>
+          <div className="flex items-center gap-2.5">
+            <CycleIQMark className="h-8 w-8 text-emerald-400" />
+            <div>
+              <p className="text-sm font-bold text-white">CycleIQ</p>
+              <p className="text-xs text-slate-500">Wheel strategy tracking for retail traders</p>
             </div>
           </div>
           <p className="mt-6 border-t border-slate-800 pt-6 text-xs text-slate-600">

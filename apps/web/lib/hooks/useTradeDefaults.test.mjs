@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { commissionFeeTotal } from "./useTradeDefaults.ts";
+import { commissionFeeTotal } from "../trades/commissionFee.ts";
 
 describe("commissionFeeTotal", () => {
   it("multiplies per-contract rate by contract count", () => {

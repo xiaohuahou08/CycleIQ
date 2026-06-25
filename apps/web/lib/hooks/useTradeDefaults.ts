@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useProtectedAuth } from "@/app/(protected)/auth-context";
+import { getTradeDefaults, updateTradeDefaults } from "@/lib/api/preferences";
+import { commissionFeeTotal } from "@/lib/trades/commissionFee";
 
 const STORAGE_KEY = "cycleiq:trade_defaults";
 export const TRADE_DEFAULTS_UPDATED_EVENT = "cycleiq:trade_defaults_updated";
@@ -14,64 +17,96 @@ export interface TradeDefaults {
   defaultDte: number;
 }
 
-const INITIAL_DEFAULTS: TradeDefaults = {
+export const INITIAL_DEFAULTS: TradeDefaults = {
   commissionPerContract: undefined,
   defaultContracts: 1,
   defaultDte: 45,
 };
 
-function load(): TradeDefaults {
-  if (typeof window === "undefined") return INITIAL_DEFAULTS;
+function loadLocal(): TradeDefaults | null {
+  if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return INITIAL_DEFAULTS;
+    if (!raw) return null;
     return { ...INITIAL_DEFAULTS, ...JSON.parse(raw) } as TradeDefaults;
   } catch {
-    return INITIAL_DEFAULTS;
+    return null;
   }
 }
 
-function save(defaults: TradeDefaults): void {
+function clearLocal(): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults));
+    localStorage.removeItem(STORAGE_KEY);
   } catch {
-    // storage may be unavailable in some contexts
+    // ignore
   }
-}
-
-/** Total opening commission for the leg (stored as `commission_fee` on the trade). */
-export function commissionFeeTotal(
-  perContract: number | undefined,
-  contracts: number
-): number | undefined {
-  if (perContract === undefined || !Number.isFinite(perContract)) return undefined;
-  const c = Math.max(1, Math.floor(Number(contracts)) || 1);
-  return Math.round(perContract * c * 100) / 100;
 }
 
 export function useTradeDefaults() {
-  const [defaults, setDefaultsState] = useState<TradeDefaults>(() =>
-    typeof window === "undefined" ? INITIAL_DEFAULTS : load()
-  );
+  const { token } = useProtectedAuth();
+  const [defaults, setDefaultsState] = useState<TradeDefaults>(INITIAL_DEFAULTS);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (!token) {
+      setDefaultsState(loadLocal() ?? INITIAL_DEFAULTS);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      let fromApi = await getTradeDefaults(token);
+      const local = loadLocal();
+      if (local) {
+        fromApi = await updateTradeDefaults(token, local);
+        clearLocal();
+      }
+      setDefaultsState(fromApi);
+    } catch {
+      setDefaultsState(loadLocal() ?? INITIAL_DEFAULTS);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
 
   useEffect(() => {
-    const refresh = () => setDefaultsState(load());
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY) refresh();
-    };
-    window.addEventListener("storage", onStorage);
-    window.addEventListener(TRADE_DEFAULTS_UPDATED_EVENT, refresh);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener(TRADE_DEFAULTS_UPDATED_EVENT, refresh);
-    };
-  }, []);
+    void refresh();
+  }, [refresh]);
 
-  const setDefaults = useCallback((next: TradeDefaults) => {
-    save(next);
-    setDefaultsState(next);
-    window.dispatchEvent(new Event(TRADE_DEFAULTS_UPDATED_EVENT));
-  }, []);
+  useEffect(() => {
+    const onUpdated = () => void refresh();
+    window.addEventListener(TRADE_DEFAULTS_UPDATED_EVENT, onUpdated);
+    return () => window.removeEventListener(TRADE_DEFAULTS_UPDATED_EVENT, onUpdated);
+  }, [refresh]);
 
-  return { defaults, setDefaults, commissionFeeTotal };
+  const setDefaults = useCallback(
+    async (next: TradeDefaults) => {
+      setDefaultsState(next);
+      if (!token) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        } catch {
+          // ignore
+        }
+        window.dispatchEvent(new Event(TRADE_DEFAULTS_UPDATED_EVENT));
+        return;
+      }
+
+      setSaving(true);
+      try {
+        const saved = await updateTradeDefaults(token, next);
+        setDefaultsState(saved);
+        window.dispatchEvent(new Event(TRADE_DEFAULTS_UPDATED_EVENT));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [token]
+  );
+
+  return { defaults, setDefaults, commissionFeeTotal, loading, saving };
 }
+
+export { commissionFeeTotal };

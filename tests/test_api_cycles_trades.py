@@ -17,6 +17,7 @@ create_app = _app_mod.create_app
 
 from backend.config import TestingConfig
 from backend.models import db
+from backend.models.user_preferences import UserPreferences
 from backend.models.wheel_cycle import WheelCycle
 
 
@@ -513,3 +514,51 @@ def test_dashboard_expired_cc_reduces_stock_effective_cost(client):
     expected_cost = (basis - cc_reduction / 100) * 100
     assert kpis["total_cc_basis_reduction"] == pytest.approx(cc_reduction, abs=0.01)
     assert kpis["total_stock_effective_cost"] == pytest.approx(expected_cost, abs=0.01)
+
+
+def test_get_preferences_returns_defaults_when_missing(client):
+    h = auth_headers("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+    res = client.get("/api/me/preferences", headers=h)
+    assert res.status_code == 200
+    body = res.get_json()
+    assert body["commission_per_contract"] is None
+    assert body["default_contracts"] == 1
+    assert body["default_dte"] == 45
+
+
+def test_put_and_get_preferences_persist_per_user(client):
+    h1 = auth_headers("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+    h2 = auth_headers("cccccccc-cccc-cccc-cccc-cccccccccccc")
+
+    put = client.put(
+        "/api/me/preferences",
+        json={
+            "commission_per_contract": 0.65,
+            "default_contracts": 2,
+            "default_dte": 30,
+        },
+        headers=h1,
+    )
+    assert put.status_code == 200
+    assert put.get_json()["default_contracts"] == 2
+
+    get1 = client.get("/api/me/preferences", headers=h1)
+    assert get1.status_code == 200
+    assert get1.get_json()["commission_per_contract"] == pytest.approx(0.65)
+    assert get1.get_json()["default_dte"] == 30
+
+    get2 = client.get("/api/me/preferences", headers=h2)
+    assert get2.get_json()["default_contracts"] == 1
+
+    with client.application.app_context():
+        assert UserPreferences.query.filter_by(user_id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb").count() == 1
+
+
+def test_put_preferences_rejects_invalid_values(client):
+    h = auth_headers()
+    res = client.put(
+        "/api/me/preferences",
+        json={"default_contracts": 0, "default_dte": 45},
+        headers=h,
+    )
+    assert res.status_code == 400

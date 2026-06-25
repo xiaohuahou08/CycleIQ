@@ -139,8 +139,9 @@ function AccountSection({ email }: { email: string | null }) {
 
 // ─── Trading defaults section ─────────────────────────────────────────────────
 function TradingDefaultsSection() {
-  const { defaults, setDefaults } = useTradeDefaults();
+  const { defaults, setDefaults, loading, saving } = useTradeDefaults();
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const [commissionPerContract, setCommissionPerContract] = useState(
     defaults.commissionPerContract !== undefined
@@ -164,24 +165,29 @@ function TradingDefaultsSection() {
     setDefaultDte(String(defaults.defaultDte ?? 45));
   }, [defaults]);
 
-  const handleSave = () => {
-    setDefaults({
-      commissionPerContract:
-        commissionPerContract.trim() !== ""
-          ? Number(commissionPerContract)
-          : undefined,
-      defaultContracts:
-        defaultContracts.trim() !== "" ? Number(defaultContracts) : 1,
-      defaultDte: defaultDte.trim() !== "" ? Number(defaultDte) : 45,
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const handleSave = async () => {
+    setSaveError(null);
+    try {
+      await setDefaults({
+        commissionPerContract:
+          commissionPerContract.trim() !== ""
+            ? Number(commissionPerContract)
+            : undefined,
+        defaultContracts:
+          defaultContracts.trim() !== "" ? Number(defaultContracts) : 1,
+        defaultDte: defaultDte.trim() !== "" ? Number(defaultDte) : 45,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      setSaveError("Failed to save. Please try again.");
+    }
   };
 
   return (
     <Section
       title="Trading Defaults"
-      description="Pre-fill values when adding new trades. These are saved locally in your browser."
+      description="Pre-fill values when adding new trades. Saved to your account."
     >
       <FieldRow
         label="Commission per contract"
@@ -236,14 +242,17 @@ function TradingDefaultsSection() {
       <div className="mt-4 flex items-center gap-3">
         <button
           type="button"
-          onClick={handleSave}
-          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          onClick={() => void handleSave()}
+          disabled={loading || saving}
+          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Save defaults
+          {saving ? "Saving…" : "Save defaults"}
         </button>
-        {saved && (
-          <span className="text-sm text-emerald-600">Saved locally.</span>
+        {loading && <span className="text-sm text-slate-500">Loading…</span>}
+        {saved && !saveError && (
+          <span className="text-sm text-emerald-600">Saved.</span>
         )}
+        {saveError && <span className="text-sm text-red-600">{saveError}</span>}
       </div>
     </Section>
   );
