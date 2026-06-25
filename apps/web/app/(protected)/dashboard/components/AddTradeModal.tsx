@@ -4,7 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import type { CreateTradeInput } from "@/lib/api/trades";
+import type { CreateTradeInput, Trade } from "@/lib/api/trades";
+import {
+  cspBudgetError,
+  cspNotional,
+  sumOpenCspNotional,
+} from "@/lib/trades/cspCapital";
 import {
   ModalActionButtons,
   OptionalFieldsCard,
@@ -31,7 +36,6 @@ const tradeSchema = z.object({
     .number({ invalid_type_error: "Contracts is required" })
     .int("Must be a whole number")
     .min(1, "Minimum 1 contract"),
-  delta: z.coerce.number().optional().or(z.literal("")),
   notes: z.string().max(500, "Max 500 characters").optional(),
 });
 
@@ -102,6 +106,9 @@ interface AddTradeModalProps {
   initialValues?: Partial<CreateTradeInput>;
   title?: string;
   submitLabel?: string;
+  /** Used to enforce CSP capital budget before submit. */
+  existingTrades?: Trade[];
+  editingTradeId?: string;
 }
 
 export default function AddTradeModal({
@@ -114,10 +121,13 @@ export default function AddTradeModal({
   initialValues,
   title = "Add Trade",
   submitLabel = "Save Trade",
+  existingTrades = [],
+  editingTradeId,
 }: AddTradeModalProps) {
   const { defaults } = useTradeDefaults();
   const [showOptionalFields, setShowOptionalFields] = useState(true);
   const [commissionFees, setCommissionFees] = useState<string>("");
+  const [cspError, setCspError] = useState<string | null>(null);
   const commissionEditedRef = useRef(false);
   const {
     register,
@@ -142,6 +152,8 @@ export default function AddTradeModal({
   const optionTypeValue = watch("option_type");
   const premiumValue = watch("premium");
   const contractsValue = watch("contracts");
+  const strikeValue = watch("strike");
+  const expiryValue = watch("expiry");
   const totalReceived = (() => {
     const p = Number(premiumValue ?? 0);
     const c = Number(contractsValue ?? 0);
@@ -157,6 +169,55 @@ export default function AddTradeModal({
   }, [tickerSuggestions, tickerValue]);
 
   const isEdit = initialValues != null && initialValues.ticker != null && initialValues.ticker !== "";
+
+  const openCspUsed = useMemo(
+    () => sumOpenCspNotional(existingTrades, { excludeTradeId: editingTradeId }),
+    [existingTrades, editingTradeId]
+  );
+
+  const draftCspNotional = useMemo(() => {
+    if (optionTypeValue !== "PUT") return 0;
+    const status = initialValues?.status ?? "OPEN";
+    if (status !== "OPEN") return 0;
+    const strike = Number(strikeValue);
+    const contracts = Number(contractsValue) || 0;
+    if (!expiryValue || expiryValue < today()) return 0;
+    if (!Number.isFinite(strike) || strike <= 0 || contracts <= 0) return 0;
+    return cspNotional(strike, contracts);
+  }, [optionTypeValue, initialValues?.status, strikeValue, contractsValue, expiryValue]);
+
+  useEffect(() => {
+    if (!open || optionTypeValue !== "PUT") {
+      setCspError(null);
+      return;
+    }
+    const status = initialValues?.status ?? "OPEN";
+    const strike = Number(strikeValue);
+    const contracts = Number(contractsValue) || 1;
+    if (!expiryValue || !Number.isFinite(strike) || strike <= 0) {
+      setCspError(null);
+      return;
+    }
+    setCspError(
+      cspBudgetError(existingTrades, defaults.totalCapitalBudget, {
+        optionType: "PUT",
+        status,
+        strike,
+        contracts,
+        expiry: expiryValue,
+      }, editingTradeId)
+    );
+  }, [
+    open,
+    optionTypeValue,
+    existingTrades,
+    defaults.totalCapitalBudget,
+    editingTradeId,
+    initialValues?.status,
+    strikeValue,
+    contractsValue,
+    expiryValue,
+  ]);
 
   useEffect(() => {
     if (!open) return;
@@ -179,7 +240,6 @@ export default function AddTradeModal({
       ticker: initialValues?.ticker ?? "",
       strike: initialValues?.strike,
       premium: initialValues?.premium,
-      delta: initialValues?.delta,
       notes: initialValues?.notes ?? "",
     });
   }, [open, reset, initialValues, defaults]);
@@ -196,6 +256,19 @@ export default function AddTradeModal({
   }, [open, isEdit, contractsValue, defaults.commissionPerContract]);
 
   const onSubmit = async (values: TradeFormValues) => {
+    const status = initialValues?.status ?? "OPEN";
+    const budgetErr = cspBudgetError(existingTrades, defaults.totalCapitalBudget, {
+      optionType: values.option_type,
+      status,
+      strike: values.strike,
+      contracts: values.contracts,
+      expiry: values.expiry,
+    }, editingTradeId);
+    if (budgetErr) {
+      setCspError(budgetErr);
+      return;
+    }
+
     const commissionNumber = commissionFees.trim() ? Number(commissionFees) : undefined;
     const ticker = values.ticker.toUpperCase().trim();
     // For CC trades, explicitly link to the existing assigned wheel cycle if one exists.
@@ -214,8 +287,6 @@ export default function AddTradeModal({
           : undefined,
       contracts: values.contracts,
       status: initialValues?.status ?? "OPEN",
-      delta: values.delta === "" ? undefined : (values.delta as number | undefined),
-      // Keep empty string so Edit can explicitly clear notes.
       notes: values.notes?.trim() ?? "",
       ...(linkedCycleId ? { cycle_id: linkedCycleId } : {}),
     };
@@ -257,6 +328,28 @@ export default function AddTradeModal({
                     No assigned position found for <strong>{tickerValue}</strong>. A covered call requires owning the underlying shares (from a prior CSP assignment).
                   </p>
                 )
+              )}
+              {optionTypeValue === "PUT" && (initialValues?.status ?? "OPEN") === "OPEN" && (
+                <div className="mt-2 space-y-1.5">
+                  <p className="text-xs text-gray-600">
+                    CSP capital: ${openCspUsed.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                    {draftCspNotional > 0 && (
+                      <>
+                        {" "}
+                        + ${draftCspNotional.toLocaleString("en-US", { maximumFractionDigits: 0 })} (this leg)
+                        {" "}
+                        = ${(openCspUsed + draftCspNotional).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                      </>
+                    )}
+                    {" "}
+                    / ${defaults.totalCapitalBudget.toLocaleString("en-US", { maximumFractionDigits: 0 })} budget
+                  </p>
+                  {cspError && (
+                    <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-800">
+                      {cspError}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 
@@ -450,56 +543,32 @@ export default function AddTradeModal({
                   Optional Details
                 </p>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label
-                      htmlFor="commissionFees"
-                      className="mb-1 block text-sm font-medium text-gray-700"
-                    >
-                      Commission Fees (total)
-                    </label>
-                    <div className="flex items-center gap-2 rounded-lg border border-purple-200 bg-white px-3 py-2 focus-within:border-purple-400">
-                      <span className="text-sm font-medium text-gray-500">$</span>
-                      <input
-                        id="commissionFees"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={commissionFees}
-                        onChange={(e) => {
-                          commissionEditedRef.current = true;
-                          setCommissionFees(e.target.value);
-                        }}
-                        placeholder={
-                          defaults.commissionPerContract !== undefined
-                            ? `e.g. ${commissionFeeTotal(defaults.commissionPerContract, contractsValue || 1)}`
-                            : "e.g. 1.30"
-                        }
-                        className="w-full bg-transparent text-sm text-gray-900 placeholder:normal-case focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="delta"
-                      className="mb-1 block text-sm font-medium text-gray-700"
-                    >
-                      Delta on Open
-                    </label>
+                <div>
+                  <label
+                    htmlFor="commissionFees"
+                    className="mb-1 block text-sm font-medium text-gray-700"
+                  >
+                    Commission Fees (total)
+                  </label>
+                  <div className="flex items-center gap-2 rounded-lg border border-purple-200 bg-white px-3 py-2 focus-within:border-purple-400">
+                    <span className="text-sm font-medium text-gray-500">$</span>
                     <input
-                      id="delta"
+                      id="commissionFees"
                       type="number"
                       step="0.01"
-                      placeholder="e.g. -0.25"
-                      {...register("delta")}
-                      className="w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-purple-400 focus:outline-none"
+                      min="0"
+                      value={commissionFees}
+                      onChange={(e) => {
+                        commissionEditedRef.current = true;
+                        setCommissionFees(e.target.value);
+                      }}
+                      placeholder={
+                        defaults.commissionPerContract !== undefined
+                          ? `e.g. ${commissionFeeTotal(defaults.commissionPerContract, contractsValue || 1)}`
+                          : "e.g. 1.30"
+                      }
+                      className="w-full bg-transparent text-sm text-gray-900 placeholder:normal-case focus:outline-none"
                     />
-                    {errors.delta && (
-                      <p className="mt-1 text-xs text-red-600">
-                        {(errors.delta as { message?: string }).message}
-                      </p>
-                    )}
                   </div>
                 </div>
 
@@ -531,6 +600,7 @@ export default function AddTradeModal({
             submitLabel={submitLabel}
             submittingLabel="Saving…"
             isSubmitting={isSubmitting}
+            submitDisabled={Boolean(cspError)}
           />
       </form>
     </TradeModalShell>

@@ -15,12 +15,15 @@ export interface TradeDefaults {
   defaultContracts: number;
   /** Default days-to-expiry used to pre-compute the expiry date (e.g. 45). */
   defaultDte: number;
+  /** Max cash-secured notional for open CSP legs (strike × shares). */
+  totalCapitalBudget: number;
 }
 
 export const INITIAL_DEFAULTS: TradeDefaults = {
   commissionPerContract: undefined,
   defaultContracts: 1,
   defaultDte: 45,
+  totalCapitalBudget: 10000,
 };
 
 function loadLocal(): TradeDefaults | null {

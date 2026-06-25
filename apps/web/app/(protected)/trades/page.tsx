@@ -290,7 +290,6 @@ export default function TradesPage() {
                 premium: editingTrade.premium,
                 commission_fee: editingTrade.commission_fee ?? undefined,
                 contracts: editingTrade.contracts,
-                delta: editingTrade.delta,
                 status: editingTrade.status,
                 notes: editingTrade.notes,
               }
@@ -298,6 +297,8 @@ export default function TradesPage() {
         }
         title={editingTrade ? "Edit Trade" : "Add Trade"}
         submitLabel={editingTrade ? "Update Trade" : "Save Trade"}
+        existingTrades={allTrades}
+        editingTradeId={editingTrade?.id}
       />
 
       <AssignTradeModal

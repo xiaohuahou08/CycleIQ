@@ -1,5 +1,6 @@
 import importlib.util
 import os
+from datetime import date, timedelta
 from pathlib import Path
 
 import jwt
@@ -46,6 +47,19 @@ def auth_headers(user_id: str = "00000000-0000-0000-0000-000000000099") -> dict[
         algorithm="HS256",
     )
     return {"Authorization": f"Bearer {token}"}
+
+
+def future_expiry(months: int = 18) -> str:
+    return (date.today() + timedelta(days=30 * months)).isoformat()
+
+
+def set_capital_budget(client, headers, amount: float = 250_000) -> None:
+    res = client.put(
+        "/api/me/preferences",
+        json={"total_capital_budget": amount},
+        headers=headers,
+    )
+    assert res.status_code == 200
 
 
 def test_create_cycle_and_transition(client):
@@ -206,8 +220,8 @@ def test_trade_creates_new_cycle_when_latest_ticker_cycle_is_active_put(client):
     first_payload = {
         "ticker": "UNH",
         "option_type": "PUT",
-        "strike": 360,
-        "expiry": "2026-06-20",
+        "strike": 50,
+        "expiry": future_expiry(),
         "trade_date": "2026-04-01",
         "premium": 3.25,
         "contracts": 1,
@@ -221,8 +235,8 @@ def test_trade_creates_new_cycle_when_latest_ticker_cycle_is_active_put(client):
     second_payload = {
         "ticker": "UNH",
         "option_type": "PUT",
-        "strike": 350,
-        "expiry": "2026-06-27",
+        "strike": 45,
+        "expiry": future_expiry(19),
         "trade_date": "2026-04-03",
         "premium": 2.75,
         "contracts": 1,
@@ -281,6 +295,7 @@ def test_invalid_trade_status(client):
 
 def test_dashboard_insights_api(client):
     h = auth_headers("33333333-3333-3333-3333-333333333333")
+    set_capital_budget(client, h, 100_000)
     trades = [
         {
             "ticker": "UNH",
@@ -524,6 +539,51 @@ def test_get_preferences_returns_defaults_when_missing(client):
     assert body["commission_per_contract"] is None
     assert body["default_contracts"] == 1
     assert body["default_dte"] == 45
+    assert body["total_capital_budget"] == pytest.approx(10000)
+
+
+def test_create_open_csp_rejects_when_over_capital_budget(client):
+    h = auth_headers("dddddddd-dddd-dddd-dddd-dddddddddddd")
+    payload = {
+        "ticker": "AAPL",
+        "option_type": "PUT",
+        "strike": 150,
+        "expiry": "2026-12-19",
+        "trade_date": "2026-06-01",
+        "premium": 2.5,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    r = client.post("/api/trades", json=payload, headers=h)
+    assert r.status_code == 400
+    assert "capital budget" in r.get_json().get("error", "").lower()
+
+
+def test_create_open_csp_allowed_within_budget(client):
+    h = auth_headers("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
+    payload = {
+        "ticker": "AAPL",
+        "option_type": "PUT",
+        "strike": 50,
+        "expiry": "2026-12-19",
+        "trade_date": "2026-06-01",
+        "premium": 1.0,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    r = client.post("/api/trades", json=payload, headers=h)
+    assert r.status_code == 201
+
+
+def test_put_preferences_persists_capital_budget(client):
+    h = auth_headers("ffffffff-ffff-ffff-ffff-ffffffffffff")
+    put = client.put(
+        "/api/me/preferences",
+        json={"total_capital_budget": 25000},
+        headers=h,
+    )
+    assert put.status_code == 200
+    assert put.get_json()["total_capital_budget"] == pytest.approx(25000)
 
 
 def test_put_and_get_preferences_persist_per_user(client):

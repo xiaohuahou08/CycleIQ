@@ -29,7 +29,6 @@ export interface Trade {
   /** ID of the preceding ROLLED trade in a roll chain (self-referential). */
   rolled_from_id?: string | null;
   contracts: number;
-  delta?: number;
   status: TradeStatus;
   expired_at?: string | null;
   expire_type?: "EXPIRED_WORTHLESS" | "EXPIRED_ITM" | null;
@@ -49,7 +48,6 @@ export interface CreateTradeInput {
   premium: number;
   commission_fee?: number;
   contracts: number;
-  delta?: number;
   status: TradeStatus;
   notes?: string;
   rolled_from_id?: string | null;

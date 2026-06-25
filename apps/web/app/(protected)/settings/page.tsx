@@ -154,6 +154,9 @@ function TradingDefaultsSection() {
   const [defaultDte, setDefaultDte] = useState(
     String(defaults.defaultDte ?? 45)
   );
+  const [totalCapitalBudget, setTotalCapitalBudget] = useState(
+    String(defaults.totalCapitalBudget ?? 10000)
+  );
 
   useEffect(() => {
     setCommissionPerContract(
@@ -163,6 +166,7 @@ function TradingDefaultsSection() {
     );
     setDefaultContracts(String(defaults.defaultContracts ?? 1));
     setDefaultDte(String(defaults.defaultDte ?? 45));
+    setTotalCapitalBudget(String(defaults.totalCapitalBudget ?? 10000));
   }, [defaults]);
 
   const handleSave = async () => {
@@ -176,6 +180,8 @@ function TradingDefaultsSection() {
         defaultContracts:
           defaultContracts.trim() !== "" ? Number(defaultContracts) : 1,
         defaultDte: defaultDte.trim() !== "" ? Number(defaultDte) : 45,
+        totalCapitalBudget:
+          totalCapitalBudget.trim() !== "" ? Number(totalCapitalBudget) : 10000,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -221,6 +227,23 @@ function TradingDefaultsSection() {
           onChange={(e) => setDefaultContracts(e.target.value)}
           className="w-20 rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
         />
+      </FieldRow>
+
+      <FieldRow
+        label="Total capital budget"
+        hint="Maximum cash-secured notional for open CSP positions (strike × contracts × 100). New or edited open puts cannot exceed this total."
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-500">$</span>
+          <input
+            type="number"
+            min="1"
+            step="100"
+            value={totalCapitalBudget}
+            onChange={(e) => setTotalCapitalBudget(e.target.value)}
+            className="w-28 rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+          />
+        </div>
       </FieldRow>
 
       <FieldRow

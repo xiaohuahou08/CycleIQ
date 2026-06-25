@@ -12,6 +12,7 @@ from backend.services.cycle_fsm import append_transition, apply_api_event, repla
 from decimal import Decimal
 
 from backend.services.trade_cost_basis import apply_stock_cost_basis
+from backend.services.csp_capital import csp_budget_error
 from cycleiq.wheel_fsm import InvalidTransitionError
 
 AUTO_ATTACH_PUT_STATES = frozenset({"IDLE"})
@@ -147,12 +148,23 @@ def register_trades_routes(trades_bp):
             commission_fee=float(data["commission_fee"])
             if data.get("commission_fee") is not None
             else None,
-            delta=float(data["delta"]) if data.get("delta") is not None else None,
             contracts=int(data.get("contracts", 1)),
             status=status,
             notes=data.get("notes"),
             rolled_from_id=rolled_from_id or None,
         )
+
+        budget_err = csp_budget_error(
+            user_id,
+            option_type=option_type,
+            status=status,
+            strike=float(trade.strike),
+            contracts=int(trade.contracts),
+            expiry=expiry,
+        )
+        if budget_err:
+            return jsonify({"error": budget_err}), 400
+
         db.session.add(trade)
 
         if trade.cycle_id and status == "OPEN":
@@ -247,8 +259,6 @@ def register_trades_routes(trades_bp):
                     trade.cycle_id = parent.cycle_id
         if "contracts" in data:
             trade.contracts = int(data["contracts"])
-        if "delta" in data:
-            trade.delta = float(data["delta"]) if data["delta"] is not None else None
         if "notes" in data:
             trade.notes = data["notes"]
         if "cycle_id" in data:
@@ -361,6 +371,19 @@ def register_trades_routes(trades_bp):
                 cycle = WheelCycle.query.filter_by(id=trade.cycle_id, user_id=user_id).first()
                 if cycle:
                     cycle.state = "EXIT"
+
+        budget_err = csp_budget_error(
+            user_id,
+            option_type=trade.option_type,
+            status=trade.status,
+            strike=float(trade.strike),
+            contracts=int(trade.contracts),
+            expiry=trade.expiry,
+            exclude_trade_id=trade.id,
+        )
+        if budget_err:
+            db.session.rollback()
+            return jsonify({"error": budget_err}), 400
 
         trade.updated_at = datetime.now(timezone.utc)
         apply_stock_cost_basis(trade)

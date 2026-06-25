@@ -6,6 +6,7 @@ export interface TradeDefaultsApi {
   commission_per_contract: number | null;
   default_contracts: number;
   default_dte: number;
+  total_capital_budget: number;
 }
 
 function authHeaders(token: string): HeadersInit {
@@ -19,7 +20,7 @@ async function getErrorMessage(res: Response, fallback: string): Promise<string>
   try {
     const data = (await res.json()) as { error?: string; message?: string };
     const detail = data.error || data.message;
-    if (detail) return `${fallback}: ${detail}`;
+    if (detail) return detail;
   } catch {
     // ignore
   }
@@ -32,6 +33,7 @@ export function apiToTradeDefaults(data: TradeDefaultsApi): TradeDefaults {
       data.commission_per_contract != null ? data.commission_per_contract : undefined,
     defaultContracts: data.default_contracts,
     defaultDte: data.default_dte,
+    totalCapitalBudget: data.total_capital_budget,
   };
 }
 
@@ -41,6 +43,7 @@ export function tradeDefaultsToApi(defaults: TradeDefaults): TradeDefaultsApi {
       defaults.commissionPerContract !== undefined ? defaults.commissionPerContract : null,
     default_contracts: defaults.defaultContracts,
     default_dte: defaults.defaultDte,
+    total_capital_budget: defaults.totalCapitalBudget,
   };
 }
 

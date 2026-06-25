@@ -9,6 +9,7 @@ from backend.models import db
 
 DEFAULT_CONTRACTS = 1
 DEFAULT_DTE = 45
+DEFAULT_TOTAL_CAPITAL_BUDGET = 10000.0
 
 
 class UserPreferences(db.Model):
@@ -20,6 +21,9 @@ class UserPreferences(db.Model):
     commission_per_contract: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     default_contracts: Mapped[int] = mapped_column(Integer, nullable=False, default=DEFAULT_CONTRACTS)
     default_dte: Mapped[int] = mapped_column(Integer, nullable=False, default=DEFAULT_DTE)
+    total_capital_budget: Mapped[float] = mapped_column(
+        Numeric(14, 2), nullable=False, default=DEFAULT_TOTAL_CAPITAL_BUDGET
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -34,6 +38,7 @@ class UserPreferences(db.Model):
             else None,
             "default_contracts": int(self.default_contracts),
             "default_dte": int(self.default_dte),
+            "total_capital_budget": float(self.total_capital_budget),
         }
 
     @staticmethod
@@ -42,4 +47,5 @@ class UserPreferences(db.Model):
             "commission_per_contract": None,
             "default_contracts": DEFAULT_CONTRACTS,
             "default_dte": DEFAULT_DTE,
+            "total_capital_budget": DEFAULT_TOTAL_CAPITAL_BUDGET,
         }

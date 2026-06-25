@@ -12,11 +12,13 @@ describe("tradeDefaults API mapping", () => {
         commission_per_contract: 0.65,
         default_contracts: 2,
         default_dte: 30,
+        total_capital_budget: 10000,
       }),
       {
         commissionPerContract: 0.65,
         defaultContracts: 2,
         defaultDte: 30,
+        totalCapitalBudget: 10000,
       }
     );
   });
@@ -26,11 +28,13 @@ describe("tradeDefaults API mapping", () => {
       tradeDefaultsToApi({
         defaultContracts: 1,
         defaultDte: 45,
+        totalCapitalBudget: 10000,
       }),
       {
         commission_per_contract: null,
         default_contracts: 1,
         default_dte: 45,
+        total_capital_budget: 10000,
       }
     );
   });
