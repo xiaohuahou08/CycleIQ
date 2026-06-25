@@ -329,6 +329,8 @@ def test_dashboard_insights_api(client):
     assert "kpis" in body
     assert "charts" in body
     assert body["kpis"]["active_trades"] == 1
+    assert body["kpis"]["capital_budget"] == pytest.approx(100_000)
+    assert body["kpis"]["capital_utilization_pct"] == pytest.approx(72.0, abs=0.5)
     assert body["kpis"]["total_premium"] == pytest.approx(690.0)
     assert body["kpis"]["realized_pnl"] == pytest.approx(450.0)
     assert isinstance(body["charts"]["daily_premium_income"], list)

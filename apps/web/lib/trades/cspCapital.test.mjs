@@ -1,6 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { cspBudgetError, cspNotional, sumOpenCspNotional } from "./cspCapital.ts";
+import {
+  capitalBudgetError,
+  capitalUtilizationPct,
+  computeTotalCapitalInvested,
+  cspNotional,
+  sumOpenCspNotional,
+} from "./cspCapital.ts";
 
 const today = "2026-06-03";
 
@@ -37,9 +43,26 @@ describe("sumOpenCspNotional", () => {
   });
 });
 
-describe("cspBudgetError", () => {
+describe("computeTotalCapitalInvested", () => {
+  it("includes assigned stock cost basis", () => {
+    const trades = [
+      put({ id: "a", status: "ASSIGNED", stock_cost_basis_per_share: 50, contracts: 1 }),
+      put({ id: "b", strike: 40, contracts: 1, status: "OPEN" }),
+    ];
+    const total = computeTotalCapitalInvested(trades, { today });
+    assert.equal(total, 5000 + 4000);
+  });
+});
+
+describe("capitalUtilizationPct", () => {
+  it("returns percentage of budget used", () => {
+    assert.equal(capitalUtilizationPct(7500, 10000), 75);
+  });
+});
+
+describe("capitalBudgetError", () => {
   it("returns null when new leg fits budget", () => {
-    const err = cspBudgetError([put({ strike: 50, contracts: 1 })], 10000, {
+    const err = capitalBudgetError([put({ strike: 50, contracts: 1 })], 10000, {
       optionType: "PUT",
       status: "OPEN",
       strike: 40,
@@ -50,7 +73,7 @@ describe("cspBudgetError", () => {
   });
 
   it("returns message when over budget", () => {
-    const err = cspBudgetError([put({ strike: 90, contracts: 10 })], 10000, {
+    const err = capitalBudgetError([put({ strike: 90, contracts: 10 })], 10000, {
       optionType: "PUT",
       status: "OPEN",
       strike: 50,
@@ -58,5 +81,6 @@ describe("cspBudgetError", () => {
       expiry: "2026-08-01",
     });
     assert.match(err ?? "", /exceeds your capital budget/);
+    assert.match(err ?? "", /% of budget/);
   });
 });

@@ -165,12 +165,14 @@ function StatCard({
   sub,
   accent,
   tip,
+  valueClassName,
 }: {
   label: string;
   value: string;
   sub: string;
   accent: string;
   tip?: string;
+  valueClassName?: string;
 }) {
   return (
     <div className="card-hover-lift relative overflow-visible rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -178,7 +180,9 @@ function StatCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-medium text-slate-400">{label}</p>
-          <p className="mt-2 text-2xl font-bold tabular-nums text-slate-800">{value}</p>
+          <p className={`mt-2 text-2xl font-bold tabular-nums ${valueClassName ?? "text-slate-800"}`}>
+            {value}
+          </p>
           <p className="mt-1 text-xs text-slate-500">{sub}</p>
         </div>
         {tip && <StatCardHelp tip={tip} />}
@@ -196,6 +200,10 @@ export default function DashboardInsights({
 }) {
   const kpis = insights?.kpis;
   const charts = insights?.charts;
+  const capitalInvested = kpis?.total_capital_invested ?? 0;
+  const capitalBudget = kpis?.capital_budget ?? 0;
+  const capitalUtilPct = kpis?.capital_utilization_pct ?? 0;
+  const overBudget = capitalBudget > 0 && capitalInvested > capitalBudget;
 
   if (loading) {
     return (
@@ -220,10 +228,11 @@ export default function DashboardInsights({
       <div className="animate-stagger-fade-up grid grid-cols-2 gap-4 overflow-visible md:grid-cols-3 lg:grid-cols-4">
         <StatCard
           label="Total Capital Invested"
-          value={fmtCurrency(kpis?.total_capital_invested ?? 0)}
-          sub="Open CSP cash + stock held"
-          tip="Open CSP (expiry not passed) strike × shares + effective stock cost after assignment (CC premiums reduce basis). Open CC does not add capital."
-          accent="bg-emerald-400"
+          value={`${fmtCurrency(capitalInvested)} (${capitalUtilPct.toFixed(0)}%)`}
+          sub={`of ${fmtCurrency(capitalBudget)} total budget · open CSP + stock held`}
+          tip="Open CSP (expiry not passed) strike × shares + effective stock cost after assignment (CC premiums reduce basis). Cannot exceed your total capital budget in Settings."
+          accent={overBudget ? "bg-red-400" : "bg-emerald-400"}
+          valueClassName={overBudget ? "text-red-600" : "text-slate-800"}
         />
         <StatCard
           label="Total Premium"

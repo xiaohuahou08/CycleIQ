@@ -6,9 +6,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { CreateTradeInput, Trade } from "@/lib/api/trades";
 import {
-  cspBudgetError,
+  capitalBudgetError,
+  capitalUtilizationPct,
+  computeTotalCapitalInvested,
   cspNotional,
-  sumOpenCspNotional,
 } from "@/lib/trades/cspCapital";
 import {
   ModalActionButtons,
@@ -170,8 +171,8 @@ export default function AddTradeModal({
 
   const isEdit = initialValues != null && initialValues.ticker != null && initialValues.ticker !== "";
 
-  const openCspUsed = useMemo(
-    () => sumOpenCspNotional(existingTrades, { excludeTradeId: editingTradeId }),
+  const baseCapitalUsed = useMemo(
+    () => computeTotalCapitalInvested(existingTrades, { excludeTradeId: editingTradeId }),
     [existingTrades, editingTradeId]
   );
 
@@ -199,7 +200,7 @@ export default function AddTradeModal({
       return;
     }
     setCspError(
-      cspBudgetError(existingTrades, defaults.totalCapitalBudget, {
+      capitalBudgetError(existingTrades, defaults.totalCapitalBudget, {
         optionType: "PUT",
         status,
         strike,
@@ -257,7 +258,7 @@ export default function AddTradeModal({
 
   const onSubmit = async (values: TradeFormValues) => {
     const status = initialValues?.status ?? "OPEN";
-    const budgetErr = cspBudgetError(existingTrades, defaults.totalCapitalBudget, {
+    const budgetErr = capitalBudgetError(existingTrades, defaults.totalCapitalBudget, {
       optionType: values.option_type,
       status,
       strike: values.strike,
@@ -332,17 +333,24 @@ export default function AddTradeModal({
               {optionTypeValue === "PUT" && (initialValues?.status ?? "OPEN") === "OPEN" && (
                 <div className="mt-2 space-y-1.5">
                   <p className="text-xs text-gray-600">
-                    CSP capital: ${openCspUsed.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                    Total capital: ${baseCapitalUsed.toLocaleString("en-US", { maximumFractionDigits: 0 })}
                     {draftCspNotional > 0 && (
                       <>
                         {" "}
-                        + ${draftCspNotional.toLocaleString("en-US", { maximumFractionDigits: 0 })} (this leg)
+                        + ${draftCspNotional.toLocaleString("en-US", { maximumFractionDigits: 0 })} (this CSP)
                         {" "}
-                        = ${(openCspUsed + draftCspNotional).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                        = ${(baseCapitalUsed + draftCspNotional).toLocaleString("en-US", { maximumFractionDigits: 0 })}
                       </>
                     )}
                     {" "}
                     / ${defaults.totalCapitalBudget.toLocaleString("en-US", { maximumFractionDigits: 0 })} budget
+                    {(() => {
+                      const total =
+                        draftCspNotional > 0
+                          ? baseCapitalUsed + draftCspNotional
+                          : baseCapitalUsed;
+                      return ` (${capitalUtilizationPct(total, defaults.totalCapitalBudget).toFixed(0)}%)`;
+                    })()}
                   </p>
                   {cspError && (
                     <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-800">

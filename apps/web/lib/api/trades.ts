@@ -80,6 +80,10 @@ export interface DashboardSeriesPoint {
 export interface DashboardInsights {
   kpis: {
     total_capital_invested: number;
+    /** Total capital budget from Settings. */
+    capital_budget: number;
+    /** total_capital_invested / capital_budget × 100. */
+    capital_utilization_pct: number;
     total_premium: number;
     realized_pnl: number;
     avg_annual_roi: number;

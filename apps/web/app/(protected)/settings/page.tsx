@@ -231,7 +231,7 @@ function TradingDefaultsSection() {
 
       <FieldRow
         label="Total capital budget"
-        hint="Maximum cash-secured notional for open CSP positions (strike × contracts × 100). New or edited open puts cannot exceed this total."
+        hint="Maximum total capital deployed (open CSP cash + stock held after assignment). Dashboard shows utilization %; new trades cannot increase invested capital above this limit."
       >
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">$</span>

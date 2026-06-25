@@ -12,7 +12,12 @@ from backend.services.cycle_fsm import append_transition, apply_api_event, repla
 from decimal import Decimal
 
 from backend.services.trade_cost_basis import apply_stock_cost_basis
-from backend.services.csp_capital import csp_budget_error
+from backend.services.csp_capital import capital_budget_error, get_capital_budget, capital_utilization_pct
+from backend.services.capital_invested import (
+    compute_open_csp_capital,
+    compute_stock_effective_cost,
+    compute_total_capital_invested,
+)
 from cycleiq.wheel_fsm import InvalidTransitionError
 
 AUTO_ATTACH_PUT_STATES = frozenset({"IDLE"})
@@ -154,14 +159,7 @@ def register_trades_routes(trades_bp):
             rolled_from_id=rolled_from_id or None,
         )
 
-        budget_err = csp_budget_error(
-            user_id,
-            option_type=option_type,
-            status=status,
-            strike=float(trade.strike),
-            contracts=int(trade.contracts),
-            expiry=expiry,
-        )
+        budget_err = capital_budget_error(user_id, pending_trade=trade)
         if budget_err:
             return jsonify({"error": budget_err}), 400
 
@@ -219,6 +217,7 @@ def register_trades_routes(trades_bp):
     @require_auth
     def update_trade(user_id: str, trade_id: str):
         trade = Trade.query.filter_by(id=trade_id, user_id=user_id).first_or_404()
+        prior_status = trade.status
         data = request.get_json() or {}
 
         if "ticker" in data and data["ticker"]:
@@ -372,21 +371,18 @@ def register_trades_routes(trades_bp):
                 if cycle:
                     cycle.state = "EXIT"
 
-        budget_err = csp_budget_error(
+        apply_stock_cost_basis(trade)
+        budget_err = capital_budget_error(
             user_id,
-            option_type=trade.option_type,
-            status=trade.status,
-            strike=float(trade.strike),
-            contracts=int(trade.contracts),
-            expiry=trade.expiry,
+            pending_trade=trade,
             exclude_trade_id=trade.id,
+            prior_status=prior_status,
         )
         if budget_err:
             db.session.rollback()
             return jsonify({"error": budget_err}), 400
 
         trade.updated_at = datetime.now(timezone.utc)
-        apply_stock_cost_basis(trade)
         db.session.commit()
         return jsonify(trade.to_api_dict())
 

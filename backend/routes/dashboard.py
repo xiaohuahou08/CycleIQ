@@ -8,6 +8,8 @@ from flask import jsonify
 from backend.auth.supabase import require_auth
 from backend.models.trade import Trade
 from backend.models.wheel_cycle import WheelCycle
+from backend.services.csp_capital import capital_utilization_pct, get_capital_budget
+from backend.services.capital_invested import compute_open_csp_capital
 
 
 def register_dashboard_routes(dashboard_bp):
@@ -206,12 +208,10 @@ def register_dashboard_routes(dashboard_bp):
                 return float(t.stock_cost_basis_per_share) * shares
             return float(t.strike) * shares
 
-        open_csp_capital = sum(
-            float(t.strike) * int(t.contracts) * 100
-            for t in open_trades
-            if t.option_type == "PUT"
-        )
+        open_csp_capital = compute_open_csp_capital(trades, today)
         total_capital_invested = open_csp_capital + total_stock_effective_cost
+        capital_budget = get_capital_budget(user_id)
+        capital_utilization = capital_utilization_pct(total_capital_invested, capital_budget)
 
         # ── Realized P&L ────────────────────────────────────────────────────
         # ASSIGNED (CSP put): option premium is realized at assignment; stock P&L
@@ -301,6 +301,8 @@ def register_dashboard_routes(dashboard_bp):
             {
                 "kpis": {
                     "total_capital_invested": round(total_capital_invested, 2),
+                    "capital_budget": round(capital_budget, 2),
+                    "capital_utilization_pct": round(capital_utilization, 1),
                     "total_premium": round(total_premium, 2),
                     "realized_pnl": round(realized_pnl, 2),
                     # Keep legacy key for compatibility; equivalent to open premium annualized yield.
