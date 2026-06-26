@@ -25,3 +25,13 @@ class CapitalFlow(db.Model):
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+
+    def to_api_dict(self) -> dict:
+        amount = float(self.amount)
+        return {
+            "id": self.id,
+            "event_date": self.event_date.isoformat(),
+            "amount": amount,
+            "type": "deposit" if amount >= 0 else "withdrawal",
+            "created_at": self.created_at.isoformat(),
+        }

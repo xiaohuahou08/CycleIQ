@@ -6,16 +6,16 @@ from datetime import date, datetime
 from flask import jsonify
 
 from backend.auth.supabase import require_auth
-from backend.models.capital_flow import CapitalFlow
 from backend.models.trade import Trade
 from backend.models.wheel_cycle import WheelCycle
 from backend.services.csp_capital import capital_utilization_pct, get_capital_budget
+from backend.services.capital_flows import capital_flow_events_for_user
 from backend.services.capital_invested import (
     build_capital_trend_charts,
     compute_open_csp_capital,
     compute_total_capital_pool,
 )
-from backend.services.portfolio_returns import CapitalFlowEvent, compute_time_weighted_return
+from backend.services.portfolio_returns import compute_time_weighted_return
 from backend.services.realized_pnl import compute_realized_pnl
 
 
@@ -284,11 +284,7 @@ def register_dashboard_routes(dashboard_bp):
         else:
             realized_annual_roi = 0.0
 
-        capital_flow_rows = CapitalFlow.query.filter_by(user_id=user_id).all()
-        capital_flows = [
-            CapitalFlowEvent(event_date=f.event_date, amount=float(f.amount))
-            for f in capital_flow_rows
-        ]
+        capital_flows = capital_flow_events_for_user(user_id)
         time_weighted_return_pct, cumulative_total_return_pct, twr_unreliable = (
             compute_time_weighted_return(trades, capital_flows, capital_budget, today)
         )

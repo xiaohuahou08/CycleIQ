@@ -645,6 +645,49 @@ def test_put_preferences_rejects_invalid_values(client):
     assert res.status_code == 400
 
 
+def test_post_capital_flow_deposit(client):
+    h = auth_headers()
+    res = client.post(
+        "/api/me/capital-flows",
+        json={"type": "deposit", "amount": 5000, "event_date": "2026-04-01"},
+        headers=h,
+    )
+    assert res.status_code == 201
+    body = res.get_json()
+    assert body["type"] == "deposit"
+    assert body["amount"] == pytest.approx(5000)
+
+    prefs = client.get("/api/me/preferences", headers=h).get_json()
+    assert prefs["total_capital_budget"] == pytest.approx(15000)
+
+
+def test_post_capital_flow_withdrawal(client):
+    h = auth_headers()
+    set_capital_budget(client, h, 20_000)
+    res = client.post(
+        "/api/me/capital-flows",
+        json={"type": "withdrawal", "amount": 3000, "event_date": date.today().isoformat()},
+        headers=h,
+    )
+    assert res.status_code == 201
+    assert res.get_json()["amount"] == pytest.approx(-3000)
+    prefs = client.get("/api/me/preferences", headers=h).get_json()
+    assert prefs["total_capital_budget"] == pytest.approx(17_000)
+
+
+def test_delete_capital_flow_reverses_budget(client):
+    h = auth_headers()
+    created = client.post(
+        "/api/me/capital-flows",
+        json={"type": "deposit", "amount": 1000, "event_date": "2026-05-01"},
+        headers=h,
+    ).get_json()
+    deleted = client.delete(f"/api/me/capital-flows/{created['id']}", headers=h)
+    assert deleted.status_code == 200
+    prefs = client.get("/api/me/preferences", headers=h).get_json()
+    assert prefs["total_capital_budget"] == pytest.approx(10000)
+
+
 def test_production_app_init_registers_preferences():
     init_path = Path(__file__).resolve().parents[1] / "backend" / "app" / "__init__.py"
     text = init_path.read_text(encoding="utf-8")

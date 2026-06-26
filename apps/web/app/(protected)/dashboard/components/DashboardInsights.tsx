@@ -699,7 +699,7 @@ export default function DashboardInsights({
               ? `Total return ${fmtPercent(kpis?.cumulative_total_return_pct ?? 0)} · prefer total when flows are large`
               : `Total return ${fmtPercent(kpis?.cumulative_total_return_pct ?? 0)} · portfolio ${fmtPercent(kpis?.portfolio_actual_return_pct ?? 0)}`
           }
-          tip="Daily TWR (not annualized): chain [Π(1 + daily return) − 1] × 100%. Daily return = daily gain ÷ (yesterday total capital + 0.5 × today net inflow). Net inflow = Settings budget increase/decrease. Total return = (end − start − net inflows) ÷ start. When large deposits/withdrawals make TWR and total return disagree in sign, use total return."
+          tip="Daily TWR (not annualized): chain [Π(1 + daily return) − 1] × 100%. Daily return = daily gain ÷ (yesterday total capital + 0.5 × today net inflow). Record deposits/withdrawals in Settings → Capital Management. When large flows make TWR and total return disagree in sign, use total return."
           accent={kpis?.time_weighted_return_unreliable ? "bg-amber-400" : "bg-blue-400"}
         />
         <StatCard

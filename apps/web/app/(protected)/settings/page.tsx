@@ -2,13 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, X } from "lucide-react";
+import { Check, X, ArrowDownCircle, ArrowUpCircle, Trash2 } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
 import { resetTradingData } from "@/lib/api/account";
+import {
+  createCapitalFlow,
+  deleteCapitalFlow,
+  formatFlowAmount,
+  getCapitalFlows,
+  type CapitalFlow,
+} from "@/lib/api/capitalFlows";
 import { useProtectedAuth } from "../auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { getUserDisplayName } from "@/lib/auth/user-profile";
-import { useTradeDefaults } from "@/lib/hooks/useTradeDefaults";
+import { useTradeDefaults, TRADE_DEFAULTS_UPDATED_EVENT } from "@/lib/hooks/useTradeDefaults";
 
 // ─── Section shell ────────────────────────────────────────────────────────────
 function Section({
@@ -262,7 +269,7 @@ function TradingDefaultsSection() {
 
       <FieldRow
         label="Total capital budget"
-        hint="Starting capital for the wheel. Total capital = budget + realized P&L; profits increase deployable capital. Dashboard shows utilization (deployed ÷ total capital); new trades cannot exceed total capital."
+        hint="Starting capital baseline. Use Capital Management below to record deposits and withdrawals with dates — required for accurate total capital and time-weighted return."
       >
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">$</span>
@@ -310,6 +317,305 @@ function TradingDefaultsSection() {
         {saveError && <span className="text-sm text-red-600">{saveError}</span>}
       </div>
     </Section>
+  );
+}
+
+function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function formatDisplayDate(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return iso;
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+// ─── Capital management ───────────────────────────────────────────────────────
+function CapitalFlowModal({
+  type,
+  open,
+  onClose,
+  onSubmit,
+  submitting,
+}: {
+  type: "deposit" | "withdrawal";
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (amount: number, eventDate: string) => Promise<void>;
+  submitting: boolean;
+}) {
+  const [amount, setAmount] = useState("");
+  const [eventDate, setEventDate] = useState(todayIsoDate());
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setAmount("");
+      setEventDate(todayIsoDate());
+      setError(null);
+    }
+  }, [open, type]);
+
+  if (!open) return null;
+
+  const title = type === "deposit" ? "Record deposit" : "Record withdrawal";
+  const label = type === "deposit" ? "Deposit amount" : "Withdrawal amount";
+
+  const handleSubmit = async () => {
+    setError(null);
+    const parsed = Number(amount);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      setError("Enter an amount greater than zero.");
+      return;
+    }
+    if (!eventDate) {
+      setError("Select a date.");
+      return;
+    }
+    try {
+      await onSubmit(parsed, eventDate);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save.");
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="animate-scale-in w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Updates your capital budget and feeds time-weighted return calculations.
+        </p>
+        <div className="mt-4 space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-700">{label}</label>
+            <div className="mt-1 flex items-center gap-2">
+              <span className="text-sm text-gray-500">$</span>
+              <input
+                type="number"
+                min="1"
+                step="100"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                autoFocus
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700">Date</label>
+            <input
+              type="date"
+              value={eventDate}
+              max={todayIsoDate()}
+              onChange={(e) => setEventDate(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            />
+          </div>
+        </div>
+        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleSubmit()}
+            disabled={submitting}
+            className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-60 ${
+              type === "deposit"
+                ? "bg-emerald-600 hover:bg-emerald-700"
+                : "bg-amber-600 hover:bg-amber-700"
+            }`}
+          >
+            {submitting ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CapitalManagementSection() {
+  const { token } = useProtectedAuth();
+  const { defaults, loading: defaultsLoading } = useTradeDefaults();
+  const [flows, setFlows] = useState<CapitalFlow[]>([]);
+  const [loadingFlows, setLoadingFlows] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [modal, setModal] = useState<"deposit" | "withdrawal" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const refreshFlows = async () => {
+    if (!token) {
+      setFlows([]);
+      setLoadingFlows(false);
+      return;
+    }
+    setLoadingFlows(true);
+    try {
+      const data = await getCapitalFlows(token);
+      setFlows(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load capital flows.");
+    } finally {
+      setLoadingFlows(false);
+    }
+  };
+
+  useEffect(() => {
+    void refreshFlows();
+  }, [token]);
+
+  const handleSubmitFlow = async (amount: number, eventDate: string) => {
+    if (!token || !modal) return;
+    setSubmitting(true);
+    try {
+      await createCapitalFlow(token, { type: modal, amount, event_date: eventDate });
+      window.dispatchEvent(new Event(TRADE_DEFAULTS_UPDATED_EVENT));
+      await refreshFlows();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (flow: CapitalFlow) => {
+    if (!token) return;
+    const label = flow.type === "deposit" ? "deposit" : "withdrawal";
+    if (!window.confirm(`Remove this ${label} from ${formatDisplayDate(flow.event_date)}?`)) {
+      return;
+    }
+    setDeletingId(flow.id);
+    try {
+      await deleteCapitalFlow(token, flow.id);
+      window.dispatchEvent(new Event(TRADE_DEFAULTS_UPDATED_EVENT));
+      await refreshFlows();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete entry.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  return (
+    <>
+      <CapitalFlowModal
+        type={modal ?? "deposit"}
+        open={modal !== null}
+        onClose={() => setModal(null)}
+        onSubmit={handleSubmitFlow}
+        submitting={submitting}
+      />
+      <Section
+        title="Capital Management"
+        description="Record deposits and withdrawals with dates. Total capital and time-weighted return use these cash flows."
+      >
+        <FieldRow
+          label="Current capital budget"
+          hint="Budget after all recorded flows. Total capital on Dashboard = budget + realized P&L."
+        >
+          <span className="inline-flex items-center rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-800">
+            {defaultsLoading ? "…" : formatFlowAmount(defaults.totalCapitalBudget)}
+          </span>
+        </FieldRow>
+
+        <div className="flex flex-wrap gap-3 py-3">
+          <button
+            type="button"
+            onClick={() => setModal("deposit")}
+            disabled={!token}
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <ArrowDownCircle className={iconSm} strokeWidth={iconStroke} aria-hidden />
+            Deposit
+          </button>
+          <button
+            type="button"
+            onClick={() => setModal("withdrawal")}
+            disabled={!token}
+            className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <ArrowUpCircle className={iconSm} strokeWidth={iconStroke} aria-hidden />
+            Withdraw
+          </button>
+        </div>
+
+        {error && <p className="text-sm text-red-600">{error}</p>}
+
+        <div className="mt-2 overflow-hidden rounded-lg border border-gray-200">
+          <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left font-medium text-gray-600">Date</th>
+                <th className="px-4 py-2 text-left font-medium text-gray-600">Type</th>
+                <th className="px-4 py-2 text-right font-medium text-gray-600">Amount</th>
+                <th className="px-4 py-2 text-right font-medium text-gray-600">
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 bg-white">
+              {loadingFlows ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
+                    Loading…
+                  </td>
+                </tr>
+              ) : flows.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
+                    No deposits or withdrawals yet.
+                  </td>
+                </tr>
+              ) : (
+                flows.map((flow) => (
+                  <tr key={flow.id}>
+                    <td className="px-4 py-2.5 text-gray-900">
+                      {formatDisplayDate(flow.event_date)}
+                    </td>
+                    <td className="px-4 py-2.5 capitalize text-gray-700">{flow.type}</td>
+                    <td
+                      className={`px-4 py-2.5 text-right font-medium ${
+                        flow.type === "deposit" ? "text-emerald-700" : "text-amber-700"
+                      }`}
+                    >
+                      {flow.type === "deposit" ? "+" : "−"}
+                      {formatFlowAmount(flow.amount)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <button
+                        type="button"
+                        onClick={() => void handleDelete(flow)}
+                        disabled={deletingId === flow.id}
+                        className="inline-flex items-center rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 disabled:opacity-50"
+                        aria-label="Delete entry"
+                      >
+                        <Trash2 className="h-4 w-4" strokeWidth={iconStroke} aria-hidden />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+    </>
   );
 }
 
@@ -422,6 +728,7 @@ export default function SettingsPage() {
       <div className="mx-auto w-full max-w-2xl space-y-6">
         <AccountSection email={email} displayName={displayName} />
         <TradingDefaultsSection />
+        <CapitalManagementSection />
         <DangerZoneSection />
 
         <div className="flex flex-col items-center gap-4 pt-2 pb-4">
