@@ -49,6 +49,10 @@ class Config:
 
 def cors_allowed_origins() -> list[str] | None:
     """Explicit browser origins for CORS, or None to allow all (local dev only)."""
+    # Non-production: allow any origin (localhost, 127.0.0.1, alternate dev ports).
+    if os.environ.get("FLASK_ENV", "development") != "production":
+        return None
+
     frontend = os.environ.get("FRONTEND_URL", "").strip().rstrip("/")
     extras = [
         part.strip().rstrip("/")
