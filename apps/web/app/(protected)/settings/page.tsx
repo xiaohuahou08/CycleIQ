@@ -9,6 +9,7 @@ import {
   createCheckoutSession,
   createPortalSession,
   fetchBillingStatus,
+  syncBillingAfterCheckout,
   type BillingStatus,
 } from "@/lib/api/billing";
 import {
@@ -22,6 +23,7 @@ import {
 import { resetTradingData } from "@/lib/api/account";
 import { useProtectedAuth } from "../auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { getAuthRedirectOrigin } from "@/lib/auth-url";
 import { getUserDisplayName } from "@/lib/auth/user-profile";
 import { useTradeDefaults, TRADE_DEFAULTS_UPDATED_EVENT } from "@/lib/hooks/useTradeDefaults";
 
@@ -123,11 +125,18 @@ function BillingSection() {
   }, [token]);
 
   useEffect(() => {
-    if (searchParams.get("billing") === "success") {
-      setToast("Premium activated — thank you!");
-      void load();
-    }
-  }, [searchParams]);
+    if (searchParams.get("billing") !== "success" || !token) return;
+    const sessionId = searchParams.get("session_id");
+    void (async () => {
+      try {
+        setStatus(await syncBillingAfterCheckout(token, sessionId));
+        setToast("Premium activated — thank you!");
+      } catch {
+        setToast("Payment received — syncing plan…");
+        await load();
+      }
+    })();
+  }, [searchParams, token]);
 
   const onUpgrade = async () => {
     if (!token) return;
@@ -269,7 +278,7 @@ function AccountSection({
     try {
       const supabase = getSupabaseClient();
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/settings`,
+        redirectTo: `${getAuthRedirectOrigin() || window.location.origin}/settings`,
       });
       if (error) throw error;
       showToast("Password reset email sent. Check your inbox.", "success");

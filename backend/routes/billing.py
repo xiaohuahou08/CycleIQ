@@ -32,6 +32,24 @@ def register_billing_routes(billing_bp):
             return jsonify({"error": str(exc.user_message or exc)}), 502
         return jsonify({"url": url})
 
+    @billing_bp.route("/sync", methods=["POST"])
+    @require_auth
+    def sync_billing(user_id: str):
+        payload = request.get_json(silent=True) or {}
+        session_id = payload.get("session_id")
+        try:
+            stripe_billing.sync_after_checkout(
+                user_id,
+                str(session_id).strip() if session_id else None,
+            )
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        except stripe.StripeError as exc:
+            return jsonify({"error": str(exc.user_message or exc)}), 502
+        body = trade_limit_snapshot(user_id)
+        body.update(stripe_billing.billing_status_dict(user_id))
+        return jsonify(body)
+
     @billing_bp.route("/status", methods=["GET"])
     @require_auth
     def get_billing_status(user_id: str):

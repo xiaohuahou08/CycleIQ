@@ -15,6 +15,31 @@ export interface BillingStatus {
   can_manage_billing: boolean;
 }
 
+export async function syncBillingAfterCheckout(
+  token: string,
+  sessionId?: string | null,
+): Promise<BillingStatus> {
+  const res = await fetch(`${API_BASE}/api/billing/sync`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(sessionId ? { session_id: sessionId } : {}),
+  });
+  if (!res.ok) {
+    let detail = `Failed to sync billing (${res.status})`;
+    try {
+      const data = (await res.json()) as { error?: string };
+      if (data.error) detail = data.error;
+    } catch {
+      // ignore
+    }
+    throw new Error(detail);
+  }
+  return (await res.json()) as BillingStatus;
+}
+
 export async function fetchBillingStatus(token: string): Promise<BillingStatus> {
   const res = await fetch(`${API_BASE}/api/billing/status`, {
     headers: { Authorization: `Bearer ${token}` },

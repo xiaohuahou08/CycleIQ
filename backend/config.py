@@ -47,6 +47,27 @@ class Config:
     FRONTEND_URL: str = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
 
 
+def cors_allowed_origins() -> list[str] | None:
+    """Explicit browser origins for CORS, or None to allow all (local dev only)."""
+    frontend = os.environ.get("FRONTEND_URL", "").strip().rstrip("/")
+    extras = [
+        part.strip().rstrip("/")
+        for part in os.environ.get("CORS_EXTRA_ORIGINS", "").split(",")
+        if part.strip()
+    ]
+    origins: list[str] = []
+    if frontend:
+        origins.append(frontend)
+    for origin in extras:
+        if origin not in origins:
+            origins.append(origin)
+    if origins:
+        return origins
+    if os.environ.get("FLASK_ENV") == "production":
+        return []
+    return None
+
+
 class DevelopmentConfig(Config):
     DEBUG = True
 

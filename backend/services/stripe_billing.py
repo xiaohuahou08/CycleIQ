@@ -7,11 +7,8 @@ import stripe
 from flask import current_app
 
 from backend.models import db
-from backend.models.user_preferences import (
-    BASIC_PLAN,
-    PREMIUM_PLAN,
-    UserPreferences,
-)
+from backend.models.user_preferences import UserPreferences
+from backend.services.trade_limits import BASIC_PLAN, PREMIUM_PLAN
 
 PREMIUM_SUBSCRIPTION_STATUSES = frozenset({"active", "trialing"})
 
@@ -101,7 +98,7 @@ def create_checkout_session(user_id: str, email: str | None) -> str:
         customer=customer_id,
         client_reference_id=user_id,
         line_items=[{"price": price_id, "quantity": 1}],
-        success_url=f"{frontend}/settings?billing=success",
+        success_url=f"{frontend}/settings?billing=success&session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{frontend}/pricing?billing=canceled",
         metadata={"user_id": user_id},
         subscription_data={"metadata": {"user_id": user_id}},
@@ -145,6 +142,52 @@ def billing_status_dict(user_id: str) -> dict[str, Any]:
         "current_period_end": period_end,
         "can_manage_billing": bool(row.stripe_customer_id),
     }
+
+
+def sync_after_checkout(user_id: str, checkout_session_id: str | None = None) -> UserPreferences:
+    """Sync plan from Stripe after checkout (local dev or success redirect)."""
+    if checkout_session_id:
+        _configure_stripe()
+        session = _as_dict(stripe.checkout.Session.retrieve(checkout_session_id))
+        owner = _resolve_user_id(session)
+        if owner != user_id:
+            raise ValueError("Checkout session does not belong to this user")
+        _handle_checkout_completed(session)
+        row = UserPreferences.query.filter_by(user_id=user_id).first()
+        if not row:
+            raise ValueError("User preferences not found after checkout sync")
+        return row
+    return sync_subscription_for_user(user_id)
+
+
+def sync_subscription_for_user(user_id: str) -> UserPreferences:
+    """Pull subscription state from Stripe (for local dev when webhooks miss localhost)."""
+    row = _ensure_preferences(user_id)
+    if not row.stripe_customer_id:
+        raise ValueError("No Stripe customer on file. Complete checkout first.")
+
+    _configure_stripe()
+    subscriptions = stripe.Subscription.list(
+        customer=row.stripe_customer_id,
+        status="all",
+        limit=10,
+    )
+    active = None
+    for sub in subscriptions.data:
+        sub_dict = _as_dict(sub)
+        if sub_dict.get("status") in PREMIUM_SUBSCRIPTION_STATUSES:
+            active = sub_dict
+            break
+
+    if active:
+        return sync_user_from_subscription(user_id, active)
+
+    apply_plan_from_subscription_status(row, "canceled")
+    row.stripe_subscription_id = None
+    row.current_period_end = None
+    row.updated_at = datetime.now(timezone.utc)
+    db.session.commit()
+    return row
 
 
 def handle_stripe_event(event: Any) -> None:

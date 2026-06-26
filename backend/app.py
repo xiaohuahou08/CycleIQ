@@ -1,66 +1,22 @@
+"""Local development entrypoint — run with `python backend/app.py` from repo root."""
+
 import os
-from datetime import datetime, timezone
-from flask import Flask, jsonify
-from flask_cors import CORS
-from flask_migrate import Migrate
 
-from backend.config import Config
+from backend.app import create_app as _create_app
+from backend.config import DevelopmentConfig
 from backend.models import db
-from backend.routes import trades_bp, dashboard_bp, cycles_bp, metrics_bp, preferences_bp, account_bp, billing_bp
-from backend.routes.trades import register_trades_routes
-from backend.routes.dashboard import register_dashboard_routes
-from backend.routes.cycles import register_cycles_routes
-from backend.routes.metrics import register_metrics_routes
-from backend.routes.preferences import register_preferences_routes
-from backend.routes.account import register_account_routes
-from backend.routes.billing import register_billing_routes, register_stripe_webhook
-
-migrate = Migrate()
-_ROUTES_REGISTERED = False
 
 
-def create_app(config_class=Config):
-    app = Flask(__name__)
-    app.config.from_object(config_class)
-
-    CORS(app)
-    db.init_app(app)
-    migrate.init_app(app, db)
-
-    with app.app_context():
-        db.create_all()
-
-    # Register blueprint routes only once per Python process.
-    global _ROUTES_REGISTERED
-    if not _ROUTES_REGISTERED:
-        register_trades_routes(trades_bp)
-        register_dashboard_routes(dashboard_bp)
-        register_cycles_routes(cycles_bp)
-        register_metrics_routes(metrics_bp)
-        register_preferences_routes(preferences_bp)
-        register_account_routes(account_bp)
-        register_billing_routes(billing_bp)
-        _ROUTES_REGISTERED = True
-    app.register_blueprint(trades_bp)
-    app.register_blueprint(dashboard_bp)
-    app.register_blueprint(cycles_bp)
-    app.register_blueprint(metrics_bp)
-    app.register_blueprint(preferences_bp)
-    app.register_blueprint(account_bp)
-    app.register_blueprint(billing_bp)
-    register_stripe_webhook(app)
-
-    @app.route("/health", methods=["GET"])
-    def health():
-        return jsonify({
-            "status": "ok",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
-
-    return app
+def create_app(config_class=DevelopmentConfig):
+    """Dev/test wrapper; production WSGI uses `backend.app:app` directly."""
+    application = _create_app(config_class)
+    if config_class is DevelopmentConfig:
+        with application.app_context():
+            db.create_all()
+    return application
 
 
-app = create_app()
+app = create_app(DevelopmentConfig)
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))

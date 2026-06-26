@@ -51,6 +51,12 @@ services:
       # Stripe → Product catalog → CycleIQ Premium monthly price id
       - key: STRIPE_PRICE_PREMIUM_MONTHLY
         sync: false
-      # Vercel frontend URL (Checkout redirects)
+      # Supabase direct URI (port 5432) — used by preDeployCommand migrations only
+      - key: DATABASE_POOL_URL
+        sync: false
+      # Frontend origin (https://cycleiq.xyz) — Stripe redirects + CORS
       - key: FRONTEND_URL
+        sync: false
+      # Optional comma-separated extra CORS origins (Vercel preview URLs)
+      - key: CORS_EXTRA_ORIGINS
         sync: false
