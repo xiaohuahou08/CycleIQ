@@ -9,11 +9,63 @@ from backend.models import db
 from backend.models.trade import ALLOWED_EXPIRE_TYPES, ALLOWED_TRADE_STATUSES, Trade
 from backend.models.wheel_cycle import WheelCycle
 from backend.services.cycle_fsm import append_transition, apply_api_event, replay_cycle
+from decimal import Decimal
+
 from backend.services.trade_cost_basis import apply_stock_cost_basis
+from backend.services.csp_capital import capital_budget_error, get_capital_budget, capital_utilization_pct
+from backend.services.trade_limits import trade_limit_error
+from backend.services.capital_invested import (
+    compute_open_csp_capital,
+    compute_stock_effective_cost,
+    compute_total_capital_invested,
+)
 from cycleiq.wheel_fsm import InvalidTransitionError
 
 AUTO_ATTACH_PUT_STATES = frozenset({"IDLE"})
 AUTO_ATTACH_CALL_STATES = frozenset({"STOCK_HELD", "CC_OPEN"})
+
+
+def _stamp_lifecycle_dates(trade: Trade, data: dict, status: str | None = None) -> None:
+    """Backfill lifecycle dates when a leg is saved in a terminal state."""
+    st = (status or trade.status).upper()
+    if st == "ASSIGNED" and trade.assigned_at is None and "assigned_at" not in data:
+        trade.assigned_at = trade.trade_date
+    elif st == "CLOSED" and trade.closed_at is None and "closed_at" not in data:
+        trade.closed_at = trade.trade_date
+    elif st == "CALLED_AWAY" and trade.called_away_at is None and "called_away_at" not in data:
+        trade.called_away_at = trade.trade_date
+    elif st == "ROLLED" and trade.rolled_at is None and "rolled_at" not in data:
+        trade.rolled_at = trade.trade_date
+    elif st == "EXPIRED" and trade.expired_at is None and "expired_at" not in data:
+        trade.expired_at = trade.trade_date
+
+
+def _sum_chain_premium(trade: Trade, user_id: str) -> Decimal:
+    """Walk the rolled_from_id chain and return net prior-roll premium per share.
+
+    Net = sum(premiums) − sum(commission_fees) / shares across all ROLLED ancestors.
+    Commission fees from prior roll legs increase cost basis, so we subtract them
+    from the premium credit before storing in prior_roll_premium_per_share.
+    """
+    total_premium = Decimal("0")
+    total_fees = Decimal("0")
+    shares = Decimal(str(int(trade.contracts) * 100))
+    seen = set()
+    current_id = trade.rolled_from_id
+    while current_id and current_id not in seen:
+        seen.add(current_id)
+        ancestor = Trade.query.filter_by(id=current_id, user_id=user_id).first()
+        if not ancestor:
+            break
+        if ancestor.status == "ROLLED":
+            # Net premium = premium collected − buyback paid to close that leg.
+            buyback = Decimal(str(getattr(ancestor, "buyback_cost_per_share", None) or 0))
+            total_premium += Decimal(str(ancestor.premium)) - buyback
+            total_fees += Decimal(str(ancestor.commission_fee or 0))
+        current_id = ancestor.rolled_from_id
+    if shares <= 0:
+        return Decimal("0")
+    return total_premium - (total_fees / shares)
 
 
 def register_trades_routes(trades_bp):
@@ -39,6 +91,10 @@ def register_trades_routes(trades_bp):
     @trades_bp.route("", methods=["POST"])
     @require_auth
     def create_trade(user_id: str):
+        limit_err = trade_limit_error(user_id)
+        if limit_err:
+            return jsonify({"error": limit_err}), 403
+
         data = request.get_json() or {}
         required = ["ticker", "option_type", "strike", "expiry", "trade_date", "premium"]
         for field in required:
@@ -46,11 +102,16 @@ def register_trades_routes(trades_bp):
                 return jsonify({"error": f"Missing required field: {field}"}), 400
 
         ticker = str(data["ticker"]).strip().upper()
+        # If caller explicitly passes cycle_id=null (e.g. when creating a rolled leg that has no parent cycle),
+        # honour it and skip auto-attach so all legs in a roll chain share the same cycle state.
+        cycle_id_explicitly_null = "cycle_id" in data and data["cycle_id"] is None
         cycle_id = data.get("cycle_id")
         if cycle_id:
             exists = WheelCycle.query.filter_by(id=cycle_id, user_id=user_id).first()
             if not exists:
                 return jsonify({"error": "cycle_id not found"}), 400
+        elif cycle_id_explicitly_null:
+            cycle_id = None  # caller opted out of auto-attach
         else:
             existing_cycle = (
                 WheelCycle.query.filter_by(user_id=user_id, ticker=ticker)
@@ -94,6 +155,12 @@ def register_trades_routes(trades_bp):
         if status not in ALLOWED_TRADE_STATUSES:
             return jsonify({"error": f"Invalid status; allowed: {sorted(ALLOWED_TRADE_STATUSES)}"}), 400
 
+        rolled_from_id = data.get("rolled_from_id")
+        if rolled_from_id:
+            parent = Trade.query.filter_by(id=rolled_from_id, user_id=user_id).first()
+            if not parent:
+                return jsonify({"error": "rolled_from_id not found"}), 400
+
         trade = Trade(
             user_id=user_id,
             cycle_id=cycle_id,
@@ -106,33 +173,57 @@ def register_trades_routes(trades_bp):
             commission_fee=float(data["commission_fee"])
             if data.get("commission_fee") is not None
             else None,
-            delta=float(data["delta"]) if data.get("delta") is not None else None,
             contracts=int(data.get("contracts", 1)),
             status=status,
             notes=data.get("notes"),
+            rolled_from_id=rolled_from_id or None,
         )
+        _stamp_lifecycle_dates(trade, data, status=status)
+
+        budget_err = capital_budget_error(user_id, pending_trade=trade)
+        if budget_err:
+            return jsonify({"error": budget_err}), 400
+
         db.session.add(trade)
 
-        # Auto-drive cycle state for newly opened CSP trades.
-        if trade.cycle_id and option_type == "PUT" and status == "OPEN":
+        if trade.cycle_id and status == "OPEN":
             cycle = WheelCycle.query.filter_by(id=trade.cycle_id, user_id=user_id).first()
-            if cycle and cycle.state == "IDLE":
-                try:
-                    fsm_cycle = replay_cycle(cycle.ticker, cycle.transition_log)
-                    transition = apply_api_event(
-                        fsm_cycle,
-                        "sell_csp",
-                        {
-                            "strike": float(trade.strike),
-                            "expiry": trade.expiry.isoformat(),
-                            "premium": float(trade.premium),
-                        },
-                    )
-                    cycle.transition_log = append_transition(cycle.transition_log, transition)
-                    cycle.state = fsm_cycle.state.value
-                except (InvalidTransitionError, ValueError, KeyError, TypeError):
-                    # Keep trade creation robust even if cycle FSM replay/transition fails.
-                    pass
+            if cycle:
+                # Auto-drive CSP open: IDLE → CSP_OPEN
+                if option_type == "PUT" and cycle.state == "IDLE":
+                    try:
+                        fsm_cycle = replay_cycle(cycle.ticker, cycle.transition_log)
+                        transition = apply_api_event(
+                            fsm_cycle,
+                            "sell_csp",
+                            {
+                                "strike": float(trade.strike),
+                                "expiry": trade.expiry.isoformat(),
+                                "premium": float(trade.premium),
+                            },
+                        )
+                        cycle.transition_log = append_transition(cycle.transition_log, transition)
+                        cycle.state = fsm_cycle.state.value
+                    except (InvalidTransitionError, ValueError, KeyError, TypeError):
+                        pass
+
+                # Auto-drive CC open: STOCK_HELD → CC_OPEN
+                elif option_type == "CALL" and cycle.state == "STOCK_HELD":
+                    try:
+                        fsm_cycle = replay_cycle(cycle.ticker, cycle.transition_log)
+                        transition = apply_api_event(
+                            fsm_cycle,
+                            "sell_cc",
+                            {
+                                "strike": float(trade.strike),
+                                "expiry": trade.expiry.isoformat(),
+                                "premium": float(trade.premium),
+                            },
+                        )
+                        cycle.transition_log = append_transition(cycle.transition_log, transition)
+                        cycle.state = fsm_cycle.state.value
+                    except (InvalidTransitionError, ValueError, KeyError, TypeError):
+                        pass
 
         db.session.commit()
         return jsonify(trade.to_api_dict()), 201
@@ -147,6 +238,7 @@ def register_trades_routes(trades_bp):
     @require_auth
     def update_trade(user_id: str, trade_id: str):
         trade = Trade.query.filter_by(id=trade_id, user_id=user_id).first_or_404()
+        prior_status = trade.status
         data = request.get_json() or {}
 
         if "ticker" in data and data["ticker"]:
@@ -167,21 +259,62 @@ def register_trades_routes(trades_bp):
         if "fees_on_assignment" in data:
             fv = data["fees_on_assignment"]
             trade.fees_on_assignment = float(fv) if fv is not None else None
+        if "prior_roll_premium_per_share" in data:
+            pv = data["prior_roll_premium_per_share"]
+            trade.prior_roll_premium_per_share = float(pv) if pv is not None else None
+        if "buyback_cost_per_share" in data:
+            bv = data["buyback_cost_per_share"]
+            trade.buyback_cost_per_share = float(bv) if bv is not None else None
+        if "rolled_from_id" in data:
+            rfid = data["rolled_from_id"]
+            if rfid is None:
+                trade.rolled_from_id = None
+            else:
+                parent = Trade.query.filter_by(id=rfid, user_id=user_id).first()
+                if not parent:
+                    return jsonify({"error": "rolled_from_id not found"}), 400
+                trade.rolled_from_id = rfid
+                # Inherit cycle_id from parent chain if this trade has none.
+                if trade.cycle_id is None and parent.cycle_id:
+                    trade.cycle_id = parent.cycle_id
         if "contracts" in data:
             trade.contracts = int(data["contracts"])
-        if "delta" in data:
-            trade.delta = float(data["delta"]) if data["delta"] is not None else None
         if "notes" in data:
             trade.notes = data["notes"]
         if "cycle_id" in data:
             cid = data["cycle_id"]
+            old_cycle_id = trade.cycle_id  # remember old cycle before reassigning
             if cid is None:
                 trade.cycle_id = None
             else:
-                exists = WheelCycle.query.filter_by(id=cid, user_id=user_id).first()
-                if not exists:
+                cycle = WheelCycle.query.filter_by(id=cid, user_id=user_id).first()
+                if not cycle:
                     return jsonify({"error": "cycle_id not found"}), 400
                 trade.cycle_id = cid
+                # Auto-drive FSM: linking an OPEN CALL onto a STOCK_HELD cycle → CC_OPEN
+                if trade.option_type == "CALL" and trade.status == "OPEN" and cycle.state == "STOCK_HELD":
+                    try:
+                        fsm_cycle = replay_cycle(cycle.ticker, cycle.transition_log)
+                        transition = apply_api_event(
+                            fsm_cycle,
+                            "sell_cc",
+                            {
+                                "strike": float(trade.strike),
+                                "expiry": trade.expiry.isoformat(),
+                                "premium": float(trade.premium),
+                            },
+                        )
+                        cycle.transition_log = append_transition(cycle.transition_log, transition)
+                        cycle.state = fsm_cycle.state.value
+                    except (InvalidTransitionError, ValueError, KeyError, TypeError):
+                        pass
+            # If the trade moved away from its old cycle, delete that cycle if it is now empty.
+            if old_cycle_id and old_cycle_id != trade.cycle_id:
+                remaining = Trade.query.filter_by(cycle_id=old_cycle_id, user_id=user_id).count()
+                if remaining == 0:
+                    old_cycle = WheelCycle.query.filter_by(id=old_cycle_id, user_id=user_id).first()
+                    if old_cycle:
+                        db.session.delete(old_cycle)
 
         if "expiry" in data and data["expiry"]:
             try:
@@ -231,12 +364,47 @@ def register_trades_routes(trades_bp):
             if st not in ALLOWED_TRADE_STATUSES:
                 return jsonify({"error": f"Invalid status; allowed: {sorted(ALLOWED_TRADE_STATUSES)}"}), 400
             trade.status = st
+            _stamp_lifecycle_dates(trade, data, status=st)
             if st != "EXPIRED":
                 trade.expired_at = None
                 trade.expire_type = None
 
-        trade.updated_at = datetime.now(timezone.utc)
+            # On assignment, auto-accumulate roll premiums from the rolled_from_id chain
+            # (only if caller didn't supply prior_roll_premium_per_share explicitly).
+            if st == "ASSIGNED" and trade.option_type == "PUT" and "prior_roll_premium_per_share" not in data:
+                chain_premium = _sum_chain_premium(trade, user_id)
+                if chain_premium > 0:
+                    trade.prior_roll_premium_per_share = float(chain_premium)
+
+            if st == "CALLED_AWAY" and trade.option_type == "CALL" and trade.cycle_id:
+                assigned_put = (
+                    Trade.query.filter_by(user_id=user_id, cycle_id=trade.cycle_id, option_type="PUT")
+                    .filter(Trade.status.in_(["ASSIGNED", "OPEN"]))
+                    .order_by(Trade.trade_date.desc(), Trade.created_at.desc())
+                    .first()
+                )
+                if assigned_put:
+                    assigned_put.status = "CALLED_AWAY"
+                    assigned_put.called_away_at = trade.called_away_at or trade.trade_date
+                    assigned_put.updated_at = datetime.now(timezone.utc)
+                    # Preserve stock_cost_basis_per_share (do not clear on CALLED_AWAY).
+
+                cycle = WheelCycle.query.filter_by(id=trade.cycle_id, user_id=user_id).first()
+                if cycle:
+                    cycle.state = "EXIT"
+
         apply_stock_cost_basis(trade)
+        budget_err = capital_budget_error(
+            user_id,
+            pending_trade=trade,
+            exclude_trade_id=trade.id,
+            prior_status=prior_status,
+        )
+        if budget_err:
+            db.session.rollback()
+            return jsonify({"error": budget_err}), 400
+
+        trade.updated_at = datetime.now(timezone.utc)
         db.session.commit()
         return jsonify(trade.to_api_dict())
 
@@ -296,6 +464,7 @@ def register_trades_routes(trades_bp):
         if st not in ALLOWED_TRADE_STATUSES:
             return jsonify({"error": f"Invalid status; allowed: {sorted(ALLOWED_TRADE_STATUSES)}"}), 400
         trade.status = st
+        _stamp_lifecycle_dates(trade, data, status=st)
         trade.updated_at = datetime.now(timezone.utc)
         apply_stock_cost_basis(trade)
         db.session.commit()

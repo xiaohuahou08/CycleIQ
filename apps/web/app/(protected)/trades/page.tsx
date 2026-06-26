@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   createTrade,
   deleteTrade,
@@ -11,35 +12,26 @@ import {
   type CreateTradeInput,
   type Trade,
   type TradeStatus,
+  type UpdateTradeInput,
 } from "@/lib/api/trades";
+import { fetchPlanUsage, type PlanUsage } from "@/lib/api/plan";
 import { useProtectedAuth } from "../auth-context";
 import AddTradeModal from "../dashboard/components/AddTradeModal";
 import AssignTradeModal from "./components/AssignTradeModal";
 import ExpireTradeModal from "./components/ExpireTradeModal";
 import RollTradeModal from "./components/RollTradeModal";
+import { Clock } from "lucide-react";
+import { iconXs, iconStroke } from "@/app/components/icons";
+import { applyFilters, getClosedCycleIds } from "@/lib/trades/filters";
 import TradeFilters, { type FilterState } from "./components/TradeFilters";
 import TradeList from "./components/TradeList";
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function applyFilters(trades: Trade[], f: FilterState): Trade[] {
-  return trades.filter((t) => {
-    if (f.ticker && t.ticker !== f.ticker) return false;
-    if (f.type !== "ALL" && t.option_type !== f.type) return false;
-    if (f.status !== "ALL" && t.status !== f.status) return false;
-    if (f.dateFrom && t.trade_date < f.dateFrom) return false;
-    if (f.dateTo && t.trade_date > f.dateTo) return false;
-    if (
-      f.search &&
-      !t.ticker.toLowerCase().includes(f.search.toLowerCase()) &&
-      !(t.notes ?? "").toLowerCase().includes(f.search.toLowerCase())
-    ) {
-      return false;
-    }
-    return true;
-  });
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 export default function TradesPage() {
@@ -51,15 +43,16 @@ export default function TradesPage() {
   const [expiringTrade, setExpiringTrade] = useState<Trade | null>(null);
   const [assigningTrade, setAssigningTrade] = useState<Trade | null>(null);
   const [rollingTrade, setRollingTrade] = useState<Trade | null>(null);
+  const [prices, setPrices] = useState<Record<string, number>>({});
+  const [pricesUpdatedAt, setPricesUpdatedAt] = useState<Date | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [planUsage, setPlanUsage] = useState<PlanUsage | null>(null);
   const [filters, setFilters] = useState<FilterState>({
-    ticker: "",
-    type: "ALL",
-    status: "ALL",
-    dateFrom: "",
-    dateTo: "",
+    type: "PUT",
+    status: "OPEN",
     search: "",
+    dateRangeType: "1M",
   });
 
   useEffect(() => {
@@ -68,6 +61,21 @@ export default function TradesPage() {
       .then((trades) => setAllTrades(trades))
       .catch(() => setAllTrades([]))
       .finally(() => setTradesLoading(false));
+  }, [token]);
+
+  const refreshPlanUsage = async () => {
+    if (!token) return;
+    try {
+      const usage = await fetchPlanUsage(token);
+      setPlanUsage(usage);
+    } catch {
+      setPlanUsage(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!token) return;
+    void refreshPlanUsage();
   }, [token]);
 
   useEffect(() => {
@@ -84,17 +92,75 @@ export default function TradesPage() {
     [allTrades]
   );
 
+  const closedCycleIds = useMemo(() => getClosedCycleIds(allTrades), [allTrades]);
+
+  // Tickers that have an assigned (stock-held) position, i.e. CSP that was assigned.
+  // Exclude wheels that are already closed (no OPEN legs), including called-away wheels.
+  const assignedTickers = useMemo(() => {
+    return Array.from(
+      new Set(
+        allTrades
+          .filter(
+            (t) =>
+              t.option_type === "PUT" &&
+              t.status === "ASSIGNED" &&
+              (!t.cycle_id || !closedCycleIds.has(t.cycle_id))
+          )
+          .map((t) => t.ticker)
+      )
+    );
+  }, [allTrades, closedCycleIds]);
+
+  // Map ticker → cycle_id for ASSIGNED PUT trades (most recent per ticker).
+  // Used to explicitly link new CC trades to the correct existing wheel.
+  const assignedCycleByTicker = useMemo(() => {
+    const map: Record<string, string> = {};
+    allTrades
+      .filter(
+        (t) =>
+          t.option_type === "PUT" &&
+          t.status === "ASSIGNED" &&
+          t.cycle_id &&
+          !closedCycleIds.has(t.cycle_id)
+      )
+      .sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime())
+      .forEach((t) => {
+        if (t.cycle_id) map[t.ticker] = t.cycle_id;
+      });
+    return map;
+  }, [allTrades, closedCycleIds]);
+
+  // Fetch live prices for all unique tickers whenever the trade list changes.
+  useEffect(() => {
+    if (tickerSuggestions.length === 0) return;
+    const symbols = tickerSuggestions.join(",");
+    fetch(`/api/quote?symbols=${encodeURIComponent(symbols)}`)
+      .then((r) => r.json())
+      .then((data: Record<string, number>) => {
+        setPrices(data);
+        setPricesUpdatedAt(new Date());
+      })
+      .catch(() => {/* silently ignore — Price column just shows — */});
+  }, [tickerSuggestions]);
+
   const onSaveTrade = async (input: CreateTradeInput) => {
     if (!token) return;
     setSaveError(null);
     setSaveSuccess(null);
     try {
-      await createTrade(token, input);
+      const created = await createTrade(token, input);
       setModalOpen(false);
       setTradesLoading(true);
       const trades = await listTrades(token);
       setAllTrades(trades);
+      // Match list filters to the new trade so it is visible (default view is PUT + OPEN).
+      setFilters((prev) => ({
+        ...prev,
+        type: created.option_type,
+        status: created.status === "OPEN" ? "OPEN" : prev.status,
+      }));
       setSaveSuccess("Trade saved successfully.");
+      await refreshPlanUsage();
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save trade.");
     } finally {
@@ -171,61 +237,79 @@ export default function TradesPage() {
     }
   };
 
-  const filtered = applyFilters(allTrades, filters);
+  const filtered = applyFilters(allTrades, filters, closedCycleIds);
+
+  const tradesUsageLabel = planUsage
+    ? planUsage.trades_limit != null
+      ? `${planUsage.trades_this_month}/${planUsage.trades_limit} trades this month · Basic`
+      : `${planUsage.trades_this_month} trades this month · Premium`
+    : undefined;
+
+  const addTradeDisabled = Boolean(planUsage?.limit_reached);
+  const addTradeDisabledReason =
+    "Monthly trade limit reached (Basic plan: 20/month). Upgrade to Premium or wait until next month.";
 
   if (isAuthLoading) return null;
   return (
     <>
-      <main className="flex-1 bg-gray-100/80 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => {
-              setSaveError(null);
-              setSaveSuccess(null);
-              setEditingTrade(null);
-              setModalOpen(true);
-            }}
-            className="shrink-0 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + Add Trade
-          </button>
-        </div>
-
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50/40">
         {saveError && (
-          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="shrink-0 border-b border-red-200/80 bg-red-50 px-5 py-2.5 text-sm text-red-700">
             {saveError}
           </div>
         )}
         {saveSuccess && (
-          <div className="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          <div className="shrink-0 border-b border-emerald-200/80 bg-emerald-50 px-5 py-2.5 text-sm text-emerald-700">
             {saveSuccess}
           </div>
         )}
+        {planUsage?.limit_reached && (
+          <div className="shrink-0 border-b border-amber-200/80 bg-amber-50 px-5 py-2.5 text-sm text-amber-900">
+            You&apos;ve used all {planUsage.trades_limit} trades for this month on the Basic
+            plan.{" "}
+            <Link href="/pricing" className="font-medium underline underline-offset-2 hover:text-amber-950">
+              View pricing
+            </Link>{" "}
+            or wait until the next calendar month.
+          </div>
+        )}
 
-        <div className="mt-6">
-          <TradeFilters
-            onFilterChange={setFilters}
-            totalCount={allTrades.length}
-            filteredCount={filtered.length}
-          />
-        </div>
+        <TradeFilters
+          embedded
+          filters={filters}
+          onFilterChange={setFilters}
+          tickerSuggestions={tickerSuggestions}
+          tradesUsageLabel={tradesUsageLabel}
+          addTradeDisabled={addTradeDisabled}
+          addTradeDisabledReason={addTradeDisabledReason}
+          onAddTrade={() => {
+            if (addTradeDisabled) return;
+            setSaveError(null);
+            setSaveSuccess(null);
+            setEditingTrade(null);
+            setModalOpen(true);
+          }}
+        />
 
-        <div className="mt-4">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-white">
           <TradeList
             trades={filtered}
             loading={tradesLoading}
-            onAddTrade={() => {
-              setSaveError(null);
-              setSaveSuccess(null);
-              setEditingTrade(null);
-              setModalOpen(true);
-            }}
+            prices={prices}
             onDeleteTrade={onDeleteTrade}
             onEditTrade={onEditTrade}
             onAction={onAction}
+            statusFilter={filters.status}
           />
         </div>
+
+        {pricesUpdatedAt && (
+          <div className="flex shrink-0 items-center gap-1.5 border-t border-slate-200 bg-white px-5 py-2 text-xs font-medium text-slate-600">
+            <Clock className={iconXs} strokeWidth={iconStroke} aria-hidden />
+            Prices update once per hour. Last updated at{" "}
+            {pricesUpdatedAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}.
+          </div>
+        )}
       </main>
 
       <AddTradeModal
@@ -236,6 +320,8 @@ export default function TradesPage() {
         }}
         onSave={editingTrade ? onSaveEditedTrade : onSaveTrade}
         tickerSuggestions={tickerSuggestions}
+        assignedTickers={assignedTickers}
+        assignedCycleByTicker={editingTrade ? undefined : assignedCycleByTicker}
         initialValues={
           editingTrade
             ? {
@@ -247,7 +333,6 @@ export default function TradesPage() {
                 premium: editingTrade.premium,
                 commission_fee: editingTrade.commission_fee ?? undefined,
                 contracts: editingTrade.contracts,
-                delta: editingTrade.delta,
                 status: editingTrade.status,
                 notes: editingTrade.notes,
               }
@@ -255,6 +340,8 @@ export default function TradesPage() {
         }
         title={editingTrade ? "Edit Trade" : "Add Trade"}
         submitLabel={editingTrade ? "Update Trade" : "Save Trade"}
+        existingTrades={allTrades}
+        editingTradeId={editingTrade?.id}
       />
 
       <AssignTradeModal
@@ -284,6 +371,9 @@ export default function TradesPage() {
                 : { assigned_at: input.trade_date }),
               ...(input.fees_on_assignment !== undefined
                 ? { fees_on_assignment: input.fees_on_assignment }
+                : {}),
+              ...(input.prior_roll_premium_per_share !== undefined
+                ? { prior_roll_premium_per_share: input.prior_roll_premium_per_share }
                 : {}),
               ...(input.notes?.trim()
                 ? {
@@ -334,18 +424,52 @@ export default function TradesPage() {
               ? [rollingTrade.notes?.trim(), input.notes.trim()].filter(Boolean).join("\n")
               : undefined;
 
-            const updated = await updateTrade(token, rollingTrade.id, {
+            // Step 1: mark original trade ROLLED — store buyback cost so net roll cashflow
+            // (original_premium − buyback) is correctly applied to P&L and cost-basis reduction.
+            const rolledOriginal = await updateTrade(token, rollingTrade.id, {
               status: "ROLLED",
+              rolled_at: input.trade_date,
+              buyback_cost_per_share: input.buyback_cost_per_share,
+              ...(mergedNotes ? { notes: mergedNotes } : {}),
+            } as UpdateTradeInput);
+
+            // Step 2: create new OPEN trade for the new leg, linked via rolled_from_id.
+            // If the original had a cycle, pass it so the new leg joins the same cycle.
+            // If no cycle, omit cycle_id so the backend auto-creates one for the new leg.
+            const newLeg = await createTrade(token, {
+              ticker: rollingTrade.ticker,
+              option_type: rollingTrade.option_type as "PUT" | "CALL",
               strike: input.new_strike,
               expiry: input.new_expiry,
-              premium: netPremiumPerShare,
-              rolled_at: input.trade_date,
-              ...(Number.isFinite(input.fees) ? { commission_fee: input.fees } : {}),
-              ...(mergedNotes ? { notes: mergedNotes } : {}),
-            });
-            setAllTrades((prev) => prev.map((t) => (t.id === rollingTrade.id ? updated : t)));
+              trade_date: input.trade_date,
+              premium: input.new_premium_per_share,
+              contracts: rollingTrade.contracts,
+              status: "OPEN",
+              ...(input.fees != null && Number.isFinite(input.fees) && input.fees > 0 ? { commission_fee: input.fees } : {}),
+              rolled_from_id: rollingTrade.id,
+              ...(rollingTrade.cycle_id ? { cycle_id: rollingTrade.cycle_id } : {}),
+            } as CreateTradeInput);
+
+            // If the original had no cycle and the new leg got one, back-fill the ROLLED trade
+            // so both legs share the same cycle and appear together on the cycles page.
+            let finalRolled = rolledOriginal;
+            if (!rollingTrade.cycle_id && newLeg.cycle_id) {
+              try {
+                finalRolled = await updateTrade(token, rolledOriginal.id, {
+                  cycle_id: newLeg.cycle_id,
+                } as UpdateTradeInput);
+              } catch {
+                // non-fatal: cycles page may not show both legs together, but data is intact
+              }
+            }
+
+            setAllTrades((prev) => [
+              ...prev.map((t) => (t.id === rollingTrade.id ? finalRolled : t)),
+              newLeg,
+            ]);
             setRollingTrade(null);
-            setSaveSuccess("Trade rolled successfully.");
+            setSaveSuccess("Trade rolled successfully. New leg added as OPEN position.");
+            await refreshPlanUsage();
           } catch (err) {
             setSaveError(err instanceof Error ? err.message : "Failed to roll trade.");
             throw err;

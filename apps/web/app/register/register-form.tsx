@@ -3,6 +3,12 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
+import AuthShell, {
+  AUTH_INPUT_CLS,
+  AUTH_LABEL_CLS,
+  AUTH_PRIMARY_BTN_CLS,
+} from "@/app/components/AuthShell";
+import GoogleSignInButton from "@/app/components/GoogleSignInButton";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { safeInternalRedirectPath } from "@/lib/auth-redirect.mjs";
 
@@ -60,13 +66,10 @@ export function RegisterForm() {
       }
 
       if (session) {
-        // With @supabase/ssr cookie-based storage, session cookies are
-        // automatically set by the client's setAll handler after signUp.
         router.refresh();
 
         const target = safeInternalRedirectPath(nextPath) ?? "/dashboard";
 
-        // Small delay to ensure cookies are persisted and middleware can read them
         await new Promise((resolve) => setTimeout(resolve, 100));
 
         router.push(target);
@@ -92,89 +95,109 @@ export function RegisterForm() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-10">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm">
-        <h1 className="text-2xl font-semibold text-gray-900">Register</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          If your project requires email confirmation, you will receive a link before you can sign in.
-        </p>
-
-        <form className="mt-6 space-y-4" onSubmit={onSubmit}>
-          <div>
-            <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-gray-700">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-gray-700 focus:outline-none"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-gray-700">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-gray-700 focus:outline-none"
-              required
-              minLength={8}
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="confirm-password"
-              className="mb-1.5 block text-sm font-medium text-gray-700"
-            >
-              Confirm password
-            </label>
-            <input
-              id="confirm-password"
-              type="password"
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-gray-700 focus:outline-none"
-              required
-              minLength={8}
-            />
-          </div>
-
-          {error ? (
-            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
-            </p>
-          ) : null}
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-lg bg-gray-900 px-4 py-2.5 font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isSubmitting ? "Creating account..." : "Create account"}
-          </button>
-        </form>
-
-        <p className="mt-4 text-sm text-gray-600">
+    <AuthShell
+      title="Create your account"
+      subtitle="If your project requires email confirmation, you will receive a link before you can sign in."
+      footer={
+        <p className="text-sm text-slate-600">
           Already have an account?{" "}
           <Link
             href={nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : "/login"}
-            className="font-medium text-gray-900 underline"
+            className="font-medium text-slate-900 underline decoration-slate-300 underline-offset-2 transition hover:decoration-slate-500"
           >
             Sign in
           </Link>
         </p>
-      </div>
-    </main>
+      }
+    >
+      <form className="space-y-4" onSubmit={onSubmit}>
+        <GoogleSignInButton
+          label="Sign up with Google"
+          nextPath={nextPath}
+          onError={setError}
+        />
+
+        <div className="relative py-1">
+          <div className="absolute inset-0 flex items-center" aria-hidden>
+            <div className="w-full border-t border-slate-200" />
+          </div>
+          <p className="relative mx-auto w-fit bg-white px-3 text-xs font-medium uppercase tracking-wide text-slate-500">
+            Or with email
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor="email" className={AUTH_LABEL_CLS}>
+            Email
+          </label>
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            className={AUTH_INPUT_CLS}
+            required
+          />
+        </div>
+
+        <div>
+          <label htmlFor="password" className={AUTH_LABEL_CLS}>
+            Password
+          </label>
+          <input
+            id="password"
+            type="password"
+            autoComplete="new-password"
+            placeholder="At least 8 characters"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            className={AUTH_INPUT_CLS}
+            required
+            minLength={8}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="confirm-password" className={AUTH_LABEL_CLS}>
+            Confirm password
+          </label>
+          <input
+            id="confirm-password"
+            type="password"
+            autoComplete="new-password"
+            placeholder="Repeat password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            className={AUTH_INPUT_CLS}
+            required
+            minLength={8}
+          />
+        </div>
+
+        {error ? (
+          <p className="rounded-lg border border-red-200/80 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+            {error}
+          </p>
+        ) : null}
+
+        <p className="text-xs leading-relaxed text-slate-500">
+          By creating an account, you agree to our{" "}
+          <Link href="/terms" className="font-medium text-slate-700 underline-offset-2 hover:underline">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="font-medium text-slate-700 underline-offset-2 hover:underline">
+            Privacy Policy
+          </Link>
+          .
+        </p>
+
+        <button type="submit" disabled={isSubmitting} className={AUTH_PRIMARY_BTN_CLS}>
+          {isSubmitting ? "Creating account…" : "Create account"}
+        </button>
+      </form>
+    </AuthShell>
   );
 }

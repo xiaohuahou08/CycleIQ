@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { RotateCw } from "lucide-react";
+import { iconMd, iconStroke } from "@/app/components/icons";
 import type { Trade } from "@/lib/api/trades";
 import {
   ModalActionButtons,
@@ -29,14 +31,7 @@ function todayIso(): string {
 }
 
 function RollIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-      <path d="M4 12a8 8 0 0 1 13.66-5.66L20 8" />
-      <path d="M20 4v4h-4" />
-      <path d="M20 12a8 8 0 0 1-13.66 5.66L4 16" />
-      <path d="M4 20v-4h4" />
-    </svg>
-  );
+  return <RotateCw className={iconMd} strokeWidth={iconStroke} aria-hidden />;
 }
 
 export default function RollTradeModal({
@@ -136,19 +131,19 @@ export default function RollTradeModal({
             </span>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-3">
-            <div className="rounded-xl border border-gray-200 bg-white p-3">
+            <div className="rounded-xl border border-gray-200 bg-white p-3 min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Strike</p>
-              <p className="mt-1 text-3xl font-semibold text-gray-900">${trade.strike.toFixed(2)}</p>
+              <p className="mt-1 text-lg font-semibold text-gray-900 truncate">${trade.strike.toFixed(2)}</p>
             </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-3">
+            <div className="rounded-xl border border-gray-200 bg-white p-3 min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Premium</p>
-              <p className="mt-1 text-3xl font-semibold text-emerald-600">
+              <p className="mt-1 text-lg font-semibold text-emerald-600 truncate">
                 +${(trade.premium * trade.contracts * 100).toFixed(2)}
               </p>
             </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-3">
+            <div className="rounded-xl border border-gray-200 bg-white p-3 min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Expires</p>
-              <p className="mt-1 text-3xl font-semibold text-gray-900">{trade.expiry}</p>
+              <p className="mt-1 text-sm font-semibold text-gray-900 truncate">{trade.expiry}</p>
             </div>
           </div>
         </div>

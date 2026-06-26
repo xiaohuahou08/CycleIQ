@@ -22,8 +22,13 @@ export interface Trade {
   fees_on_assignment?: number | null;
   /** CSP assigned: approximate net stock cost/share (stored). */
   stock_cost_basis_per_share?: number | null;
+  /** Net premium/share collected from prior rolls (e.g. 375→390) — reduces cost basis. */
+  prior_roll_premium_per_share?: number | null;
+  /** Per-share cost paid to buy back the option when rolling; stored on the ROLLED leg. */
+  buyback_cost_per_share?: number | null;
+  /** ID of the preceding ROLLED trade in a roll chain (self-referential). */
+  rolled_from_id?: string | null;
   contracts: number;
-  delta?: number;
   status: TradeStatus;
   expired_at?: string | null;
   expire_type?: "EXPIRED_WORTHLESS" | "EXPIRED_ITM" | null;
@@ -43,13 +48,17 @@ export interface CreateTradeInput {
   premium: number;
   commission_fee?: number;
   contracts: number;
-  delta?: number;
   status: TradeStatus;
   notes?: string;
+  rolled_from_id?: string | null;
+  cycle_id?: string | null;
 }
 
 export type UpdateTradeInput = Partial<CreateTradeInput> & {
   fees_on_assignment?: number | null;
+  prior_roll_premium_per_share?: number | null;
+  buyback_cost_per_share?: number | null;
+  rolled_from_id?: string | null;
   closed_at?: string | null;
   assigned_at?: string | null;
   called_away_at?: string | null;
@@ -66,27 +75,58 @@ export interface MetricsSummary {
 export interface DashboardSeriesPoint {
   label: string;
   value: number;
+  /** ISO date of the period-end snapshot (for range filtering). */
+  date?: string;
+}
+
+export interface CapitalTrendCharts {
+  weekly: DashboardSeriesPoint[];
+  monthly: DashboardSeriesPoint[];
 }
 
 export interface DashboardInsights {
   kpis: {
+    /** Starting budget + cumulative realized P&L. */
+    total_capital: number;
     total_capital_invested: number;
+    /** Starting capital budget from Settings. */
+    capital_budget: number;
+    /** total_capital_invested / total_capital × 100. */
+    capital_utilization_pct: number;
     total_premium: number;
     realized_pnl: number;
     avg_annual_roi: number;
     open_premium_annualized_yield: number;
     realized_annual_roi: number;
+    /** Daily TWR via Modified Dietz (not annualized). */
+    time_weighted_return_pct: number;
+    /** (end NAV − begin NAV − net inflows) / begin NAV. */
+    cumulative_total_return_pct: number;
+    /** True when TWR sign disagrees with total return after large flows. */
+    time_weighted_return_unreliable: boolean;
+    /** True when deposit/withdrawal history exists (budget varies over time). */
+    has_capital_flows: boolean;
     active_trades: number;
     win_rate: number;
     avg_premium_per_active_day: number;
-    active_days: number;
+    /** Premium-weighted average DTE (days) for open positions. */
+    weighted_open_dte: number;
     yearly_income: number;
     daily_avg_income: number;
+    /** Total effective holding cost of stock positions after expired/closed CC premium reductions. */
+    total_stock_effective_cost?: number;
+    /** Cumulative CC premium credited against stock holding cost (expired + closed CC legs). */
+    total_cc_basis_reduction?: number;
+    /** Realised P&L from stock sales when CC legs were called away (strike − initial stock basis). */
+    stock_sale_pnl?: number;
   };
   charts: {
     daily_premium_income: DashboardSeriesPoint[];
     weekly_premium_income: DashboardSeriesPoint[];
     monthly_premium_income: DashboardSeriesPoint[];
+    capital_trend: CapitalTrendCharts;
+    /** @deprecated use capital_trend.monthly */
+    monthly_capital_invested?: DashboardSeriesPoint[];
   };
 }
 

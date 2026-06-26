@@ -1,5 +1,6 @@
 import importlib.util
 import os
+from datetime import date, timedelta
 from pathlib import Path
 
 import jwt
@@ -17,6 +18,7 @@ create_app = _app_mod.create_app
 
 from backend.config import TestingConfig
 from backend.models import db
+from backend.models.user_preferences import UserPreferences
 from backend.models.wheel_cycle import WheelCycle
 
 
@@ -45,6 +47,30 @@ def auth_headers(user_id: str = "00000000-0000-0000-0000-000000000099") -> dict[
         algorithm="HS256",
     )
     return {"Authorization": f"Bearer {token}"}
+
+
+def future_expiry(months: int = 18) -> str:
+    return (date.today() + timedelta(days=30 * months)).isoformat()
+
+
+def set_capital_budget(client, headers, amount: float = 250_000) -> None:
+    res = client.put(
+        "/api/me/preferences",
+        json={"total_capital_budget": amount},
+        headers=headers,
+    )
+    assert res.status_code == 200
+
+
+def set_user_plan(app, user_id: str, plan: str) -> None:
+    with app.app_context():
+        row = UserPreferences.query.filter_by(user_id=user_id).first()
+        if not row:
+            row = UserPreferences(user_id=user_id, plan=plan)
+            db.session.add(row)
+        else:
+            row.plan = plan
+        db.session.commit()
 
 
 def test_create_cycle_and_transition(client):
@@ -205,8 +231,8 @@ def test_trade_creates_new_cycle_when_latest_ticker_cycle_is_active_put(client):
     first_payload = {
         "ticker": "UNH",
         "option_type": "PUT",
-        "strike": 360,
-        "expiry": "2026-06-20",
+        "strike": 50,
+        "expiry": future_expiry(),
         "trade_date": "2026-04-01",
         "premium": 3.25,
         "contracts": 1,
@@ -220,8 +246,8 @@ def test_trade_creates_new_cycle_when_latest_ticker_cycle_is_active_put(client):
     second_payload = {
         "ticker": "UNH",
         "option_type": "PUT",
-        "strike": 350,
-        "expiry": "2026-06-27",
+        "strike": 45,
+        "expiry": future_expiry(19),
         "trade_date": "2026-04-03",
         "premium": 2.75,
         "contracts": 1,
@@ -280,12 +306,13 @@ def test_invalid_trade_status(client):
 
 def test_dashboard_insights_api(client):
     h = auth_headers("33333333-3333-3333-3333-333333333333")
+    set_capital_budget(client, h, 100_000)
     trades = [
         {
             "ticker": "UNH",
             "option_type": "PUT",
             "strike": 360,
-            "expiry": "2026-05-07",
+            "expiry": "2027-05-07",
             "trade_date": "2026-04-27",
             "premium": 1.2,
             "contracts": 2,
@@ -295,7 +322,7 @@ def test_dashboard_insights_api(client):
             "ticker": "HIMS",
             "option_type": "PUT",
             "strike": 28,
-            "expiry": "2026-05-07",
+            "expiry": "2027-05-07",
             "trade_date": "2026-04-28",
             "premium": 1.5,
             "contracts": 3,
@@ -313,9 +340,84 @@ def test_dashboard_insights_api(client):
     assert "kpis" in body
     assert "charts" in body
     assert body["kpis"]["active_trades"] == 1
+    assert body["kpis"]["capital_budget"] == pytest.approx(100_000)
+    assert body["kpis"]["capital_utilization_pct"] == pytest.approx(71.6, abs=0.5)
+    assert body["kpis"]["total_capital"] == pytest.approx(100_450.0)
     assert body["kpis"]["total_premium"] == pytest.approx(690.0)
     assert body["kpis"]["realized_pnl"] == pytest.approx(450.0)
     assert isinstance(body["charts"]["daily_premium_income"], list)
+    assert isinstance(body["charts"]["capital_trend"], dict)
+    assert isinstance(body["charts"]["capital_trend"]["weekly"], list)
+    assert isinstance(body["charts"]["capital_trend"]["monthly"], list)
+    assert len(body["charts"]["capital_trend"]["monthly"]) >= 1
+    # budget 100k + realized 450
+    assert body["charts"]["capital_trend"]["monthly"][-1]["value"] == pytest.approx(100_450.0)
+    assert body["charts"]["capital_trend"]["monthly"][-1]["date"] is not None
+    assert "time_weighted_return_pct" in body["kpis"]
+    assert "cumulative_total_return_pct" in body["kpis"]
+    assert "time_weighted_return_unreliable" in body["kpis"]
+    assert body["kpis"]["has_capital_flows"] is False
+
+
+def test_dashboard_insights_twr_with_capital_flow(client):
+    h = auth_headers("44444444-4444-4444-4444-444444444444")
+    set_capital_budget(client, h, 100_000)
+    client.post(
+        "/api/me/capital-flows",
+        json={"type": "deposit", "amount": 1000, "event_date": "2026-01-15"},
+        headers=h,
+    )
+    body = client.get("/api/dashboard/insights", headers=h).get_json()
+    assert body["kpis"]["has_capital_flows"] is True
+    assert body["kpis"]["capital_budget"] == pytest.approx(101_000)
+
+
+def test_capital_trend_reflects_past_deposit(client):
+    h = auth_headers("66666666-6666-6666-6666-666666666666")
+    set_capital_budget(client, h, 100_000)
+    deposit_date = f"{date.today().year}-02-01"
+    client.post(
+        "/api/me/capital-flows",
+        json={"type": "deposit", "amount": 25_000, "event_date": deposit_date},
+        headers=h,
+    )
+    body = client.get("/api/dashboard/insights", headers=h).get_json()
+    monthly = {p["label"]: p["value"] for p in body["charts"]["capital_trend"]["monthly"]}
+    feb_label = f"{date.today().year}-02"
+    jan_label = f"{date.today().year}-01"
+    if feb_label in monthly and jan_label in monthly:
+        assert monthly[feb_label] - monthly[jan_label] == pytest.approx(25_000, abs=1)
+
+
+def test_dashboard_insights_includes_assigned_csp_premium(client):
+    """ASSIGNED CSP premium counts toward realized P&L (matches Cycles wheel)."""
+    h = auth_headers("55555555-5555-5555-5555-555555555555")
+    created = client.post(
+        "/api/trades",
+        json={
+            "ticker": "AAPL",
+            "option_type": "PUT",
+            "strike": 180,
+            "expiry": "2026-06-20",
+            "trade_date": "2026-04-01",
+            "premium": 2.0,
+            "contracts": 1,
+            "status": "OPEN",
+        },
+        headers=h,
+    )
+    assert created.status_code == 201
+    tid = created.get_json()["id"]
+    assign = client.put(
+        f"/api/trades/{tid}",
+        json={"status": "ASSIGNED", "trade_date": "2026-04-29"},
+        headers=h,
+    )
+    assert assign.status_code == 200
+
+    body = client.get("/api/dashboard/insights", headers=h).get_json()
+    # premium 2.0 × 1 contract × 100
+    assert body["kpis"]["realized_pnl"] == pytest.approx(200.0)
 
 
 def test_expire_trade_endpoint_sets_metadata(client):
@@ -369,3 +471,418 @@ def test_expire_trade_requires_open_status(client):
         headers=h,
     )
     assert expired.status_code == 400
+
+
+def test_call_away_cc_updates_assigned_put_and_cycle_exit(client):
+    """Marking a CC CALLED_AWAY cascades to the assigned PUT and sets cycle EXIT."""
+    h = auth_headers("dddddddd-dddd-dddd-dddd-dddddddddddd")
+
+    put_payload = {
+        "ticker": "UNH",
+        "option_type": "PUT",
+        "strike": 390,
+        "expiry": "2026-06-20",
+        "trade_date": "2026-04-01",
+        "premium": 2.5,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    put_created = client.post("/api/trades", json=put_payload, headers=h)
+    assert put_created.status_code == 201
+    put_body = put_created.get_json()
+    put_id = put_body["id"]
+    cycle_id = put_body["cycle_id"]
+    assert cycle_id is not None
+
+    assign = client.put(
+        f"/api/trades/{put_id}",
+        json={"status": "ASSIGNED", "trade_date": "2026-04-29"},
+        headers=h,
+    )
+    assert assign.status_code == 200
+    basis = assign.get_json()["stock_cost_basis_per_share"]
+    assert basis is not None
+
+    cc_payload = {
+        "ticker": "UNH",
+        "option_type": "CALL",
+        "strike": 400,
+        "expiry": "2026-07-18",
+        "trade_date": "2026-05-01",
+        "premium": 3.0,
+        "contracts": 1,
+        "status": "OPEN",
+        "cycle_id": cycle_id,
+    }
+    cc_created = client.post("/api/trades", json=cc_payload, headers=h)
+    assert cc_created.status_code == 201
+    cc_id = cc_created.get_json()["id"]
+
+    called = client.put(
+        f"/api/trades/{cc_id}",
+        json={
+            "status": "CALLED_AWAY",
+            "trade_date": "2026-05-15",
+            "called_away_at": "2026-05-15",
+        },
+        headers=h,
+    )
+    assert called.status_code == 200
+
+    trades = client.get("/api/trades", headers=h).get_json()["trades"]
+    put_after = next(t for t in trades if t["id"] == put_id)
+    assert put_after["status"] == "CALLED_AWAY"
+    assert put_after["stock_cost_basis_per_share"] == pytest.approx(basis, abs=1e-4)
+
+    cycle = client.get(f"/api/cycles/{cycle_id}", headers=h).get_json()
+    assert cycle["state"] == "EXIT"
+
+
+def test_dashboard_expired_cc_reduces_stock_effective_cost(client):
+    """Expired CC premium lowers total_stock_effective_cost for held stock."""
+    h = auth_headers("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
+
+    put_payload = {
+        "ticker": "UNH",
+        "option_type": "PUT",
+        "strike": 390,
+        "expiry": "2026-06-20",
+        "trade_date": "2026-04-01",
+        "premium": 2.5,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    put_created = client.post("/api/trades", json=put_payload, headers=h)
+    assert put_created.status_code == 201
+    put_id = put_created.get_json()["id"]
+    cycle_id = put_created.get_json()["cycle_id"]
+
+    assign = client.put(
+        f"/api/trades/{put_id}",
+        json={"status": "ASSIGNED", "trade_date": "2026-04-29"},
+        headers=h,
+    )
+    assert assign.status_code == 200
+    basis = assign.get_json()["stock_cost_basis_per_share"]
+
+    cc_payload = {
+        "ticker": "UNH",
+        "option_type": "CALL",
+        "strike": 400,
+        "expiry": "2026-07-18",
+        "trade_date": "2026-05-01",
+        "premium": 2.0,
+        "contracts": 1,
+        "status": "EXPIRED",
+        "cycle_id": cycle_id,
+    }
+    cc_created = client.post("/api/trades", json=cc_payload, headers=h)
+    assert cc_created.status_code == 201
+
+    kpis = client.get("/api/dashboard/insights", headers=h).get_json()["kpis"]
+    cc_reduction = 2.0 * 100
+    expected_cost = (basis - cc_reduction / 100) * 100
+    assert kpis["total_cc_basis_reduction"] == pytest.approx(cc_reduction, abs=0.01)
+    assert kpis["total_stock_effective_cost"] == pytest.approx(expected_cost, abs=0.01)
+
+
+def test_get_preferences_returns_defaults_when_missing(client):
+    h = auth_headers("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+    res = client.get("/api/me/preferences", headers=h)
+    assert res.status_code == 200
+    body = res.get_json()
+    assert body["commission_per_contract"] is None
+    assert body["default_contracts"] == 1
+    assert body["default_dte"] == 45
+    assert body["total_capital_budget"] == pytest.approx(10000)
+
+
+def test_create_open_csp_rejects_when_over_capital_budget(client):
+    h = auth_headers("dddddddd-dddd-dddd-dddd-dddddddddddd")
+    payload = {
+        "ticker": "AAPL",
+        "option_type": "PUT",
+        "strike": 150,
+        "expiry": "2026-12-19",
+        "trade_date": "2026-06-01",
+        "premium": 2.5,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    r = client.post("/api/trades", json=payload, headers=h)
+    assert r.status_code == 400
+    assert "available capital" in r.get_json().get("error", "").lower()
+
+
+def test_create_open_csp_allowed_within_budget(client):
+    h = auth_headers("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
+    payload = {
+        "ticker": "AAPL",
+        "option_type": "PUT",
+        "strike": 50,
+        "expiry": "2026-12-19",
+        "trade_date": "2026-06-01",
+        "premium": 1.0,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    r = client.post("/api/trades", json=payload, headers=h)
+    assert r.status_code == 201
+
+
+def test_put_preferences_persists_capital_budget(client):
+    h = auth_headers("ffffffff-ffff-ffff-ffff-ffffffffffff")
+    put = client.put(
+        "/api/me/preferences",
+        json={"total_capital_budget": 25000},
+        headers=h,
+    )
+    assert put.status_code == 200
+    assert put.get_json()["total_capital_budget"] == pytest.approx(25000)
+
+
+def test_put_and_get_preferences_persist_per_user(client):
+    h1 = auth_headers("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+    h2 = auth_headers("cccccccc-cccc-cccc-cccc-cccccccccccc")
+
+    put = client.put(
+        "/api/me/preferences",
+        json={
+            "commission_per_contract": 0.65,
+            "default_contracts": 2,
+            "default_dte": 30,
+        },
+        headers=h1,
+    )
+    assert put.status_code == 200
+    assert put.get_json()["default_contracts"] == 2
+
+    get1 = client.get("/api/me/preferences", headers=h1)
+    assert get1.status_code == 200
+    assert get1.get_json()["commission_per_contract"] == pytest.approx(0.65)
+    assert get1.get_json()["default_dte"] == 30
+
+    get2 = client.get("/api/me/preferences", headers=h2)
+    assert get2.get_json()["default_contracts"] == 1
+
+    with client.application.app_context():
+        assert UserPreferences.query.filter_by(user_id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb").count() == 1
+
+
+def test_put_preferences_rejects_invalid_values(client):
+    h = auth_headers()
+    res = client.put(
+        "/api/me/preferences",
+        json={"default_contracts": 0, "default_dte": 45},
+        headers=h,
+    )
+    assert res.status_code == 400
+
+
+def test_post_capital_flow_deposit(client):
+    h = auth_headers()
+    res = client.post(
+        "/api/me/capital-flows",
+        json={"type": "deposit", "amount": 5000, "event_date": "2026-04-01"},
+        headers=h,
+    )
+    assert res.status_code == 201
+    body = res.get_json()
+    assert body["type"] == "deposit"
+    assert body["amount"] == pytest.approx(5000)
+
+    prefs = client.get("/api/me/preferences", headers=h).get_json()
+    assert prefs["total_capital_budget"] == pytest.approx(15000)
+
+
+def test_post_capital_flow_withdrawal(client):
+    h = auth_headers()
+    set_capital_budget(client, h, 20_000)
+    res = client.post(
+        "/api/me/capital-flows",
+        json={"type": "withdrawal", "amount": 3000, "event_date": date.today().isoformat()},
+        headers=h,
+    )
+    assert res.status_code == 201
+    assert res.get_json()["amount"] == pytest.approx(-3000)
+    prefs = client.get("/api/me/preferences", headers=h).get_json()
+    assert prefs["total_capital_budget"] == pytest.approx(17_000)
+
+
+def test_delete_capital_flow_reverses_budget(client):
+    h = auth_headers()
+    created = client.post(
+        "/api/me/capital-flows",
+        json={"type": "deposit", "amount": 1000, "event_date": "2026-05-01"},
+        headers=h,
+    ).get_json()
+    deleted = client.delete(f"/api/me/capital-flows/{created['id']}", headers=h)
+    assert deleted.status_code == 200
+    prefs = client.get("/api/me/preferences", headers=h).get_json()
+    assert prefs["total_capital_budget"] == pytest.approx(10000)
+
+
+def test_preferences_budget_locked_when_flows_exist(client):
+    h = auth_headers()
+    client.post(
+        "/api/me/capital-flows",
+        json={"type": "deposit", "amount": 1000, "event_date": "2026-05-01"},
+        headers=h,
+    )
+    res = client.put(
+        "/api/me/preferences",
+        json={"total_capital_budget": 50_000, "default_contracts": 1, "default_dte": 45},
+        headers=h,
+    )
+    assert res.status_code == 400
+    assert "Capital Management" in res.get_json()["error"]
+
+
+def test_put_capital_flow_update(client):
+    h = auth_headers()
+    set_capital_budget(client, h, 100_000)
+    created = client.post(
+        "/api/me/capital-flows",
+        json={"type": "deposit", "amount": 5000, "event_date": "2026-03-01"},
+        headers=h,
+    ).get_json()
+    updated = client.put(
+        f"/api/me/capital-flows/{created['id']}",
+        json={"type": "deposit", "amount": 8000, "event_date": "2026-03-15"},
+        headers=h,
+    )
+    assert updated.status_code == 200
+    assert updated.get_json()["amount"] == pytest.approx(8000)
+    prefs = client.get("/api/me/preferences", headers=h).get_json()
+    assert prefs["total_capital_budget"] == pytest.approx(108_000)
+
+
+def test_production_app_init_registers_preferences():
+    init_path = Path(__file__).resolve().parents[1] / "backend" / "app" / "__init__.py"
+    text = init_path.read_text(encoding="utf-8")
+    assert "register_preferences_routes(preferences_bp)" in text
+    assert "app.register_blueprint(preferences_bp)" in text
+    assert "register_account_routes(account_bp)" in text
+    assert "app.register_blueprint(account_bp)" in text
+
+
+def test_reset_trading_data_deletes_only_calling_user(client):
+    h1 = auth_headers("11111111-1111-1111-1111-111111111111")
+    h2 = auth_headers("22222222-2222-2222-2222-222222222222")
+
+    for h in (h1, h2):
+        r = client.post(
+            "/api/trades",
+            json={
+                "ticker": "AAPL",
+                "option_type": "PUT",
+                "strike": 50,
+                "expiry": "2027-06-20",
+                "trade_date": "2026-04-01",
+                "premium": 1.0,
+                "contracts": 1,
+                "status": "OPEN",
+            },
+            headers=h,
+        )
+        assert r.status_code == 201
+
+    assert client.get("/api/trades", headers=h1).get_json()["total"] == 1
+    assert client.get("/api/trades", headers=h2).get_json()["total"] == 1
+    assert client.get("/api/cycles", headers=h1).get_json() != []
+
+    bad = client.post("/api/me/reset-trading-data", json={}, headers=h1)
+    assert bad.status_code == 400
+
+    reset = client.post("/api/me/reset-trading-data", json={"confirm": True}, headers=h1)
+    assert reset.status_code == 200
+    body = reset.get_json()
+    assert body["trades_deleted"] == 1
+    assert body["cycles_deleted"] >= 1
+
+    assert client.get("/api/trades", headers=h1).get_json()["total"] == 0
+    assert client.get("/api/cycles", headers=h1).get_json()["total"] == 0
+    assert client.get("/api/trades", headers=h2).get_json()["total"] == 1
+
+    prefs = client.put(
+        "/api/me/preferences",
+        json={"default_contracts": 3},
+        headers=h1,
+    )
+    assert prefs.status_code == 200
+    assert prefs.get_json()["default_contracts"] == 3
+
+
+def test_plan_usage_endpoint(client):
+    h = auth_headers()
+    set_capital_budget(client, h)
+    r = client.get("/api/me/plan", headers=h)
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["plan"] == "basic"
+    assert body["plan_label"] == "Basic"
+    assert body["trades_limit"] == 20
+    assert body["trades_this_month"] == 0
+    assert body["limit_reached"] is False
+    assert body["trades_remaining"] == 20
+    assert body["price_usd"] == 0
+
+
+def test_monthly_trade_limit_enforced(client):
+    from backend.services.trade_limits import BASIC_MONTHLY_TRADE_LIMIT
+
+    h = auth_headers()
+    set_capital_budget(client, h, 500_000)
+    payload = {
+        "ticker": "AAPL",
+        "option_type": "PUT",
+        "strike": 150,
+        "expiry": future_expiry(),
+        "trade_date": "2026-04-01",
+        "premium": 2.5,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    for _ in range(BASIC_MONTHLY_TRADE_LIMIT):
+        r = client.post("/api/trades", json=payload, headers=h)
+        assert r.status_code == 201, r.get_json()
+
+    over = client.post("/api/trades", json=payload, headers=h)
+    assert over.status_code == 403
+    assert "Basic plan" in over.get_json()["error"]
+
+    plan = client.get("/api/me/plan", headers=h)
+    assert plan.get_json()["trades_this_month"] == BASIC_MONTHLY_TRADE_LIMIT
+    assert plan.get_json()["limit_reached"] is True
+    assert plan.get_json()["trades_remaining"] == 0
+
+
+def test_premium_plan_has_unlimited_trades(client, app):
+    from backend.services.trade_limits import BASIC_MONTHLY_TRADE_LIMIT
+
+    user_id = "00000000-0000-0000-0000-000000000099"
+    h = auth_headers(user_id)
+    set_capital_budget(client, h, 2_000_000)
+    set_user_plan(app, user_id, "premium")
+
+    plan = client.get("/api/me/plan", headers=h)
+    body = plan.get_json()
+    assert body["plan"] == "premium"
+    assert body["plan_label"] == "Premium"
+    assert body["trades_limit"] is None
+    assert body["limit_reached"] is False
+    assert body["price_usd"] is None
+
+    payload = {
+        "ticker": "AAPL",
+        "option_type": "PUT",
+        "strike": 150,
+        "expiry": future_expiry(),
+        "trade_date": "2026-04-01",
+        "premium": 2.5,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    for _ in range(BASIC_MONTHLY_TRADE_LIMIT + 1):
+        r = client.post("/api/trades", json=payload, headers=h)
+        assert r.status_code == 201, r.get_json()

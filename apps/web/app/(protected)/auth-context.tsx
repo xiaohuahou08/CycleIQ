@@ -4,6 +4,8 @@ import { createContext, useContext } from "react";
 
 export interface ProtectedAuthValue {
   email: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
   token: string | null;
   isAuthLoading: boolean;
   onLogout: () => Promise<void>;
