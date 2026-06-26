@@ -182,6 +182,18 @@ export function RegisterForm() {
           </p>
         ) : null}
 
+        <p className="text-xs leading-relaxed text-slate-500">
+          By creating an account, you agree to our{" "}
+          <Link href="/terms" className="font-medium text-slate-700 underline-offset-2 hover:underline">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="font-medium text-slate-700 underline-offset-2 hover:underline">
+            Privacy Policy
+          </Link>
+          .
+        </p>
+
         <button type="submit" disabled={isSubmitting} className={AUTH_PRIMARY_BTN_CLS}>
           {isSubmitting ? "Creating account…" : "Create account"}
         </button>
