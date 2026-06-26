@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import uuid
 from datetime import datetime, timezone
 
 from flask import jsonify, request
 
 from backend.auth.supabase import require_auth
 from backend.models import db
+from backend.models.capital_flow import CapitalFlow
 from backend.models.user_preferences import (
     DEFAULT_CONTRACTS,
     DEFAULT_DTE,
@@ -65,6 +67,9 @@ def register_preferences_routes(preferences_bp):
             return jsonify({"error": str(exc)}), 400
 
         row = UserPreferences.query.filter_by(user_id=user_id).first()
+        old_budget: float | None = (
+            float(row.total_capital_budget) if row is not None else None
+        )
         if not row:
             row = UserPreferences(user_id=user_id)
             db.session.add(row)
@@ -74,5 +79,18 @@ def register_preferences_routes(preferences_bp):
         row.default_dte = dte
         row.total_capital_budget = capital_budget
         row.updated_at = datetime.now(timezone.utc)
+
+        if old_budget is not None:
+            delta = capital_budget - old_budget
+            if abs(delta) > 1e-6:
+                db.session.add(
+                    CapitalFlow(
+                        id=str(uuid.uuid4()),
+                        user_id=user_id,
+                        event_date=datetime.now(timezone.utc).date(),
+                        amount=delta,
+                    )
+                )
+
         db.session.commit()
         return jsonify(row.to_api_dict())

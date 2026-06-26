@@ -630,7 +630,7 @@ export default function DashboardInsights({
     return (
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
+          {Array.from({ length: 9 }).map((_, i) => (
             <div key={i} className="h-28 animate-pulse rounded-2xl border border-slate-200 bg-slate-100" />
           ))}
         </div>
@@ -687,9 +687,20 @@ export default function DashboardInsights({
         <StatCard
           label="Realized Annual ROI"
           value={fmtPercent(kpis?.realized_annual_roi ?? 0)}
-          sub="Annualized realized return"
-          tip="(realized P&L ÷ capital at risk on realized legs) × (365 ÷ average holding days from open to completion). Includes ASSIGNED CSP in both numerator and denominator."
+          sub="Annualized · simple avg hold"
+          tip="(realized P&L ÷ capital at risk on realized legs) × (365 ÷ simple average holding days). Annualized projection using unweighted average hold time."
           accent="bg-blue-400"
+        />
+        <StatCard
+          label="Time-Weighted Return"
+          value={fmtPercent(kpis?.time_weighted_return_pct ?? 0)}
+          sub={
+            kpis?.time_weighted_return_unreliable
+              ? `Total return ${fmtPercent(kpis?.cumulative_total_return_pct ?? 0)} · prefer total when flows are large`
+              : `Total return ${fmtPercent(kpis?.cumulative_total_return_pct ?? 0)} · portfolio ${fmtPercent(kpis?.portfolio_actual_return_pct ?? 0)}`
+          }
+          tip="Daily TWR (not annualized): chain [Π(1 + daily return) − 1] × 100%. Daily return = daily gain ÷ (yesterday total capital + 0.5 × today net inflow). Net inflow = Settings budget increase/decrease. Total return = (end − start − net inflows) ÷ start. When large deposits/withdrawals make TWR and total return disagree in sign, use total return."
+          accent={kpis?.time_weighted_return_unreliable ? "bg-amber-400" : "bg-blue-400"}
         />
         <StatCard
           label="Win Rate"

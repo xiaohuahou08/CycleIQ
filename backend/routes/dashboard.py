@@ -6,6 +6,7 @@ from datetime import date, datetime
 from flask import jsonify
 
 from backend.auth.supabase import require_auth
+from backend.models.capital_flow import CapitalFlow
 from backend.models.trade import Trade
 from backend.models.wheel_cycle import WheelCycle
 from backend.services.csp_capital import capital_utilization_pct, get_capital_budget
@@ -14,6 +15,7 @@ from backend.services.capital_invested import (
     compute_open_csp_capital,
     compute_total_capital_pool,
 )
+from backend.services.portfolio_returns import CapitalFlowEvent, compute_time_weighted_return
 from backend.services.realized_pnl import compute_realized_pnl
 
 
@@ -282,6 +284,18 @@ def register_dashboard_routes(dashboard_bp):
         else:
             realized_annual_roi = 0.0
 
+        capital_flow_rows = CapitalFlow.query.filter_by(user_id=user_id).all()
+        capital_flows = [
+            CapitalFlowEvent(event_date=f.event_date, amount=float(f.amount))
+            for f in capital_flow_rows
+        ]
+        time_weighted_return_pct, cumulative_total_return_pct, twr_unreliable = (
+            compute_time_weighted_return(trades, capital_flows, capital_budget, today)
+        )
+        portfolio_actual_return_pct = (
+            (realized_pnl / total_capital) * 100.0 if total_capital > 0 else 0.0
+        )
+
         daily_bucket: dict[str, float] = {}
         weekly_bucket: dict[str, float] = {}
         monthly_bucket: dict[str, float] = {}
@@ -313,6 +327,10 @@ def register_dashboard_routes(dashboard_bp):
                     "avg_annual_roi": round(open_premium_annualized_yield, 1),
                     "open_premium_annualized_yield": round(open_premium_annualized_yield, 1),
                     "realized_annual_roi": round(realized_annual_roi, 1),
+                    "time_weighted_return_pct": round(time_weighted_return_pct, 2),
+                    "cumulative_total_return_pct": round(cumulative_total_return_pct, 2),
+                    "time_weighted_return_unreliable": twr_unreliable,
+                    "portfolio_actual_return_pct": round(portfolio_actual_return_pct, 2),
                     "active_trades": active_trades,
                     "win_rate": round(win_rate, 1),
                     "avg_premium_per_active_day": round(avg_premium_per_active_day, 2),

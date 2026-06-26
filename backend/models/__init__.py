@@ -5,4 +5,5 @@ db = SQLAlchemy()
 # Import models for metadata registration (create_all / migrations)
 from backend.models.trade import Trade  # noqa: E402, F401
 from backend.models.user_preferences import UserPreferences  # noqa: E402, F401
+from backend.models.capital_flow import CapitalFlow  # noqa: E402, F401
 from backend.models.wheel_cycle import WheelCycle  # noqa: E402, F401

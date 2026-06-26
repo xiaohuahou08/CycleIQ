@@ -98,6 +98,14 @@ export interface DashboardInsights {
     avg_annual_roi: number;
     open_premium_annualized_yield: number;
     realized_annual_roi: number;
+    /** Daily TWR via Modified Dietz (not annualized). */
+    time_weighted_return_pct: number;
+    /** (end NAV − begin NAV − net inflows) / begin NAV. */
+    cumulative_total_return_pct: number;
+    /** True when TWR sign disagrees with total return after large flows. */
+    time_weighted_return_unreliable: boolean;
+    /** Realized P&L ÷ total capital (not annualized). */
+    portfolio_actual_return_pct: number;
     active_trades: number;
     win_rate: number;
     avg_premium_per_active_day: number;
