@@ -28,6 +28,9 @@ export const AUTH_LABEL_CLS = "mb-1.5 block text-sm font-medium text-slate-800";
 export const AUTH_PRIMARY_BTN_CLS =
   "w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0";
 
+export const AUTH_OAUTH_BTN_CLS =
+  "flex w-full items-center justify-center gap-2.5 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 shadow-sm transition-all duration-200 hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60";
+
 interface AuthShellProps {
   title: string;
   subtitle?: string;

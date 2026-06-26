@@ -8,6 +8,7 @@ import AuthShell, {
   AUTH_LABEL_CLS,
   AUTH_PRIMARY_BTN_CLS,
 } from "@/app/components/AuthShell";
+import GoogleSignInButton from "@/app/components/GoogleSignInButton";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { safeInternalRedirectPath } from "@/lib/auth-redirect.mjs";
 
@@ -32,6 +33,11 @@ export function LoginForm() {
   const registrationMessage =
     typeof window !== "undefined" && searchParams.get("registered") === "1"
       ? "Registration successful. Please check your email to confirm your account if required."
+      : null;
+
+  const oauthErrorMessage =
+    typeof window !== "undefined" && searchParams.get("error") === "oauth"
+      ? "Google sign-in failed. Please try again or use email and password."
       : null;
 
   const nextPath = searchParams.get("next");
@@ -104,6 +110,27 @@ export function LoginForm() {
             {registrationMessage}
           </p>
         ) : null}
+
+        {oauthErrorMessage ? (
+          <p className="rounded-lg border border-red-200/80 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+            {oauthErrorMessage}
+          </p>
+        ) : null}
+
+        <GoogleSignInButton
+          nextPath={nextPath}
+          rememberMe={rememberMe}
+          onError={setError}
+        />
+
+        <div className="relative py-1">
+          <div className="absolute inset-0 flex items-center" aria-hidden>
+            <div className="w-full border-t border-slate-200" />
+          </div>
+          <p className="relative mx-auto w-fit bg-white px-3 text-xs font-medium uppercase tracking-wide text-slate-500">
+            Or with email
+          </p>
+        </div>
 
         <div>
           <label htmlFor="email" className={AUTH_LABEL_CLS}>
