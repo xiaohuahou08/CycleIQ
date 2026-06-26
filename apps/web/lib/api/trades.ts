@@ -75,6 +75,13 @@ export interface MetricsSummary {
 export interface DashboardSeriesPoint {
   label: string;
   value: number;
+  /** ISO date of the period-end snapshot (for range filtering). */
+  date?: string;
+}
+
+export interface CapitalTrendCharts {
+  weekly: DashboardSeriesPoint[];
+  monthly: DashboardSeriesPoint[];
 }
 
 export interface DashboardInsights {
@@ -109,7 +116,7 @@ export interface DashboardInsights {
     daily_premium_income: DashboardSeriesPoint[];
     weekly_premium_income: DashboardSeriesPoint[];
     monthly_premium_income: DashboardSeriesPoint[];
-    monthly_capital_invested: DashboardSeriesPoint[];
+    capital_trend: CapitalTrendCharts;
   };
 }
 

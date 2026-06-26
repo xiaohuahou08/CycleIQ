@@ -10,7 +10,7 @@ from backend.models.trade import Trade
 from backend.models.wheel_cycle import WheelCycle
 from backend.services.csp_capital import capital_utilization_pct, get_capital_budget
 from backend.services.capital_invested import (
-    build_monthly_capital_series,
+    build_capital_trend_charts,
     compute_open_csp_capital,
     compute_total_capital_pool,
 )
@@ -329,9 +329,7 @@ def register_dashboard_routes(dashboard_bp):
                     "daily_premium_income": _series(daily_bucket, 7),
                     "weekly_premium_income": _series(weekly_bucket, 6),
                     "monthly_premium_income": _series(monthly_bucket, 6),
-                    "monthly_capital_invested": build_monthly_capital_series(
-                        trades, capital_budget, today, limit=6
-                    ),
+                    "capital_trend": build_capital_trend_charts(trades, capital_budget, today),
                 },
             }
         )

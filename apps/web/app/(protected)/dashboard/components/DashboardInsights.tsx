@@ -1,10 +1,17 @@
 "use client";
 
-import { useCallback, useId, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Info } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
-import type { DashboardInsights as DashboardInsightsData } from "@/lib/api/trades";
+import type {
+  CapitalTrendCharts,
+  DashboardInsights as DashboardInsightsData,
+  DashboardSeriesPoint,
+} from "@/lib/api/trades";
+
+type TrendGranularity = "week" | "month";
+type TrendRange = "ytd" | "1y";
 
 const TOOLTIP_MAX_W = 224;
 const TOOLTIP_GAP = 8;
@@ -184,36 +191,194 @@ function yAxisTicks(min: number, max: number, count = 4): number[] {
   return Array.from({ length: count }, (_, i) => min + step * i);
 }
 
+function formatTrendPeriod(
+  point: DashboardSeriesPoint,
+  granularity: TrendGranularity
+): string {
+  if (point.date) {
+    const [y, m, d] = point.date.split("-").map(Number);
+    const dt = new Date(y, (m ?? 1) - 1, d ?? 1);
+    if (granularity === "month") {
+      return new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(dt);
+    }
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(dt);
+  }
+  return point.label;
+}
+
+function formatTrendAxisLabel(
+  point: DashboardSeriesPoint,
+  granularity: TrendGranularity
+): string {
+  if (point.date) {
+    const [y, m, d] = point.date.split("-").map(Number);
+    const dt = new Date(y, (m ?? 1) - 1, d ?? 1);
+    if (granularity === "month") {
+      return new Intl.DateTimeFormat("en-US", { month: "short" }).format(dt);
+    }
+    return new Intl.DateTimeFormat("en-US", { month: "numeric", day: "numeric" }).format(dt);
+  }
+  return point.label;
+}
+
+function filterTrendRange(points: DashboardSeriesPoint[], range: TrendRange): DashboardSeriesPoint[] {
+  if (points.length === 0) return [];
+
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = String(today.getMonth() + 1).padStart(2, "0");
+  const d = String(today.getDate()).padStart(2, "0");
+  const todayIso = `${y}-${m}-${d}`;
+
+  if (range === "ytd") {
+    const ytdStart = `${y}-01-01`;
+    return points.filter((p) => (p.date ?? p.label) >= ytdStart && (p.date ?? p.label) <= todayIso);
+  }
+
+  const cutoff = new Date(today);
+  cutoff.setDate(cutoff.getDate() - 364);
+  const cy = cutoff.getFullYear();
+  const cm = String(cutoff.getMonth() + 1).padStart(2, "0");
+  const cd = String(cutoff.getDate()).padStart(2, "0");
+  const cutoffIso = `${cy}-${cm}-${cd}`;
+  return points.filter((p) => (p.date ?? p.label) >= cutoffIso);
+}
+
+function SegmentToggle<T extends string>({
+  value,
+  options,
+  onChange,
+}: {
+  value: T;
+  options: { id: T; label: string }[];
+  onChange: (next: T) => void;
+}) {
+  return (
+    <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+      {options.map((opt) => (
+        <button
+          key={opt.id}
+          type="button"
+          onClick={() => onChange(opt.id)}
+          className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+            value === opt.id
+              ? "bg-white text-slate-800 shadow-sm"
+              : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function sparseLabelIndices(count: number, maxLabels = 8): number[] {
+  if (count <= maxLabels) return Array.from({ length: count }, (_, i) => i);
+  return Array.from({ length: maxLabels }, (_, i) => Math.round((i * (count - 1)) / (maxLabels - 1)));
+}
+
+function CapitalTrendChart({
+  trend,
+  budgetLine,
+  overBudget,
+}: {
+  trend: CapitalTrendCharts | undefined;
+  budgetLine?: number;
+  overBudget: boolean;
+}) {
+  const [granularity, setGranularity] = useState<TrendGranularity>("month");
+  const [range, setRange] = useState<TrendRange>("ytd");
+
+  const points = useMemo(() => {
+    const raw = granularity === "week" ? trend?.weekly : trend?.monthly;
+    return filterTrendRange(raw ?? [], range);
+  }, [granularity, range, trend]);
+
+  const rangeHint =
+    range === "ytd"
+      ? "Year to date, snapshot at each week/month end."
+      : "Trailing 12 months, snapshot at each week/month end.";
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold text-slate-800">Total Capital Trend</p>
+          <StatCardHelp
+            tip={`Budget + cumulative realized P&L at each period end. Dashed line = starting budget (${budgetLine != null && budgetLine > 0 ? fmtCurrency(budgetLine) : "Settings"}). ${rangeHint}`}
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <SegmentToggle
+            value={granularity}
+            options={[
+              { id: "week", label: "Week" },
+              { id: "month", label: "Month" },
+            ]}
+            onChange={setGranularity}
+          />
+          <SegmentToggle
+            value={range}
+            options={[
+              { id: "ytd", label: "YTD" },
+              { id: "1y", label: "1Y" },
+            ]}
+            onChange={setRange}
+          />
+        </div>
+      </div>
+      <LineChartCard
+        points={points}
+        stroke={overBudget ? "#dc2626" : "#059669"}
+        fill={overBudget ? "#f97316" : "#14b8a6"}
+        budgetLine={budgetLine}
+        granularity={granularity}
+        embedded
+      />
+    </div>
+  );
+}
+
 function LineChartCard({
   title,
   points,
   stroke,
   fill,
   budgetLine,
+  granularity = "month",
+  embedded = false,
 }: {
-  title: string;
-  points: { label: string; value: number }[];
+  title?: string;
+  points: DashboardSeriesPoint[];
   stroke: string;
   fill: string;
   budgetLine?: number;
+  granularity?: TrendGranularity;
+  embedded?: boolean;
 }) {
   const gradientId = useId().replace(/:/g, "");
-  const recentPoints = points.slice(-6);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const width = 640;
-  const height = 168;
-  const padLeft = 56;
-  const padRight = 20;
-  const padY = 24;
+  const height = embedded ? 220 : 168;
+  const padLeft = 52;
+  const padRight = 12;
+  const padTop = 16;
+  const padBottom = 28;
   const plotW = width - padLeft - padRight;
-  const plotH = height - padY * 2;
+  const plotH = height - padTop - padBottom;
 
   const values = points.map((p) => p.value);
   const { min, max } = chartYDomain(values, budgetLine);
   const range = max - min || 1;
   const yTicks = yAxisTicks(min, max);
 
-  const toY = (value: number) => padY + plotH - ((value - min) / range) * plotH;
+  const toY = (value: number) => padTop + plotH - ((value - min) / range) * plotH;
   const toX = (i: number) =>
     padLeft + (points.length === 1 ? plotW / 2 : (i / (points.length - 1)) * plotW);
 
@@ -226,25 +391,51 @@ function LineChartCard({
   const linePath = coords.map((c, i) => `${i === 0 ? "M" : "L"} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(" ");
   const areaPath =
     coords.length > 0
-      ? `${linePath} L ${coords[coords.length - 1].x.toFixed(1)} ${(padY + plotH).toFixed(1)} L ${coords[0].x.toFixed(1)} ${(padY + plotH).toFixed(1)} Z`
+      ? `${linePath} L ${coords[coords.length - 1].x.toFixed(1)} ${(padTop + plotH).toFixed(1)} L ${coords[0].x.toFixed(1)} ${(padTop + plotH).toFixed(1)} Z`
       : "";
 
   const budgetY =
     budgetLine != null && budgetLine > 0 ? toY(budgetLine) : null;
+  const labelIndices = sparseLabelIndices(points.length);
+  const hovered = hoveredIndex != null ? points[hoveredIndex] : null;
+  const hoveredCoord = hoveredIndex != null ? coords[hoveredIndex] : null;
 
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="mb-4 text-sm font-semibold text-slate-800">{title}</p>
+  const chartBody = (
+    <>
       {points.length === 0 ? (
         <p className="text-sm text-slate-400">No data</p>
       ) : (
-        <>
+        <div className="relative w-full">
+          {hovered && hoveredCoord && (
+            <div
+              className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg border border-slate-700/80 bg-slate-900 px-3 py-2 text-center shadow-xl"
+              style={{
+                left: `${(hoveredCoord.x / width) * 100}%`,
+                top: `${(hoveredCoord.y / height) * 100}%`,
+                marginTop: -10,
+              }}
+            >
+              <p className="text-[11px] font-medium text-slate-300">
+                {formatTrendPeriod(hovered, granularity)}
+              </p>
+              <p className="mt-0.5 text-sm font-bold tabular-nums text-white">
+                {fmtCurrency(hovered.value)}
+              </p>
+              {budgetLine != null && budgetLine > 0 && (
+                <p className="mt-0.5 text-[10px] tabular-nums text-slate-400">
+                  {hovered.value >= budgetLine ? "+" : ""}
+                  {fmtCurrency(hovered.value - budgetLine)} vs budget
+                </p>
+              )}
+            </div>
+          )}
           <svg
             viewBox={`0 0 ${width} ${height}`}
-            className="h-44 w-full"
+            className={embedded ? "h-56 w-full" : "h-44 w-full"}
             role="img"
-            aria-label={title}
-            preserveAspectRatio="xMidYMid meet"
+            aria-label={title ?? "Total capital trend"}
+            preserveAspectRatio="none"
+            onMouseLeave={() => setHoveredIndex(null)}
           >
             <defs>
               <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
@@ -296,37 +487,54 @@ function LineChartCard({
               strokeLinecap="round"
               strokeLinejoin="round"
             />
-            {coords.map((c) => (
-              <g key={c.label}>
-                <circle cx={c.x} cy={c.y} r="5" fill="#fff" stroke={stroke} strokeWidth="2" />
-                <title>{`${c.label}: ${fmtCurrency(c.value)}`}</title>
+            {coords.map((c, i) => (
+              <g key={`${c.label}-${i}`}>
+                <circle
+                  cx={c.x}
+                  cy={c.y}
+                  r="14"
+                  fill="transparent"
+                  onMouseEnter={() => setHoveredIndex(i)}
+                />
+                <circle
+                  cx={c.x}
+                  cy={c.y}
+                  r={hoveredIndex === i ? 6 : 4}
+                  fill="#fff"
+                  stroke={stroke}
+                  strokeWidth="2"
+                />
               </g>
             ))}
+            {labelIndices.map((i) => {
+              const p = points[i];
+              if (!p) return null;
+              const x = toX(i);
+              return (
+                <text
+                  key={`x-${p.label}-${i}`}
+                  x={x}
+                  y={height - 8}
+                  textAnchor="middle"
+                  className="fill-slate-400"
+                  fontSize="9"
+                >
+                  {formatTrendAxisLabel(p, granularity)}
+                </text>
+              );
+            })}
           </svg>
-          <div className="mt-1 flex justify-between gap-1 pl-12 pr-1">
-            {points.map((p) => (
-              <span key={p.label} className="min-w-0 truncate text-center text-[10px] text-slate-400">
-                {p.label}
-              </span>
-            ))}
-          </div>
-        </>
-      )}
-      {recentPoints.length > 0 && (
-        <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50 p-3">
-          <div className="space-y-1">
-            {recentPoints.map((p) => (
-              <div
-                key={`${title}-${p.label}`}
-                className="flex items-center justify-between rounded px-1.5 py-0.5 text-xs"
-              >
-                <span className="truncate text-slate-500">{p.label}</span>
-                <span className="font-semibold text-slate-700">{fmtCurrency(p.value)}</span>
-              </div>
-            ))}
-          </div>
         </div>
       )}
+    </>
+  );
+
+  if (embedded) return chartBody;
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      {title && <p className="mb-4 text-sm font-semibold text-slate-800">{title}</p>}
+      {chartBody}
     </div>
   );
 }
@@ -489,18 +697,11 @@ export default function DashboardInsights({
         />
       </div>
       <div className="animate-stagger-fade-up">
-        <LineChartCard
-          title="Total Capital Trend"
-          points={charts?.monthly_capital_invested ?? []}
-          stroke={overBudget ? "#dc2626" : "#059669"}
-          fill={overBudget ? "#f97316" : "#14b8a6"}
+        <CapitalTrendChart
+          trend={charts?.capital_trend}
           budgetLine={capitalBudget > 0 ? capitalBudget : undefined}
+          overBudget={overBudget}
         />
-        {capitalBudget > 0 && (
-          <p className="-mt-2 px-1 text-xs text-slate-500">
-            Dashed line = starting budget ({fmtCurrency(capitalBudget)}) · total capital = budget + realized P&L at each month-end
-          </p>
-        )}
       </div>
     </div>
   );

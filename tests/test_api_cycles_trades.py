@@ -346,10 +346,13 @@ def test_dashboard_insights_api(client):
     assert body["kpis"]["total_premium"] == pytest.approx(690.0)
     assert body["kpis"]["realized_pnl"] == pytest.approx(450.0)
     assert isinstance(body["charts"]["daily_premium_income"], list)
-    assert isinstance(body["charts"]["monthly_capital_invested"], list)
-    assert len(body["charts"]["monthly_capital_invested"]) >= 1
+    assert isinstance(body["charts"]["capital_trend"], dict)
+    assert isinstance(body["charts"]["capital_trend"]["weekly"], list)
+    assert isinstance(body["charts"]["capital_trend"]["monthly"], list)
+    assert len(body["charts"]["capital_trend"]["monthly"]) >= 1
     # budget 100k + realized 450
-    assert body["charts"]["monthly_capital_invested"][-1]["value"] == pytest.approx(100_450.0)
+    assert body["charts"]["capital_trend"]["monthly"][-1]["value"] == pytest.approx(100_450.0)
+    assert body["charts"]["capital_trend"]["monthly"][-1]["date"] is not None
 
 
 def test_dashboard_insights_includes_assigned_csp_premium(client):

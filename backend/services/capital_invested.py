@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from calendar import monthrange
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 
 from backend.models.trade import Trade
 from backend.services.realized_pnl import compute_realized_pnl_as_of
@@ -147,38 +147,87 @@ def _month_end(year: int, month: int, cap: date) -> date:
     return date(year, month, monthrange(year, month)[1])
 
 
+def _start_of_week_monday(d: date) -> date:
+    return d.fromordinal(d.toordinal() - d.weekday())
+
+
+def _week_end(monday: date, cap: date) -> date:
+    return min(monday.fromordinal(monday.toordinal() + 6), cap)
+
+
+def _one_year_start(today: date) -> date:
+    return today - timedelta(days=364)
+
+
+def _trend_series_start(today: date) -> date:
+    """Earliest snapshot date returned by the API (covers both YTD and 1Y filters)."""
+    return min(_one_year_start(today), date(today.year, 1, 1))
+
+
+def _capital_point(budget: float, trades: list[Trade], as_of: date, label: str) -> dict:
+    return {
+        "label": label,
+        "date": as_of.isoformat(),
+        "value": round(compute_total_capital_pool(budget, trades, as_of), 2),
+    }
+
+
+def build_weekly_capital_series(
+    trades: list[Trade],
+    budget: float,
+    today: date | None = None,
+) -> list[dict]:
+    today = today or date.today()
+    start_monday = _start_of_week_monday(_trend_series_start(today))
+    end_monday = _start_of_week_monday(today)
+
+    points: list[dict] = []
+    monday = start_monday
+    while monday <= end_monday:
+        as_of = _week_end(monday, today)
+        points.append(
+            _capital_point(budget, trades, as_of, as_of.strftime("%b %d"))
+        )
+        monday = monday.fromordinal(monday.toordinal() + 7)
+    return points
+
+
 def build_monthly_capital_series(
     trades: list[Trade],
     budget: float,
     today: date | None = None,
-    limit: int = 6,
+    limit: int | None = None,
 ) -> list[dict]:
     today = today or date.today()
-    dated = [t for t in trades if t.trade_date is not None]
-    if not dated:
-        return []
+    start = _trend_series_start(today)
+    year, month = start.year, start.month
 
-    first = min(t.trade_date for t in dated)
-    months: list[tuple[int, int]] = []
-    year, month = first.year, first.month
+    points: list[dict] = []
     while (year, month) <= (today.year, today.month):
-        months.append((year, month))
+        as_of = _month_end(year, month, today)
+        points.append(
+            _capital_point(budget, trades, as_of, f"{year:04d}-{month:02d}")
+        )
         if month == 12:
             year, month = year + 1, 1
         else:
             month += 1
 
-    months = months[-limit:]
-    return [
-        {
-            "label": f"{y:04d}-{m:02d}",
-            "value": round(
-                compute_total_capital_pool(budget, trades, _month_end(y, m, today)),
-                2,
-            ),
-        }
-        for y, m in months
-    ]
+    if limit is not None:
+        points = points[-limit:]
+    return points
+
+
+def build_capital_trend_charts(
+    trades: list[Trade],
+    budget: float,
+    today: date | None = None,
+) -> dict[str, list[dict]]:
+    today = today or date.today()
+    return {
+        "weekly": build_weekly_capital_series(trades, budget, today),
+        "monthly": build_monthly_capital_series(trades, budget, today),
+    }
 
 
 def compute_stock_effective_cost(trades: list[Trade], today: date | None = None) -> float:
