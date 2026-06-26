@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import MarketingShell, {
   BTN_PRIMARY,
+  BTN_SECONDARY,
   MarketingCheckListItem,
 } from "@/app/components/marketing/MarketingShell";
 import { MARKETING_PAGE_PAD } from "@/app/components/marketing/styles";
