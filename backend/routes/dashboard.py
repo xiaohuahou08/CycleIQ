@@ -9,7 +9,12 @@ from backend.auth.supabase import require_auth
 from backend.models.trade import Trade
 from backend.models.wheel_cycle import WheelCycle
 from backend.services.csp_capital import capital_utilization_pct, get_capital_budget
-from backend.services.capital_invested import compute_open_csp_capital
+from backend.services.capital_invested import (
+    build_monthly_capital_series,
+    compute_open_csp_capital,
+    compute_total_capital_pool,
+)
+from backend.services.realized_pnl import compute_realized_pnl
 
 
 def register_dashboard_routes(dashboard_bp):
@@ -211,17 +216,13 @@ def register_dashboard_routes(dashboard_bp):
         open_csp_capital = compute_open_csp_capital(trades, today)
         total_capital_invested = open_csp_capital + total_stock_effective_cost
         capital_budget = get_capital_budget(user_id)
-        capital_utilization = capital_utilization_pct(total_capital_invested, capital_budget)
+        realized_pnl = compute_realized_pnl(trades, today)
+        total_capital = compute_total_capital_pool(capital_budget, trades, today)
+        capital_utilization = capital_utilization_pct(total_capital_invested, total_capital)
+        active_trades = len(open_trades)
 
-        # ── Realized P&L ────────────────────────────────────────────────────
-        # ASSIGNED (CSP put): option premium is realized at assignment; stock P&L
-        # follows via CC / call-away (aligned with Cycles wheel netLegCashflow).
-        # ROLLED = intermediate leg — include cashflow, exclude from win-rate denominator.
         pnl_statuses = {"CLOSED", "EXPIRED", "ROLLED", "CALLED_AWAY", "ASSIGNED"}
         realized_trades = [t for t in closed_trades if t.status in pnl_statuses]
-        # Add stock gain/loss from shares called away (not captured in option premium alone)
-        realized_pnl = sum(_realized_cashflow(t) for t in realized_trades) + extra_stock_sale_pnl
-        active_trades = len(open_trades)
 
         # Win rate: terminal outcomes only (ROLLED is not terminal — a new leg follows it).
         # Win = expired worthless, called away at target, or closed at a net profit.
@@ -300,6 +301,7 @@ def register_dashboard_routes(dashboard_bp):
         return jsonify(
             {
                 "kpis": {
+                    "total_capital": round(total_capital, 2),
                     "total_capital_invested": round(total_capital_invested, 2),
                     "capital_budget": round(capital_budget, 2),
                     "capital_utilization_pct": round(capital_utilization, 1),
@@ -327,6 +329,9 @@ def register_dashboard_routes(dashboard_bp):
                     "daily_premium_income": _series(daily_bucket, 7),
                     "weekly_premium_income": _series(weekly_bucket, 6),
                     "monthly_premium_income": _series(monthly_bucket, 6),
+                    "monthly_capital_invested": build_monthly_capital_series(
+                        trades, capital_budget, today, limit=6
+                    ),
                 },
             }
         )

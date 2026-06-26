@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from calendar import monthrange
 from collections import defaultdict
 from datetime import date
 
 from backend.models.trade import Trade
+from backend.services.realized_pnl import compute_realized_pnl_as_of
 from backend.services.trade_cost_basis import apply_stock_cost_basis
 
 
@@ -20,6 +22,163 @@ def _realized_cashflow(t: Trade) -> float:
         float(t.fees_on_assignment) if getattr(t, "fees_on_assignment", None) is not None else 0.0
     )
     return _premium_total(t) - commission - assignment_fees - buyback_total
+
+
+def _completion_date(t: Trade) -> date:
+    if t.status == "EXPIRED" and t.expired_at is not None:
+        return t.expired_at
+    if t.status == "CLOSED" and t.closed_at is not None:
+        return t.closed_at
+    if t.status == "ASSIGNED" and t.assigned_at is not None:
+        return t.assigned_at
+    if t.status == "CALLED_AWAY" and t.called_away_at is not None:
+        return t.called_away_at
+    if t.status == "ROLLED" and t.rolled_at is not None:
+        return t.rolled_at
+    if t.expired_at is not None:
+        return t.expired_at
+    return t.expiry
+
+
+def _put_csp_open_on_as_of(t: Trade, as_of: date) -> bool:
+    if t.option_type != "PUT" or t.trade_date is None or t.trade_date > as_of:
+        return False
+    if t.expiry is not None and t.expiry < as_of:
+        return False
+
+    if t.status == "OPEN":
+        return True
+
+    if t.status in ("ASSIGNED", "CALLED_AWAY"):
+        assign = t.assigned_at or _completion_date(t)
+        return t.trade_date <= as_of < assign
+
+    if t.status in ("CLOSED", "EXPIRED", "ROLLED"):
+        end = _completion_date(t)
+        if t.status == "CLOSED" and t.closed_at is None:
+            end = t.trade_date
+        elif t.status == "EXPIRED" and t.expired_at is None:
+            end = t.trade_date
+        elif t.status == "ROLLED" and t.rolled_at is None:
+            end = t.trade_date
+        return t.trade_date <= as_of <= end
+
+    return False
+
+
+def compute_open_csp_capital_as_of(trades: list[Trade], as_of: date) -> float:
+    return sum(
+        float(t.strike) * int(t.contracts) * 100
+        for t in trades
+        if _put_csp_open_on_as_of(t, as_of)
+    )
+
+
+def compute_stock_effective_cost_as_of(trades: list[Trade], as_of: date) -> float:
+    by_ticker: dict[str, list[Trade]] = defaultdict(list)
+    for t in trades:
+        by_ticker[t.ticker].append(t)
+
+    total_stock_effective_cost = 0.0
+    for tt in by_ticker.values():
+        assigned_puts = [
+            t
+            for t in tt
+            if t.option_type == "PUT"
+            and t.status in ("ASSIGNED", "CALLED_AWAY")
+            and t.stock_cost_basis_per_share is not None
+            and (t.assigned_at or _completion_date(t)) <= as_of
+        ]
+        if not assigned_puts:
+            continue
+
+        assigned_shares = sum(int(t.contracts) * 100 for t in assigned_puts)
+        if assigned_shares <= 0:
+            continue
+
+        weighted_initial_basis = (
+            sum(
+                float(t.stock_cost_basis_per_share) * int(t.contracts) * 100
+                for t in assigned_puts
+            )
+            / assigned_shares
+        )
+
+        basis_reducing_ccs = [
+            t
+            for t in tt
+            if t.option_type == "CALL"
+            and t.status in ("EXPIRED", "CLOSED", "ROLLED")
+            and _completion_date(t) <= as_of
+        ]
+        cc_reduction_net = sum(_realized_cashflow(t) for t in basis_reducing_ccs)
+        cc_reduction_per_share = cc_reduction_net / assigned_shares
+        effective_basis_per_share = max(0.0, weighted_initial_basis - cc_reduction_per_share)
+
+        called_away_ccs = [
+            t
+            for t in tt
+            if t.option_type == "CALL"
+            and t.status == "CALLED_AWAY"
+            and (t.called_away_at or _completion_date(t)) <= as_of
+        ]
+        called_away_shares = sum(int(t.contracts) * 100 for t in called_away_ccs)
+        remaining_shares = assigned_shares - called_away_shares
+        if remaining_shares > 0:
+            total_stock_effective_cost += effective_basis_per_share * remaining_shares
+
+    return total_stock_effective_cost
+
+
+def compute_total_capital_invested_as_of(trades: list[Trade], as_of: date) -> float:
+    return compute_open_csp_capital_as_of(trades, as_of) + compute_stock_effective_cost_as_of(
+        trades, as_of
+    )
+
+
+def compute_total_capital_pool(budget: float, trades: list[Trade], as_of: date) -> float:
+    """Total capital = starting budget + cumulative realized P&L (profits add, losses subtract)."""
+    return float(budget) + compute_realized_pnl_as_of(trades, as_of)
+
+
+def _month_end(year: int, month: int, cap: date) -> date:
+    if year == cap.year and month == cap.month:
+        return cap
+    return date(year, month, monthrange(year, month)[1])
+
+
+def build_monthly_capital_series(
+    trades: list[Trade],
+    budget: float,
+    today: date | None = None,
+    limit: int = 6,
+) -> list[dict]:
+    today = today or date.today()
+    dated = [t for t in trades if t.trade_date is not None]
+    if not dated:
+        return []
+
+    first = min(t.trade_date for t in dated)
+    months: list[tuple[int, int]] = []
+    year, month = first.year, first.month
+    while (year, month) <= (today.year, today.month):
+        months.append((year, month))
+        if month == 12:
+            year, month = year + 1, 1
+        else:
+            month += 1
+
+    months = months[-limit:]
+    return [
+        {
+            "label": f"{y:04d}-{m:02d}",
+            "value": round(
+                compute_total_capital_pool(budget, trades, _month_end(y, m, today)),
+                2,
+            ),
+        }
+        for y, m in months
+    ]
 
 
 def compute_stock_effective_cost(trades: list[Trade], today: date | None = None) -> float:

@@ -79,10 +79,12 @@ export interface DashboardSeriesPoint {
 
 export interface DashboardInsights {
   kpis: {
+    /** Starting budget + cumulative realized P&L. */
+    total_capital: number;
     total_capital_invested: number;
-    /** Total capital budget from Settings. */
+    /** Starting capital budget from Settings. */
     capital_budget: number;
-    /** total_capital_invested / capital_budget × 100. */
+    /** total_capital_invested / total_capital × 100. */
     capital_utilization_pct: number;
     total_premium: number;
     realized_pnl: number;
@@ -107,6 +109,7 @@ export interface DashboardInsights {
     daily_premium_income: DashboardSeriesPoint[];
     weekly_premium_income: DashboardSeriesPoint[];
     monthly_premium_income: DashboardSeriesPoint[];
+    monthly_capital_invested: DashboardSeriesPoint[];
   };
 }
 

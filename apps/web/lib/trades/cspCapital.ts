@@ -2,7 +2,10 @@ import type { Trade } from "@/lib/api/trades";
 import {
   assignmentStockBasisPerShare,
   basisReducingCcPremium,
+  netLegCashflow,
 } from "@/lib/cycles/ccCostBasis";
+
+const PNL_STATUSES = new Set(["CLOSED", "EXPIRED", "ROLLED", "CALLED_AWAY", "ASSIGNED"]);
 
 export function todayIso(): string {
   const d = new Date();
@@ -86,6 +89,54 @@ export function computeTotalCapitalInvested(
   return sumOpenCspNotional(working, { today }) + computeStockEffectiveCost(working);
 }
 
+function stockSalePnl(trades: Trade[]): number {
+  const byTicker = new Map<string, Trade[]>();
+  for (const t of trades) {
+    const list = byTicker.get(t.ticker) ?? [];
+    list.push(t);
+    byTicker.set(t.ticker, list);
+  }
+
+  let extra = 0;
+  for (const tt of byTicker.values()) {
+    const assignedPuts = tt.filter(
+      (t) =>
+        t.option_type === "PUT" &&
+        (t.status === "ASSIGNED" || t.status === "CALLED_AWAY") &&
+        assignmentStockBasisPerShare(t) != null
+    );
+    if (assignedPuts.length === 0) continue;
+
+    const assignedShares = assignedPuts.reduce((s, t) => s + t.contracts * 100, 0);
+    if (assignedShares <= 0) continue;
+
+    let basisWeighted = 0;
+    for (const put of assignedPuts) {
+      const basis = assignmentStockBasisPerShare(put);
+      if (basis == null) continue;
+      basisWeighted += basis * put.contracts * 100;
+    }
+    const weightedInitialBasis = basisWeighted / assignedShares;
+
+    for (const cc of tt.filter((t) => t.option_type === "CALL" && t.status === "CALLED_AWAY")) {
+      extra += (cc.strike - weightedInitialBasis) * cc.contracts * 100;
+    }
+  }
+  return extra;
+}
+
+/** Cumulative realized P&L across all trades (matches dashboard). */
+export function portfolioRealizedPnl(trades: Trade[]): number {
+  const optionPnl = trades
+    .filter((t) => PNL_STATUSES.has(t.status))
+    .reduce((sum, t) => sum + netLegCashflow(t), 0);
+  return optionPnl + stockSalePnl(trades);
+}
+
+export function effectiveCapitalPool(budget: number, trades: Trade[]): number {
+  return budget + portfolioRealizedPnl(trades);
+}
+
 export function capitalUtilizationPct(invested: number, budget: number): number {
   if (budget <= 0) return 0;
   return (invested / budget) * 100;
@@ -110,13 +161,14 @@ export function capitalBudgetError(
   const before = computeTotalCapitalInvested(trades, { excludeTradeId });
   const baseWithoutLeg = computeTotalCapitalInvested(trades, { excludeTradeId });
   const after = baseWithoutLeg + cspNotional(leg.strike, leg.contracts);
+  const pool = effectiveCapitalPool(budget, trades);
 
-  if (after <= budget + 1e-6) return null;
+  if (after <= pool + 1e-6) return null;
   if (after <= before + 1e-6) return null;
 
-  const over = after - budget;
-  const pct = capitalUtilizationPct(after, budget);
-  return `Total capital invested $${after.toLocaleString("en-US", { maximumFractionDigits: 0 })} (${pct.toFixed(0)}% of budget) exceeds your capital budget of $${budget.toLocaleString("en-US", { maximumFractionDigits: 0 })} (over by $${over.toLocaleString("en-US", { maximumFractionDigits: 0 })})`;
+  const over = after - pool;
+  const pct = capitalUtilizationPct(after, pool);
+  return `Total capital invested $${after.toLocaleString("en-US", { maximumFractionDigits: 0 })} (${pct.toFixed(0)}% of total capital) exceeds your available capital of $${pool.toLocaleString("en-US", { maximumFractionDigits: 0 })} (over by $${over.toLocaleString("en-US", { maximumFractionDigits: 0 })})`;
 }
 
 /** @deprecated use capitalBudgetError */

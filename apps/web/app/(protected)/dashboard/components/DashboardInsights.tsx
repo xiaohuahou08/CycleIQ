@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Info } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
@@ -159,6 +159,125 @@ function BarChartCard({
   );
 }
 
+function LineChartCard({
+  title,
+  points,
+  stroke,
+  fill,
+  budgetLine,
+}: {
+  title: string;
+  points: { label: string; value: number }[];
+  stroke: string;
+  fill: string;
+  budgetLine?: number;
+}) {
+  const gradientId = useId().replace(/:/g, "");
+  const recentPoints = points.slice(-6);
+
+  const width = 640;
+  const height = 168;
+  const padX = 28;
+  const padY = 24;
+  const plotW = width - padX * 2;
+  const plotH = height - padY * 2;
+
+  const values = points.map((p) => p.value);
+  const min = Math.min(0, ...values, budgetLine ?? 0);
+  const max = Math.max(1, ...values, budgetLine ?? 0);
+  const range = max - min || 1;
+
+  const coords = points.map((p, i) => ({
+    ...p,
+    x: padX + (points.length === 1 ? plotW / 2 : (i / (points.length - 1)) * plotW),
+    y: padY + plotH - ((p.value - min) / range) * plotH,
+  }));
+
+  const linePath = coords.map((c, i) => `${i === 0 ? "M" : "L"} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(" ");
+  const areaPath =
+    coords.length > 0
+      ? `${linePath} L ${coords[coords.length - 1].x.toFixed(1)} ${(padY + plotH).toFixed(1)} L ${coords[0].x.toFixed(1)} ${(padY + plotH).toFixed(1)} Z`
+      : "";
+
+  const budgetY =
+    budgetLine != null && budgetLine > 0
+      ? padY + plotH - ((budgetLine - min) / range) * plotH
+      : null;
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <p className="mb-4 text-sm font-semibold text-slate-800">{title}</p>
+      {points.length === 0 ? (
+        <p className="text-sm text-slate-400">No data</p>
+      ) : (
+        <>
+          <svg
+            viewBox={`0 0 ${width} ${height}`}
+            className="h-44 w-full"
+            role="img"
+            aria-label={title}
+          >
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={fill} stopOpacity="0.35" />
+                <stop offset="100%" stopColor={fill} stopOpacity="0.03" />
+              </linearGradient>
+            </defs>
+            {budgetY != null && (
+              <line
+                x1={padX}
+                y1={budgetY}
+                x2={width - padX}
+                y2={budgetY}
+                stroke="#cbd5e1"
+                strokeWidth="1.5"
+                strokeDasharray="6 4"
+              />
+            )}
+            <path d={areaPath} fill={`url(#${gradientId})`} />
+            <path
+              d={linePath}
+              fill="none"
+              stroke={stroke}
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            {coords.map((c) => (
+              <g key={c.label}>
+                <circle cx={c.x} cy={c.y} r="5" fill="#fff" stroke={stroke} strokeWidth="2" />
+                <title>{`${c.label}: ${fmtCurrency(c.value)}`}</title>
+              </g>
+            ))}
+          </svg>
+          <div className="mt-1 flex justify-between gap-1 px-1">
+            {points.map((p) => (
+              <span key={p.label} className="min-w-0 truncate text-center text-[10px] text-slate-400">
+                {p.label}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+      {recentPoints.length > 0 && (
+        <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50 p-3">
+          <div className="space-y-1">
+            {recentPoints.map((p) => (
+              <div
+                key={`${title}-${p.label}`}
+                className="flex items-center justify-between rounded px-1.5 py-0.5 text-xs"
+              >
+                <span className="truncate text-slate-500">{p.label}</span>
+                <span className="font-semibold text-slate-700">{fmtCurrency(p.value)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StatCard({
   label,
   value,
@@ -201,9 +320,10 @@ export default function DashboardInsights({
   const kpis = insights?.kpis;
   const charts = insights?.charts;
   const capitalInvested = kpis?.total_capital_invested ?? 0;
+  const totalCapital = kpis?.total_capital ?? kpis?.capital_budget ?? 0;
   const capitalBudget = kpis?.capital_budget ?? 0;
   const capitalUtilPct = kpis?.capital_utilization_pct ?? 0;
-  const overBudget = capitalBudget > 0 && capitalInvested > capitalBudget;
+  const overBudget = totalCapital > 0 && capitalInvested > totalCapital;
 
   if (loading) {
     return (
@@ -218,6 +338,7 @@ export default function DashboardInsights({
             <div key={i} className="h-56 animate-pulse rounded-2xl border border-slate-200 bg-slate-100" />
           ))}
         </div>
+        <div className="h-56 animate-pulse rounded-2xl border border-slate-200 bg-slate-100" />
       </div>
     );
   }
@@ -227,10 +348,10 @@ export default function DashboardInsights({
       {/* KPI cards — 4-column grid */}
       <div className="animate-stagger-fade-up grid grid-cols-2 gap-4 overflow-visible md:grid-cols-3 lg:grid-cols-4">
         <StatCard
-          label="Total Capital Invested"
-          value={`${fmtCurrency(capitalInvested)} (${capitalUtilPct.toFixed(0)}%)`}
-          sub={`of ${fmtCurrency(capitalBudget)} total budget · open CSP + stock held`}
-          tip="Open CSP (expiry not passed) strike × shares + effective stock cost after assignment (CC premiums reduce basis). Cannot exceed your total capital budget in Settings."
+          label="Total Capital"
+          value={fmtCurrency(totalCapital)}
+          sub={`${fmtCurrency(capitalInvested)} deployed (${capitalUtilPct.toFixed(0)}%) · budget ${fmtCurrency(capitalBudget)} + P&L`}
+          tip="Total capital = starting budget + cumulative realized P&L (profits add, losses subtract). Deployed = open CSP + stock held. New trades cannot push deployed capital above total capital."
           accent={overBudget ? "bg-red-400" : "bg-emerald-400"}
           valueClassName={overBudget ? "text-red-600" : "text-slate-800"}
         />
@@ -296,7 +417,7 @@ export default function DashboardInsights({
         />
       </div>
 
-      {/* Charts — 3-column row on large screens */}
+      {/* Charts — premium row + capital trend */}
       <div className="animate-stagger-fade-up grid grid-cols-1 gap-4 lg:grid-cols-3">
         <BarChartCard
           title="Daily Premium (by open date)"
@@ -313,6 +434,20 @@ export default function DashboardInsights({
           points={charts?.monthly_premium_income ?? []}
           gradient="bg-gradient-to-t from-indigo-600 to-blue-300"
         />
+      </div>
+      <div className="animate-stagger-fade-up">
+        <LineChartCard
+          title="Total Capital Trend"
+          points={charts?.monthly_capital_invested ?? []}
+          stroke={overBudget ? "#dc2626" : "#059669"}
+          fill={overBudget ? "#f97316" : "#14b8a6"}
+          budgetLine={capitalBudget > 0 ? capitalBudget : undefined}
+        />
+        {capitalBudget > 0 && (
+          <p className="-mt-2 px-1 text-xs text-slate-500">
+            Dashed line = starting budget ({fmtCurrency(capitalBudget)}) · total capital = budget + realized P&L at each month-end
+          </p>
+        )}
       </div>
     </div>
   );

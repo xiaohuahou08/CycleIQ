@@ -10,6 +10,7 @@ from backend.services.capital_invested import (
     compute_total_capital_invested,
     total_capital_invested_for_user,
 )
+from backend.services.realized_pnl import compute_realized_pnl
 
 
 def csp_notional(strike: float, contracts: int) -> float:
@@ -27,6 +28,13 @@ def capital_utilization_pct(invested: float, budget: float) -> float:
     if budget <= 0:
         return 0.0
     return invested / budget * 100.0
+
+
+def effective_capital_pool(user_id: str, trades: list[Trade] | None = None, today: date | None = None) -> float:
+    """Deployable capital pool = budget + cumulative realized P&L."""
+    today = today or date.today()
+    all_trades = trades if trades is not None else Trade.query.filter_by(user_id=user_id).all()
+    return get_capital_budget(user_id) + compute_realized_pnl(all_trades, today)
 
 
 def capital_budget_error(
@@ -69,7 +77,7 @@ def capital_budget_error(
         if not active_open:
             before_for_compare = before + leg_csp
 
-    budget = get_capital_budget(user_id)
+    budget = effective_capital_pool(user_id, all_trades, today)
     if after <= budget + 1e-6:
         return None
     if after <= before_for_compare + 1e-6:
@@ -78,8 +86,8 @@ def capital_budget_error(
     over = after - budget
     pct = capital_utilization_pct(after, budget)
     return (
-        f"Total capital invested ${after:,.0f} ({pct:.0f}% of budget) exceeds your "
-        f"capital budget of ${budget:,.0f} (over by ${over:,.0f})"
+        f"Total capital invested ${after:,.0f} ({pct:.0f}% of total capital) exceeds your "
+        f"available capital of ${budget:,.0f} (over by ${over:,.0f})"
     )
 
 

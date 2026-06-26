@@ -80,7 +80,7 @@ describe("capitalBudgetError", () => {
       contracts: 5,
       expiry: "2026-08-01",
     });
-    assert.match(err ?? "", /exceeds your capital budget/);
-    assert.match(err ?? "", /% of budget/);
+    assert.match(err ?? "", /exceeds your available capital/);
+    assert.match(err ?? "", /% of total capital/);
   });
 });

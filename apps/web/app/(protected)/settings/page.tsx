@@ -262,7 +262,7 @@ function TradingDefaultsSection() {
 
       <FieldRow
         label="Total capital budget"
-        hint="Maximum total capital deployed (open CSP cash + stock held after assignment). Dashboard shows utilization %; new trades cannot increase invested capital above this limit."
+        hint="Starting capital for the wheel. Total capital = budget + realized P&L; profits increase deployable capital. Dashboard shows utilization (deployed ÷ total capital); new trades cannot exceed total capital."
       >
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">$</span>
