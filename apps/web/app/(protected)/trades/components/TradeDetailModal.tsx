@@ -212,17 +212,9 @@ export default function TradeDetailModal({
 }: TradeDetailModalProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!trade) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [trade, onClose]);
-
-  if (!trade) return null;
-
   /* roll history — walk rolled_from_id chain backwards to build ancestor list */
   const rollChain = React.useMemo(() => {
+    if (!trade) return [];
     const chain: Trade[] = [trade];
     const byId = new Map(allTrades.map((t) => [t.id, t]));
     let cur = trade.rolled_from_id ? byId.get(trade.rolled_from_id) : undefined;
@@ -234,6 +226,16 @@ export default function TradeDetailModal({
     }
     return chain;
   }, [trade, allTrades]);
+
+  useEffect(() => {
+    if (!trade) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [trade, onClose]);
+
+  if (!trade) return null;
+
   const showRollHistory = rollChain.length > 1;
 
   /* metrics */

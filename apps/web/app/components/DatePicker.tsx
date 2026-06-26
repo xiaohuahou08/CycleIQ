@@ -57,10 +57,6 @@ export default function DatePicker({
   const selected = value ? parseIso(value) : null;
   const [viewMonth, setViewMonth] = useState(() => selected ?? new Date());
 
-  useEffect(() => {
-    if (selected) setViewMonth(new Date(selected.getFullYear(), selected.getMonth(), 1));
-  }, [value]);
-
   const updatePosition = useCallback(() => {
     const trigger = triggerRef.current;
     const popover = popoverRef.current;
@@ -244,7 +240,15 @@ export default function DatePicker({
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          setOpen((o) => {
+            const next = !o;
+            if (next && selected) {
+              setViewMonth(new Date(selected.getFullYear(), selected.getMonth(), 1));
+            }
+            return next;
+          });
+        }}
         aria-label={ariaLabel ?? placeholder}
         aria-expanded={open}
         className={`inline-flex min-w-[7.5rem] items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium transition ${

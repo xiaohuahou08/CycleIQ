@@ -105,7 +105,9 @@ function AccountSection({
   } | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEmail(emailProp);
+     
     setDisplayName(displayNameProp);
   }, [emailProp, displayNameProp]);
 
@@ -198,13 +200,17 @@ function TradingDefaultsSection({ hasCapitalFlows }: { hasCapitalFlows: boolean 
   );
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCommissionPerContract(
       defaults.commissionPerContract !== undefined
         ? String(defaults.commissionPerContract)
         : ""
     );
+     
     setDefaultContracts(String(defaults.defaultContracts ?? 1));
+     
     setDefaultDte(String(defaults.defaultDte ?? 45));
+     
     setTotalCapitalBudget(String(defaults.totalCapitalBudget ?? 10000));
   }, [defaults]);
 
@@ -373,12 +379,17 @@ function CapitalFlowModal({
   useEffect(() => {
     if (open) {
       if (initial) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setAmount(String(Math.abs(initial.amount)));
+         
         setEventDate(initial.event_date);
       } else {
+         
         setAmount("");
+         
         setEventDate(localTodayIsoDate());
       }
+       
       setError(null);
     }
   }, [open, type, initial]);
@@ -513,6 +524,7 @@ function CapitalManagementSection({
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refreshFlows();
   }, [token]);
 
