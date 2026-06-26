@@ -18,7 +18,7 @@ CycleIQ is a Wheel Strategy options-trading app. Runnable components:
 ### Tests / lint / build
 
 - Backend + FSM tests (same as CI): `PYTHONPATH=. venv/bin/pytest tests/ -v` from repo root.
-- Web lint/test/build: `npm run web:lint`, `npm run web:test`, `npm run web:build` (or the underlying scripts in `apps/web/package.json`). Lint emits warnings only.
+- Web lint/test/build: `npm run web:lint`, `npm run web:test`, `npm run web:build` (or the underlying scripts in `apps/web/package.json`). Lint emits warnings only. Web unit tests use `tsx --test` because several `.mjs` tests import `.ts` modules and `@/` path aliases.
 
 ### Running the backend (local dev, SQLite) — important caveats
 
