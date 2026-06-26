@@ -18,13 +18,24 @@ export const DEFAULT_KEYWORDS = [
 ] as const;
 
 export function getSiteUrl(): string {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim()?.replace(/\/$/, "");
+  const vercelBranch = process.env.VERCEL_BRANCH_URL?.trim()?.replace(/\/$/, "");
+  const vercelDeploy = process.env.VERCEL_URL?.trim()?.replace(/\/$/, "");
+  const vercelHost = vercelBranch || vercelDeploy;
+
+  // Production: prefer explicit canonical domain.
+  if (process.env.VERCEL_ENV === "production" && configured) {
+    return configured;
+  }
+
+  // Preview / per-deployment: use Vercel host (branch URL is stable per git branch).
+  if (vercelHost) {
+    return `https://${vercelHost}`;
+  }
+
   if (configured) {
-    return configured.replace(/\/$/, "");
+    return configured;
   }
-  const vercel = process.env.VERCEL_URL?.trim();
-  if (vercel) {
-    return `https://${vercel.replace(/\/$/, "")}`;
-  }
+
   return "http://localhost:3000";
 }

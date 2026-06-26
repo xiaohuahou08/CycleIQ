@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { getUserAvatarUrl, getUserDisplayName } from "@/lib/auth/user-profile";
 import { UserMenu } from "@/components/auth/UserMenu";
 
 export function AuthenticatedShell({
@@ -15,6 +16,8 @@ export function AuthenticatedShell({
 }) {
   const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,6 +32,8 @@ export function AuthenticatedShell({
           return;
         }
         setEmail(session.user.email ?? null);
+        setDisplayName(getUserDisplayName(session.user));
+        setAvatarUrl(getUserAvatarUrl(session.user));
       } catch {
         router.replace("/login");
       } finally {
@@ -55,7 +60,7 @@ export function AuthenticatedShell({
           </Link>
           <span className="truncate text-sm text-gray-500">{title}</span>
         </div>
-        <UserMenu email={email} />
+        <UserMenu email={email} displayName={displayName} avatarUrl={avatarUrl} />
       </header>
       {children}
     </div>

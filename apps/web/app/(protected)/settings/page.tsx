@@ -6,7 +6,9 @@ import { Check, X } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
 import { resetTradingData } from "@/lib/api/account";
 import { useProtectedAuth } from "../auth-context";
+import UserAvatar from "@/app/components/UserAvatar";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { getUserAvatarUrl, getUserDisplayName } from "@/lib/auth/user-profile";
 import { useTradeDefaults } from "@/lib/hooks/useTradeDefaults";
 
 // ─── Section shell ────────────────────────────────────────────────────────────
@@ -80,12 +82,35 @@ function Toast({
 }
 
 // ─── Account section ──────────────────────────────────────────────────────────
-function AccountSection({ email }: { email: string | null }) {
+function AccountSection({
+  email: emailProp,
+  displayName: displayNameProp,
+}: {
+  email: string | null;
+  displayName: string | null;
+}) {
+  const [email, setEmail] = useState(emailProp);
+  const [displayName, setDisplayName] = useState(displayNameProp);
   const [sending, setSending] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error";
   } | null>(null);
+
+  useEffect(() => {
+    setEmail(emailProp);
+    setDisplayName(displayNameProp);
+  }, [emailProp, displayNameProp]);
+
+  useEffect(() => {
+    void getSupabaseClient()
+      .auth.getUser()
+      .then(({ data }) => {
+        if (!data.user) return;
+        setEmail(data.user.email ?? null);
+        setDisplayName(getUserDisplayName(data.user));
+      });
+  }, []);
 
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ message, type });
@@ -116,6 +141,11 @@ function AccountSection({ email }: { email: string | null }) {
         title="Account"
         description="Your account information and authentication settings."
       >
+        <FieldRow label="Display name" hint="Name from your sign-in provider.">
+          <span className="inline-flex max-w-[14rem] items-center truncate rounded-lg bg-gray-100 px-3 py-1.5 text-sm text-gray-700">
+            {displayName ?? "—"}
+          </span>
+        </FieldRow>
         <FieldRow label="Email address" hint="Your Supabase Auth email.">
           <span className="inline-flex items-center rounded-lg bg-gray-100 px-3 py-1.5 text-sm text-gray-700">
             {email ?? "—"}
@@ -386,12 +416,51 @@ function DangerZoneSection() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
-  const { email, onLogout } = useProtectedAuth();
+  const { email, displayName, avatarUrl, onLogout } = useProtectedAuth();
+  const [profileAvatar, setProfileAvatar] = useState(avatarUrl);
+  const [profileName, setProfileName] = useState(displayName);
+  const [profileEmail, setProfileEmail] = useState(email);
+
+  useEffect(() => {
+    setProfileAvatar(avatarUrl);
+    setProfileName(displayName);
+    setProfileEmail(email);
+  }, [avatarUrl, displayName, email]);
+
+  useEffect(() => {
+    void getSupabaseClient()
+      .auth.getUser()
+      .then(({ data }) => {
+        if (!data.user) return;
+        setProfileEmail(data.user.email ?? null);
+        setProfileName(getUserDisplayName(data.user));
+        setProfileAvatar(getUserAvatarUrl(data.user));
+      });
+  }, []);
 
   return (
     <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-slate-50 px-4 py-4 sm:px-6 sm:py-6">
       <div className="mx-auto w-full max-w-2xl space-y-6">
-        <AccountSection email={email} />
+        <header className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <UserAvatar
+            src={profileAvatar}
+            displayName={profileName}
+            email={profileEmail}
+            size="xl"
+          />
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900">Settings</h1>
+            <p className="mt-0.5 truncate text-sm font-medium text-slate-800">
+              {profileName ?? "CycleIQ user"}
+            </p>
+            <p className="truncate text-sm text-slate-500">{profileEmail ?? "—"}</p>
+            {profileAvatar ? (
+              <p className="mt-1 text-xs text-slate-400">Profile photo from Google</p>
+            ) : null}
+          </div>
+        </header>
+
+        <AccountSection email={profileEmail} displayName={profileName} />
         <TradingDefaultsSection />
         <DangerZoneSection />
 

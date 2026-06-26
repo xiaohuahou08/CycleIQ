@@ -4,8 +4,17 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import UserAvatar from "@/app/components/UserAvatar";
 
-export function UserMenu({ email }: { email: string | null }) {
+export function UserMenu({
+  email,
+  displayName,
+  avatarUrl,
+}: {
+  email: string | null;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -36,8 +45,6 @@ export function UserMenu({ email }: { email: string | null }) {
     router.refresh();
   };
 
-  const initial = email?.trim()?.[0]?.toUpperCase() ?? "?";
-
   return (
     <div className="relative" ref={rootRef}>
       <button
@@ -47,9 +54,12 @@ export function UserMenu({ email }: { email: string | null }) {
         aria-expanded={open}
         aria-haspopup="menu"
       >
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-sm font-medium text-gray-800">
-          {initial}
-        </span>
+        <UserAvatar
+          src={avatarUrl}
+          displayName={displayName}
+          email={email}
+          size="sm"
+        />
         <span className="hidden max-w-[10rem] truncate text-left text-gray-700 sm:inline">
           {email ?? "Account"}
         </span>

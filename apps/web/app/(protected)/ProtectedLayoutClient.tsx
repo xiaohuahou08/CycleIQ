@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/app/components/Sidebar";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { getUserAvatarUrl, getUserDisplayName } from "@/lib/auth/user-profile";
 import { ProtectedAuthProvider } from "./auth-context";
 
 export default function ProtectedLayoutClient({
@@ -11,6 +12,8 @@ export default function ProtectedLayoutClient({
 }: Readonly<{ children: React.ReactNode }>) {
   const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -28,6 +31,8 @@ export default function ProtectedLayoutClient({
           return;
         }
         setEmail(session.user.email ?? "");
+        setDisplayName(getUserDisplayName(session.user));
+        setAvatarUrl(getUserAvatarUrl(session.user));
         setToken(session.access_token);
       } catch {
         router.replace("/login");
@@ -46,8 +51,8 @@ export default function ProtectedLayoutClient({
   };
 
   const contextValue = useMemo(
-    () => ({ email, token, isAuthLoading, onLogout }),
-    [email, token, isAuthLoading, onLogout]
+    () => ({ email, displayName, avatarUrl, token, isAuthLoading, onLogout }),
+    [email, displayName, avatarUrl, token, isAuthLoading, onLogout]
   );
 
   if (isAuthLoading) {

@@ -12,6 +12,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { CycleIQMark, iconStroke } from "@/app/components/icons";
+import UserAvatar from "@/app/components/UserAvatar";
+import { useProtectedAuth } from "@/app/(protected)/auth-context";
 
 /** Icon / type scale follows sidebar mode (expanded vs collapsed). */
 const sb = {
@@ -37,7 +39,9 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed = false, onToggleCollapsed }: SidebarProps) {
   const pathname = usePathname();
+  const { email, displayName, avatarUrl } = useProtectedAuth();
   const narrow = collapsed;
+  const profileLabel = displayName ?? email ?? "Account";
 
   return (
     <aside
@@ -92,6 +96,34 @@ export default function Sidebar({ collapsed = false, onToggleCollapsed }: Sideba
           );
         })}
       </nav>
+
+      <div className="w-full shrink-0 border-t border-slate-800 px-2 py-2">
+        <Link
+          href="/settings"
+          title={profileLabel}
+          className={`flex w-full items-center rounded-lg text-slate-300 transition-colors hover:bg-slate-800 hover:text-white ${
+            narrow ? "justify-center p-2" : "gap-2.5 px-2 py-2"
+          } ${pathname === "/settings" ? "bg-slate-800/60" : ""}`}
+        >
+          <UserAvatar
+            src={avatarUrl}
+            displayName={displayName}
+            email={email}
+            size="sm"
+            className="ring-slate-700"
+          />
+          {!narrow && (
+            <span className="min-w-0 flex-1 text-left">
+              <span className="block truncate text-sm font-medium text-slate-200">
+                {profileLabel}
+              </span>
+              {displayName && email ? (
+                <span className="block truncate text-xs text-slate-500">{email}</span>
+              ) : null}
+            </span>
+          )}
+        </Link>
+      </div>
 
       <div className="w-full shrink-0 border-t border-slate-800 p-2">
         <button
