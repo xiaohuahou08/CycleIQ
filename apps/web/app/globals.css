@@ -3,22 +3,164 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Design tokens */
+  --page-bg: #f8fafc;
+  --sidebar-bg: #0f172a;
+  --accent: #10b981;
+  --surface: #ffffff;
+  --border: #e2e8f0;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-page-bg: var(--page-bg);
+  --color-sidebar: var(--sidebar-bg);
+  --color-accent: var(--accent);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Inter, Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans-inter), Inter, system-ui, sans-serif;
+}
+
+/* Native date inputs in modals — light chrome aligned with app tokens */
+input[type="date"].date-input {
+  color-scheme: light;
+  font-family: inherit;
+}
+
+input[type="date"].date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.55;
+  filter: grayscale(0.2);
+}
+
+input[type="date"].date-input:hover::-webkit-calendar-picker-indicator {
+  opacity: 0.85;
+}
+
+input[type="date"].date-input:focus::-webkit-calendar-picker-indicator {
+  opacity: 1;
+}
+
+/* ── Motion utilities (respect prefers-reduced-motion) ─────────────────── */
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes bar-grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-page-enter {
+  animation: fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.35s ease-out both;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-bar-grow {
+  transform-origin: bottom;
+  animation: bar-grow 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-stagger-fade-up > * {
+  animation: fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-stagger-fade-up > *:nth-child(1) { animation-delay: 0ms; }
+.animate-stagger-fade-up > *:nth-child(2) { animation-delay: 45ms; }
+.animate-stagger-fade-up > *:nth-child(3) { animation-delay: 90ms; }
+.animate-stagger-fade-up > *:nth-child(4) { animation-delay: 135ms; }
+.animate-stagger-fade-up > *:nth-child(5) { animation-delay: 180ms; }
+.animate-stagger-fade-up > *:nth-child(6) { animation-delay: 225ms; }
+.animate-stagger-fade-up > *:nth-child(7) { animation-delay: 270ms; }
+.animate-stagger-fade-up > *:nth-child(8) { animation-delay: 315ms; }
+
+.card-hover-lift {
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.card-hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.06),
+    0 10px 20px -4px rgb(0 0 0 / 0.08);
+}
+
+.loading-spinner {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 2px solid #e2e8f0;
+  border-top-color: #10b981;
+  border-radius: 9999px;
+  animation: spin-slow 0.7s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-page-enter,
+  .animate-fade-in,
+  .animate-scale-in,
+  .animate-bar-grow,
+  .animate-stagger-fade-up > *,
+  .loading-spinner {
+    animation: none !important;
+  }
+
+  .card-hover-lift,
+  .card-hover-lift:hover {
+    transform: none;
+    transition: none;
+  }
 }

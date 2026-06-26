@@ -2,70 +2,145 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  ChevronLeft,
+  ChevronRight,
+  LayoutDashboard,
+  RefreshCw,
+  TrendingUp,
+  type LucideIcon,
+} from "lucide-react";
+import { CycleIQMark, iconStroke } from "@/app/components/icons";
+import UserAvatar from "@/app/components/UserAvatar";
+import { useProtectedAuth } from "@/app/(protected)/auth-context";
 
-const navItems = [
-  { label: "Dashboard", href: "/dashboard", icon: "🏠" },
-  { label: "Trades", href: "/trades", icon: "💹" },
-  { label: "Cycles", href: "/cycles", icon: "🔄" },
-  { label: "Reports", href: "/reports", icon: "📊" },
-  { label: "Settings", href: "/settings", icon: "⚙️" },
+/** Icon / type scale follows sidebar mode (expanded vs collapsed). */
+const sb = {
+  wide: "w-[14rem]",
+  narrow: "w-[4.25rem]",
+  logoMark: { wide: "h-9 w-9", narrow: "h-10 w-10" },
+  logoText: "text-[1.0625rem] font-bold leading-tight tracking-tight",
+  navIcon: { wide: "h-5 w-5", narrow: "h-[1.375rem] w-[1.375rem]" },
+  navLabel: "text-sm leading-tight",
+} as const;
+
+const navItems: { label: string; href: string; icon: LucideIcon }[] = [
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Trades", href: "/trades", icon: TrendingUp },
+  { label: "Cycles", href: "/cycles", icon: RefreshCw },
 ];
 
 interface SidebarProps {
-  email?: string | null;
-  onLogout?: () => void;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }
 
-export default function Sidebar({ email, onLogout }: SidebarProps) {
+export default function Sidebar({ collapsed = false, onToggleCollapsed }: SidebarProps) {
   const pathname = usePathname();
+  const { email, displayName, avatarUrl } = useProtectedAuth();
+  const narrow = collapsed;
+  const profileLabel = displayName ?? email ?? "Account";
 
   return (
-    <aside className="flex h-full w-60 shrink-0 flex-col border-r border-gray-200 bg-gray-50/80 backdrop-blur">
-      <div className="flex h-14 items-center border-b border-gray-200 px-4">
-        <Link href="/dashboard" className="text-base font-semibold text-gray-900">
-          CycleIQ
+    <aside
+      className={`flex h-full shrink-0 flex-col items-center bg-slate-900 transition-[width] duration-200 ease-out ${
+        narrow ? sb.narrow : sb.wide
+      }`}
+    >
+      <div className="flex h-[3.75rem] w-full shrink-0 items-center justify-center border-b border-slate-800/80 px-2">
+        <Link
+          href="/dashboard"
+          className="flex items-center justify-center text-white transition-opacity hover:opacity-90"
+          title="CycleIQ"
+        >
+          {narrow ? (
+            <CycleIQMark className={`${sb.logoMark.narrow} text-emerald-400`} />
+          ) : (
+            <span className="flex max-w-full items-center justify-center gap-2 px-1">
+              <CycleIQMark className={`${sb.logoMark.wide} shrink-0 text-emerald-400`} />
+              <span className={`${sb.logoText} truncate`}>CycleIQ</span>
+            </span>
+          )}
         </Link>
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+      <nav
+        className={`flex w-full flex-1 flex-col items-center gap-0.5 overflow-y-auto py-3 ${
+          narrow ? "px-1.5" : "px-2"
+        }`}
+      >
         {navItems.map((item) => {
           const isActive = pathname === item.href;
+          const Icon = item.icon;
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              title={narrow ? item.label : undefined}
+              className={`flex w-full items-center justify-center rounded-lg font-medium transition-all duration-200 ${
+                narrow ? "px-0 py-2.5" : "gap-2.5 px-2 py-3"
+              } ${
                 isActive
-                  ? "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200"
-                  : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-              }`}
+                  ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/20"
+                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
+              } ${isActive ? "" : "hover:translate-x-0.5"}`}
             >
-              <span>{item.icon}</span>
-              <span>{item.label}</span>
+              <Icon
+                className={`shrink-0 ${narrow ? sb.navIcon.narrow : sb.navIcon.wide}`}
+                strokeWidth={isActive ? 2.25 : iconStroke}
+              />
+              {!narrow && <span className={sb.navLabel}>{item.label}</span>}
             </Link>
           );
         })}
       </nav>
 
-      <div className="border-t border-gray-200 px-4 py-3">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-200 text-sm font-medium text-gray-700">
-            {email ? email[0].toUpperCase() : "?"}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs text-gray-600">{email ?? "Signed in"}</p>
-          </div>
-          {onLogout && (
-            <button
-              type="button"
-              onClick={onLogout}
-              className="text-xs text-gray-500 hover:text-gray-900"
-              title="Logout"
-            >
-              ↩
-            </button>
+      <div className="w-full shrink-0 border-t border-slate-800 px-2 py-2">
+        <Link
+          href="/settings"
+          title={profileLabel}
+          className={`flex w-full items-center rounded-lg text-slate-300 transition-colors hover:bg-slate-800 hover:text-white ${
+            narrow ? "justify-center p-2" : "gap-2.5 px-2 py-2"
+          } ${pathname === "/settings" ? "bg-emerald-500/10 ring-1 ring-inset ring-emerald-500/20" : ""}`}
+        >
+          <UserAvatar
+            src={avatarUrl}
+            displayName={displayName}
+            email={email}
+            size="md"
+            className="ring-slate-700"
+          />
+          {!narrow && (
+            <span className="min-w-0 flex-1 text-left">
+              <span className="block truncate text-base font-semibold leading-snug text-slate-100">
+                {profileLabel}
+              </span>
+              {displayName && email ? (
+                <span className="block truncate text-xs text-slate-500">{email}</span>
+              ) : null}
+            </span>
           )}
-        </div>
+        </Link>
+      </div>
+
+      <div className="w-full shrink-0 border-t border-slate-800 p-2">
+        <button
+          type="button"
+          onClick={onToggleCollapsed}
+          className="flex w-full items-center justify-center rounded-lg py-2.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+          aria-label={narrow ? "Expand sidebar" : "Collapse sidebar"}
+          title={narrow ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {narrow ? (
+            <ChevronRight
+              className={narrow ? sb.navIcon.narrow : sb.navIcon.wide}
+              strokeWidth={iconStroke}
+              aria-hidden
+            />
+          ) : (
+            <ChevronLeft className={sb.navIcon.wide} strokeWidth={iconStroke} aria-hidden />
+          )}
+        </button>
       </div>
     </aside>
   );
