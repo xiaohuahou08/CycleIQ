@@ -22,6 +22,9 @@ class Trade(db.Model):
     cycle_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("wheel_cycles.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    rolled_from_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("trades.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     ticker: Mapped[str] = mapped_column(String(10), nullable=False, index=True)
     option_type: Mapped[str] = mapped_column(String(4), nullable=False)
@@ -32,7 +35,8 @@ class Trade(db.Model):
     commission_fee: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     fees_on_assignment: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     stock_cost_basis_per_share: Mapped[float | None] = mapped_column(Numeric(14, 4), nullable=True)
-    delta: Mapped[float | None] = mapped_column(Numeric(5, 3), nullable=True)
+    prior_roll_premium_per_share: Mapped[float | None] = mapped_column(Numeric(10, 4), nullable=True)
+    buyback_cost_per_share: Mapped[float | None] = mapped_column(Numeric(10, 4), nullable=True)
     contracts: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="OPEN")
     expired_at: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -78,7 +82,13 @@ class Trade(db.Model):
             "stock_cost_basis_per_share": float(self.stock_cost_basis_per_share)
             if self.stock_cost_basis_per_share is not None
             else None,
-            "delta": float(self.delta) if self.delta is not None else None,
+            "prior_roll_premium_per_share": float(self.prior_roll_premium_per_share)
+            if self.prior_roll_premium_per_share is not None
+            else None,
+            "buyback_cost_per_share": float(self.buyback_cost_per_share)
+            if self.buyback_cost_per_share is not None
+            else None,
+            "rolled_from_id": self.rolled_from_id,
             "contracts": self.contracts,
             "status": self.status,
             "expired_at": self.expired_at.isoformat() if self.expired_at else None,

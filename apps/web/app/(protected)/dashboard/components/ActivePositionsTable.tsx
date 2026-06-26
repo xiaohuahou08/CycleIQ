@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { Trade, TradeStatus } from "@/lib/api/trades";
 
@@ -71,62 +72,83 @@ export default function ActivePositionsTable({
   const displayed = trades.slice(0, 5);
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
-        <h2 className="text-sm font-semibold text-gray-900">Active Positions</h2>
-        {trades.length > 5 && (
-          <span className="text-xs text-gray-500">{trades.length} total</span>
-        )}
-      </div>
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      {trades.length > 0 && (
+        <div className="flex items-center justify-end gap-3 border-b border-slate-200 px-5 py-2">
+          {trades.length > 5 && (
+            <span className="text-xs text-slate-400">{trades.length} total</span>
+          )}
+          <Link
+            href="/trades"
+            className="text-xs font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+          >
+            View all trades →
+          </Link>
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-3 p-5">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-8 animate-pulse rounded bg-gray-100" />
+            <div key={i} className="h-8 animate-pulse rounded bg-slate-100" />
           ))}
         </div>
       ) : trades.length === 0 ? (
         <div className="flex flex-col items-center px-6 py-12 text-center">
           <div className="text-4xl">📋</div>
-          <p className="mt-3 text-sm font-medium text-gray-900">No trades yet</p>
-          <p className="mt-1 text-xs text-gray-500">No active positions at the moment.</p>
+          <p className="mt-3 text-sm font-medium text-slate-900">No trades yet</p>
+          <p className="mt-1 text-xs text-slate-500">No active positions at the moment.</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
-                <th className="px-5 py-3">Ticker</th>
-                <th className="px-5 py-3">Strategy</th>
-                <th className="px-5 py-3">Strike</th>
-                <th className="px-5 py-3">Expiry</th>
-                <th className="px-5 py-3">DTE</th>
-                <th className="px-5 py-3">Premium</th>
-                <th className="px-5 py-3">Status</th>
+              <tr>
+                <th className="border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-800">
+                  Ticker
+                </th>
+                <th className="border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-800">
+                  Strategy
+                </th>
+                <th className="border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-800">
+                  Strike
+                </th>
+                <th className="border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-800">
+                  Expiry
+                </th>
+                <th className="border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-800">
+                  DTE
+                </th>
+                <th className="border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-800">
+                  Premium
+                </th>
+                <th className="border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-800">
+                  Status
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-slate-100">
               {displayed.map((trade) => (
-                <tr key={trade.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3 font-medium text-gray-900">
+                <tr key={trade.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-5 py-3 font-medium text-slate-900">
                     <div className="flex items-center gap-2">
                       <TickerLogo key={trade.ticker} ticker={trade.ticker} />
                       <span>{trade.ticker}</span>
                     </div>
                   </td>
-                  <td className="px-5 py-3 text-gray-600">
+                  <td className="px-5 py-3 text-slate-600">
                     {getStrategy(trade)}
                   </td>
-                  <td className="px-5 py-3 text-gray-600">
+                  <td className="px-5 py-3 text-slate-600">
                     ${trade.strike.toFixed(2)}
                   </td>
-                  <td className="px-5 py-3 text-gray-600">
+                  <td className="px-5 py-3 text-slate-600">
                     {fmtDate(trade.expiry)}
                   </td>
-                  <td className="px-5 py-3 text-gray-600">
+                  <td className="px-5 py-3 text-slate-600">
                     {getDte(trade.expiry)}d
                   </td>
-                  <td className="px-5 py-3 font-medium text-green-700">
+                  <td className="px-5 py-3 font-medium text-emerald-600">
                     +${(trade.premium * trade.contracts * 100).toFixed(2)}
                   </td>
                   <td className="px-5 py-3">

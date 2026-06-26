@@ -1,15 +1,19 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
+import { AuthLoadingShell } from "@/app/components/AuthShell";
+import { createAuthPageMetadata } from "@/lib/seo/metadata";
 import { RegisterForm } from "./register-form";
+
+export const metadata: Metadata = createAuthPageMetadata({
+  title: "Create account",
+  description:
+    "Create a free CycleIQ account to log wheel strategy trades, track CSP and covered call cycles, and monitor premium income.",
+  path: "/register",
+});
 
 export default function RegisterPage() {
   return (
-    <Suspense
-      fallback={
-        <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-10">
-          <p className="text-gray-600">Loading…</p>
-        </main>
-      }
-    >
+    <Suspense fallback={<AuthLoadingShell />}>
       <RegisterForm />
     </Suspense>
   );

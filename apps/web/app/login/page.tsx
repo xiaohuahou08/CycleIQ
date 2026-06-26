@@ -1,15 +1,18 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
+import { AuthLoadingShell } from "@/app/components/AuthShell";
+import { createAuthPageMetadata } from "@/lib/seo/metadata";
 import { LoginForm } from "./login-form";
+
+export const metadata: Metadata = createAuthPageMetadata({
+  title: "Sign in",
+  description: "Sign in to CycleIQ to track your options wheel cycles, CSPs, covered calls, and premium P&L.",
+  path: "/login",
+});
 
 export default function LoginPage() {
   return (
-    <Suspense
-      fallback={
-        <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-10">
-          <p className="text-gray-600">Loading…</p>
-        </main>
-      }
-    >
+    <Suspense fallback={<AuthLoadingShell />}>
       <LoginForm />
     </Suspense>
   );

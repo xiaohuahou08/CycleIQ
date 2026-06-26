@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Package } from "lucide-react";
+import { iconMd, iconStroke } from "@/app/components/icons";
 import type { Trade } from "@/lib/api/trades";
 import {
   ModalActionButtons,
@@ -14,12 +16,7 @@ function todayIso(): string {
 }
 
 function PackageIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-      <path d="M3.27 6.96 12 12.01l8.73-5.05M12 22.08V12" />
-    </svg>
-  );
+  return <Package className={iconMd} strokeWidth={iconStroke} aria-hidden />;
 }
 
 interface AssignTradeModalProps {
@@ -31,6 +28,8 @@ interface AssignTradeModalProps {
     assignment_price: number;
     /** Total USD for assignment-related fees (optional). */
     fees_on_assignment?: number;
+    /** Net premium/share earned from prior rolls (e.g. rolling 375→390). */
+    prior_roll_premium_per_share?: number;
     notes?: string;
   }) => Promise<void>;
 }
@@ -45,6 +44,7 @@ export default function AssignTradeModal({
   const [assignmentPrice, setAssignmentPrice] = useState("");
   const [showOptionalFields, setShowOptionalFields] = useState(true);
   const [fees, setFees] = useState("");
+  const [priorRollPremium, setPriorRollPremium] = useState("");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -58,6 +58,7 @@ export default function AssignTradeModal({
     );
     setShowOptionalFields(true);
     setFees("");
+    setPriorRollPremium("");
     setNotes("");
   }, [open, trade?.id, trade?.strike]);
 
@@ -86,14 +87,26 @@ export default function AssignTradeModal({
     return x;
   }, [fees]);
 
-  /** CSP: assignment_price − premium/share + (opening + assignment fees) / shares — see backend `apply_stock_cost_basis`. */
+  const parsedPriorRollPremium = useMemo(() => {
+    const t = priorRollPremium.trim();
+    if (!t) return undefined;
+    const x = Number(t);
+    if (!Number.isFinite(x) || x < 0) return undefined;
+    return x;
+  }, [priorRollPremium]);
+
+  /**
+   * CSP cost basis (mirrors backend `apply_stock_cost_basis`):
+   *   strike − premium_this_leg − prior_roll_premium + (opening_fees + assign_fees) / shares
+   */
   const estimatedStockCostPerShare = useMemo(() => {
     if (!trade || trade.option_type !== "PUT") return null;
     if (!Number.isFinite(priceNum) || priceNum <= 0 || shares <= 0) return null;
     const openFee = trade.commission_fee ?? 0;
     const assignPart = parsedAssignmentFeesUsd ?? 0;
-    return priceNum - trade.premium + (openFee + assignPart) / shares;
-  }, [trade, priceNum, shares, parsedAssignmentFeesUsd]);
+    const rollPart = parsedPriorRollPremium ?? 0;
+    return priceNum - trade.premium - rollPart + (openFee + assignPart) / shares;
+  }, [trade, priceNum, shares, parsedAssignmentFeesUsd, parsedPriorRollPremium]);
 
   if (!open || !trade) return null;
 
@@ -112,6 +125,7 @@ export default function AssignTradeModal({
         trade_date: actionDate,
         assignment_price: priceNum,
         ...(feesAssignmentOut !== undefined ? { fees_on_assignment: feesAssignmentOut } : {}),
+        ...(parsedPriorRollPremium !== undefined ? { prior_roll_premium_per_share: parsedPriorRollPremium } : {}),
         notes: notes.trim() ? notes.trim() : undefined,
       });
     } finally {
@@ -119,10 +133,12 @@ export default function AssignTradeModal({
     }
   };
 
+  const modalTitle = trade?.option_type === "CALL" ? "Call Away" : "Mark as Assigned";
+
   return (
     <TradeModalShell
       open={open}
-      title="Mark as Assigned"
+      title={modalTitle}
       subtitle={subtitle}
       headerIcon={<PackageIcon />}
       onClose={onClose}
@@ -187,7 +203,7 @@ export default function AssignTradeModal({
             htmlFor="assign_price"
             className="mb-1 block text-sm font-medium text-gray-700"
           >
-            Assignment Price
+            {trade.option_type === "CALL" ? "Call Away Price" : "Assignment Price"}
           </label>
           <div className="relative">
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
@@ -227,8 +243,9 @@ export default function AssignTradeModal({
                 })}
               </p>
               <p className="mt-2 text-xs text-emerald-800">
-                Assignment price − premium/share + (opening commission + assignment fees) ÷ shares.
-                Opening commission is taken from this trade&apos;s commission field.
+                Strike − premium/share
+                {parsedPriorRollPremium ? ` − roll premium ($${parsedPriorRollPremium.toFixed(2)}/sh)` : ""}
+                {" "}+ (opening commission + assignment fees) ÷ shares.
               </p>
             </div>
           ) : null}
@@ -279,6 +296,40 @@ export default function AssignTradeModal({
                 />
               </div>
 
+              {trade.option_type === "PUT" && trade.rolled_from_id && (
+                <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-[12px] text-blue-800">
+                  <span className="font-semibold">Roll chain detected.</span>{" "}
+                  Prior roll premiums will be automatically added to cost basis from the linked chain.
+                  Use the override below only if you need to adjust.
+                </div>
+              )}
+              {trade.option_type === "PUT" && (
+                <div className="mt-4">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="assign_prior_roll" className="text-sm font-medium text-gray-700">
+                      Prior roll premium / share override
+                    </label>
+                    <span className="text-sm text-gray-500">optional</span>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Leave blank to auto-sum from the roll chain. Fill in only to override (e.g. for manually linked trades).
+                  </p>
+                  <div className="relative mt-2">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
+                    <input
+                      id="assign_prior_roll"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={priorRollPremium}
+                      onChange={(e) => setPriorRollPremium(e.target.value)}
+                      placeholder="auto from chain"
+                      className="w-full rounded-lg border border-purple-200 bg-white py-2 pl-7 pr-3 text-sm text-gray-900 focus:border-purple-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="mt-4">
                 <div className="flex items-center justify-between">
                   <label htmlFor="assign_notes" className="text-sm font-medium text-gray-700">
@@ -302,7 +353,7 @@ export default function AssignTradeModal({
         <ModalActionButtons
           onCancel={onClose}
           onSubmit={handleSubmit}
-          submitLabel="Mark Assigned"
+          submitLabel={trade.option_type === "CALL" ? "Mark Called Away" : "Mark Assigned"}
           submittingLabel="Saving..."
           isSubmitting={isSubmitting}
           submitTone="blue"
