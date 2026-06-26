@@ -10,6 +10,7 @@ import AuthShell, {
 } from "@/app/components/AuthShell";
 import GoogleSignInButton from "@/app/components/GoogleSignInButton";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { getAuthRedirectOrigin } from "@/lib/auth-url";
 import { safeInternalRedirectPath } from "@/lib/auth-redirect.mjs";
 
 export function RegisterForm() {
@@ -47,8 +48,8 @@ export function RegisterForm() {
 
     try {
       const supabase = getSupabaseClient();
-      const redirectTo =
-        typeof window !== "undefined" ? `${window.location.origin}/dashboard` : undefined;
+      const authOrigin = getAuthRedirectOrigin() || window.location.origin;
+      const redirectTo = `${authOrigin}/dashboard`;
       const {
         data: { session },
         error: signUpError,

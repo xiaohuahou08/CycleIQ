@@ -2,5 +2,13 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "installCommand": "rm -rf apps/web/node_modules && npm install",
-  "buildCommand": "npm run web:build:vercel"
+  "buildCommand": "npm run web:build:vercel",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.cycleiq.xyz" }],
+      "destination": "https://cycleiq.xyz/:path*",
+      "permanent": true
+    }
+  ]
 }

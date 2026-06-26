@@ -23,6 +23,7 @@ import {
 import { resetTradingData } from "@/lib/api/account";
 import { useProtectedAuth } from "../auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { getAuthRedirectOrigin } from "@/lib/auth-url";
 import { getUserDisplayName } from "@/lib/auth/user-profile";
 import { useTradeDefaults, TRADE_DEFAULTS_UPDATED_EVENT } from "@/lib/hooks/useTradeDefaults";
 
@@ -277,7 +278,7 @@ function AccountSection({
     try {
       const supabase = getSupabaseClient();
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/settings`,
+        redirectTo: `${getAuthRedirectOrigin() || window.location.origin}/settings`,
       });
       if (error) throw error;
       showToast("Password reset email sent. Check your inbox.", "success");
