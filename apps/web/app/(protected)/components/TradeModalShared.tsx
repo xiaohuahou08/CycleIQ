@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
+import { ChevronDown, ChevronUp, X } from "lucide-react";
+import { iconSm, iconStroke } from "@/app/components/icons";
 
 interface TradeModalShellProps {
   open: boolean;
@@ -77,15 +79,13 @@ export function TradeModalShell({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 animate-fade-in"
       role="dialog"
       aria-modal="true"
       aria-labelledby={labelledById}
     >
-      <div
-        className="relative w-full max-w-lg rounded-2xl bg-white shadow-xl"
-        style={{ transform: `translate(${modalOffset.x}px, ${modalOffset.y}px)` }}
-      >
+      <div style={{ transform: `translate(${modalOffset.x}px, ${modalOffset.y}px)` }}>
+        <div className="animate-scale-in relative w-full max-w-lg rounded-2xl bg-white shadow-xl">
         <div
           className={`flex items-start justify-between gap-3 border-b border-gray-200 px-6 py-4 ${
             draggable ? "cursor-grab active:cursor-grabbing" : ""
@@ -111,13 +111,14 @@ export function TradeModalShell({
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-lg p-1 text-gray-400 hover:text-gray-600"
+            className="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
             aria-label="Close"
           >
-            ✕
+            <X className={iconSm} strokeWidth={iconStroke} aria-hidden />
           </button>
         </div>
         {children}
+        </div>
       </div>
     </div>
   );
@@ -134,9 +135,19 @@ export function OptionalFieldsToggle({
     <button
       type="button"
       onClick={onToggle}
-      className="w-full rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 hover:bg-purple-100"
+      className="flex w-full items-center justify-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 hover:bg-purple-100"
     >
-      {open ? "▲ Hide Optional Fields" : "▼ Show Optional Fields"}
+      {open ? (
+        <>
+          <ChevronUp className={iconSm} strokeWidth={iconStroke} aria-hidden />
+          Hide Optional Fields
+        </>
+      ) : (
+        <>
+          <ChevronDown className={iconSm} strokeWidth={iconStroke} aria-hidden />
+          Show Optional Fields
+        </>
+      )}
     </button>
   );
 }

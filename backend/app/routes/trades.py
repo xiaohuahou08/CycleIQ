@@ -36,13 +36,8 @@ def _resolve_cycle(data: dict, fallback_cycle: WheelCycle | None = None) -> Whee
 
     ticker = (data.get("ticker") or "").strip().upper()
     if ticker:
-        cycle = (
-            WheelCycle.query.filter_by(user_id=g.user_id, ticker=ticker)
-            .order_by(WheelCycle.created_at.desc())
-            .first()
-        )
-        if cycle is not None:
-            return cycle
+        # Always create a fresh cycle when only a ticker is given.
+        # Reuse only happens when wheel_cycle_id is explicitly provided (e.g. Roll).
         cycle = WheelCycle(user_id=g.user_id, ticker=ticker)
         db.session.add(cycle)
         db.session.flush()

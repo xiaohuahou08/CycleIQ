@@ -11,7 +11,6 @@ const mockTrades = [
     trade_date: "2026-04-15",
     premium: 2.45,
     contracts: 1,
-    delta: -0.25,
     status: "OPEN",
     notes: "CSP seed sample",
   },

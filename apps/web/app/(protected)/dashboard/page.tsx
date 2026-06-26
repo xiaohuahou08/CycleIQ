@@ -41,12 +41,9 @@ export default function DashboardPage() {
 
   return (
     <>
-      <main className="flex-1 bg-gray-100/80 px-6 py-8">
-        <div>
+      <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-slate-50 px-4 py-4 sm:px-6 sm:py-6">
+        <div className="w-full space-y-6">
           <DashboardInsights insights={insights} loading={tradesLoading} />
-        </div>
-
-        <div className="mt-6">
           <ActivePositionsTable trades={activeTrades} loading={tradesLoading} />
         </div>
       </main>
