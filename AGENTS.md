@@ -37,4 +37,9 @@ CycleIQ is a Wheel Strategy options-trading app. Runnable components:
 ### Running the web app
 
 - `npm run web:dev` (port 3000). Set `NEXT_PUBLIC_API_URL=http://localhost:5000` to point it at the local backend.
-- Landing/login/register pages render without Supabase. **Authenticated flows (dashboard, trades, cycles) require real Supabase env** (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`); without them, `middleware.ts` redirects protected routes to `/login`. Full UI E2E therefore needs Supabase credentials.
+- Create `apps/web/.env.local` with `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `NEXT_PUBLIC_API_URL` (values from the cloud secrets / Supabase dashboard). Restart the dev server after changing env.
+- Create `backend/.env` with at least `SUPABASE_JWT_SECRET` (must match the Supabase project), plus `SUPABASE_URL` / `SUPABASE_ANON_KEY` if backend code needs them. `FLASK_ENV=development` is typical locally.
+- Landing/login/register pages render without Supabase. **Authenticated flows (dashboard, trades, cycles) require real Supabase env**; middleware redirects protected routes to `/login` when session cookies are missing.
+- Supabase now issues **ES256** JWTs; `backend/auth/supabase.py` verifies via JWKS (`{iss}/.well-known/jwks.json`). `SUPABASE_JWT_SECRET` is only needed for legacy HS256 tokens.
+- New email/password signups may require **email confirmation** before login. For throwaway testing, Mailinator inboxes work (`*@mailinator.com`); confirm via the link in the Supabase auth email, or use an existing confirmed account.
+- **SQLite DB path:** when running `venv/bin/python backend/app.py` from repo root, Flask stores the dev DB at `instance/cycleiq_dev.db` (not repo root). Delete that file and restart the backend if models changed and you see `no such column` errors (`create_all` does not migrate existing tables).
