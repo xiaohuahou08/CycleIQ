@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, X, ArrowDownCircle, ArrowUpCircle, Trash2 } from "lucide-react";
+import { Check, X, ArrowDownCircle, ArrowUpCircle, Pencil, Trash2 } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
 import { resetTradingData } from "@/lib/api/account";
 import {
@@ -10,6 +10,7 @@ import {
   deleteCapitalFlow,
   formatFlowAmount,
   getCapitalFlows,
+  updateCapitalFlow,
   type CapitalFlow,
 } from "@/lib/api/capitalFlows";
 import { useProtectedAuth } from "../auth-context";
@@ -176,7 +177,7 @@ function AccountSection({
 }
 
 // ─── Trading defaults section ─────────────────────────────────────────────────
-function TradingDefaultsSection() {
+function TradingDefaultsSection({ hasCapitalFlows }: { hasCapitalFlows: boolean }) {
   const { defaults, setDefaults, loading, saving } = useTradeDefaults();
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -269,18 +270,28 @@ function TradingDefaultsSection() {
 
       <FieldRow
         label="Total capital budget"
-        hint="Starting capital baseline. Use Capital Management below to record deposits and withdrawals with dates — required for accurate total capital and time-weighted return."
+        hint={
+          hasCapitalFlows
+            ? "Locked after deposits or withdrawals exist. Change capital in Capital Management below."
+            : "Initial capital only. After your first deposit or withdrawal, use Capital Management below."
+        }
       >
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">$</span>
-          <input
-            type="number"
-            min="1"
-            step="100"
-            value={totalCapitalBudget}
-            onChange={(e) => setTotalCapitalBudget(e.target.value)}
-            className="w-28 rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-          />
+          {hasCapitalFlows ? (
+            <span className="inline-flex w-28 items-center rounded-lg bg-gray-100 px-2.5 py-1.5 text-sm font-medium text-gray-800">
+              {Number(totalCapitalBudget).toLocaleString()}
+            </span>
+          ) : (
+            <input
+              type="number"
+              min="1"
+              step="100"
+              value={totalCapitalBudget}
+              onChange={(e) => setTotalCapitalBudget(e.target.value)}
+              className="w-28 rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            />
+          )}
         </div>
       </FieldRow>
 
@@ -320,8 +331,12 @@ function TradingDefaultsSection() {
   );
 }
 
-function todayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
+function localTodayIsoDate(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function formatDisplayDate(iso: string): string {
@@ -341,28 +356,40 @@ function CapitalFlowModal({
   onClose,
   onSubmit,
   submitting,
+  initial,
 }: {
   type: "deposit" | "withdrawal";
   open: boolean;
   onClose: () => void;
   onSubmit: (amount: number, eventDate: string) => Promise<void>;
   submitting: boolean;
+  initial?: CapitalFlow;
 }) {
   const [amount, setAmount] = useState("");
-  const [eventDate, setEventDate] = useState(todayIsoDate());
+  const [eventDate, setEventDate] = useState(localTodayIsoDate());
   const [error, setError] = useState<string | null>(null);
+  const isEdit = initial != null;
 
   useEffect(() => {
     if (open) {
-      setAmount("");
-      setEventDate(todayIsoDate());
+      if (initial) {
+        setAmount(String(Math.abs(initial.amount)));
+        setEventDate(initial.event_date);
+      } else {
+        setAmount("");
+        setEventDate(localTodayIsoDate());
+      }
       setError(null);
     }
-  }, [open, type]);
+  }, [open, type, initial]);
 
   if (!open) return null;
 
-  const title = type === "deposit" ? "Record deposit" : "Record withdrawal";
+  const title = isEdit
+    ? "Edit capital flow"
+    : type === "deposit"
+      ? "Record deposit"
+      : "Record withdrawal";
   const label = type === "deposit" ? "Deposit amount" : "Withdrawal amount";
 
   const handleSubmit = async () => {
@@ -416,7 +443,7 @@ function CapitalFlowModal({
             <input
               type="date"
               value={eventDate}
-              max={todayIsoDate()}
+              max={localTodayIsoDate()}
               onChange={(e) => setEventDate(e.target.value)}
               className="mt-1 w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
             />
@@ -450,19 +477,25 @@ function CapitalFlowModal({
   );
 }
 
-function CapitalManagementSection() {
+function CapitalManagementSection({
+  onFlowsChange,
+}: {
+  onFlowsChange: (hasFlows: boolean) => void;
+}) {
   const { token } = useProtectedAuth();
   const { defaults, loading: defaultsLoading } = useTradeDefaults();
   const [flows, setFlows] = useState<CapitalFlow[]>([]);
   const [loadingFlows, setLoadingFlows] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [modal, setModal] = useState<"deposit" | "withdrawal" | null>(null);
+  const [editingFlow, setEditingFlow] = useState<CapitalFlow | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const refreshFlows = async () => {
     if (!token) {
       setFlows([]);
+      onFlowsChange(false);
       setLoadingFlows(false);
       return;
     }
@@ -470,6 +503,7 @@ function CapitalManagementSection() {
     try {
       const data = await getCapitalFlows(token);
       setFlows(data);
+      onFlowsChange(data.length > 0);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load capital flows.");
@@ -483,15 +517,34 @@ function CapitalManagementSection() {
   }, [token]);
 
   const handleSubmitFlow = async (amount: number, eventDate: string) => {
-    if (!token || !modal) return;
+    if (!token || (!modal && !editingFlow)) return;
     setSubmitting(true);
     try {
-      await createCapitalFlow(token, { type: modal, amount, event_date: eventDate });
+      const flowType = editingFlow?.type ?? modal!;
+      if (editingFlow) {
+        await updateCapitalFlow(token, editingFlow.id, {
+          type: flowType,
+          amount,
+          event_date: eventDate,
+        });
+      } else {
+        await createCapitalFlow(token, { type: modal!, amount, event_date: eventDate });
+      }
       window.dispatchEvent(new Event(TRADE_DEFAULTS_UPDATED_EVENT));
       await refreshFlows();
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const openEdit = (flow: CapitalFlow) => {
+    setEditingFlow(flow);
+    setModal(flow.type);
+  };
+
+  const closeModal = () => {
+    setModal(null);
+    setEditingFlow(null);
   };
 
   const handleDelete = async (flow: CapitalFlow) => {
@@ -517,9 +570,10 @@ function CapitalManagementSection() {
       <CapitalFlowModal
         type={modal ?? "deposit"}
         open={modal !== null}
-        onClose={() => setModal(null)}
+        onClose={closeModal}
         onSubmit={handleSubmitFlow}
         submitting={submitting}
+        initial={editingFlow ?? undefined}
       />
       <Section
         title="Capital Management"
@@ -598,15 +652,25 @@ function CapitalManagementSection() {
                       {formatFlowAmount(flow.amount)}
                     </td>
                     <td className="px-4 py-2.5 text-right">
-                      <button
-                        type="button"
-                        onClick={() => void handleDelete(flow)}
-                        disabled={deletingId === flow.id}
-                        className="inline-flex items-center rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 disabled:opacity-50"
-                        aria-label="Delete entry"
-                      >
-                        <Trash2 className="h-4 w-4" strokeWidth={iconStroke} aria-hidden />
-                      </button>
+                      <div className="inline-flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(flow)}
+                          className="inline-flex items-center rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                          aria-label="Edit entry"
+                        >
+                          <Pencil className="h-4 w-4" strokeWidth={iconStroke} aria-hidden />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDelete(flow)}
+                          disabled={deletingId === flow.id}
+                          className="inline-flex items-center rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 disabled:opacity-50"
+                          aria-label="Delete entry"
+                        >
+                          <Trash2 className="h-4 w-4" strokeWidth={iconStroke} aria-hidden />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -663,7 +727,7 @@ function DangerZoneSection() {
       >
         <FieldRow
           label="Reset all trading data"
-          hint="Permanently delete every trade and wheel cycle on your account. Trading defaults in Settings are kept."
+          hint="Permanently delete every trade and wheel cycle. Capital deposits/withdrawals and trading defaults are kept."
         >
           <button
             type="button"
@@ -722,13 +786,14 @@ function DangerZoneSection() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const { email, displayName, onLogout } = useProtectedAuth();
+  const [hasCapitalFlows, setHasCapitalFlows] = useState(false);
 
   return (
     <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-slate-50 px-4 py-4 sm:px-6 sm:py-6">
       <div className="mx-auto w-full max-w-2xl space-y-6">
         <AccountSection email={email} displayName={displayName} />
-        <TradingDefaultsSection />
-        <CapitalManagementSection />
+        <TradingDefaultsSection hasCapitalFlows={hasCapitalFlows} />
+        <CapitalManagementSection onFlowsChange={setHasCapitalFlows} />
         <DangerZoneSection />
 
         <div className="flex flex-col items-center gap-4 pt-2 pb-4">

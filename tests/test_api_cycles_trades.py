@@ -353,6 +353,40 @@ def test_dashboard_insights_api(client):
     # budget 100k + realized 450
     assert body["charts"]["capital_trend"]["monthly"][-1]["value"] == pytest.approx(100_450.0)
     assert body["charts"]["capital_trend"]["monthly"][-1]["date"] is not None
+    assert "time_weighted_return_pct" in body["kpis"]
+    assert "cumulative_total_return_pct" in body["kpis"]
+    assert "time_weighted_return_unreliable" in body["kpis"]
+    assert body["kpis"]["has_capital_flows"] is False
+
+
+def test_dashboard_insights_twr_with_capital_flow(client):
+    h = auth_headers("44444444-4444-4444-4444-444444444444")
+    set_capital_budget(client, h, 100_000)
+    client.post(
+        "/api/me/capital-flows",
+        json={"type": "deposit", "amount": 1000, "event_date": "2026-01-15"},
+        headers=h,
+    )
+    body = client.get("/api/dashboard/insights", headers=h).get_json()
+    assert body["kpis"]["has_capital_flows"] is True
+    assert body["kpis"]["capital_budget"] == pytest.approx(101_000)
+
+
+def test_capital_trend_reflects_past_deposit(client):
+    h = auth_headers("66666666-6666-6666-6666-666666666666")
+    set_capital_budget(client, h, 100_000)
+    deposit_date = f"{date.today().year}-02-01"
+    client.post(
+        "/api/me/capital-flows",
+        json={"type": "deposit", "amount": 25_000, "event_date": deposit_date},
+        headers=h,
+    )
+    body = client.get("/api/dashboard/insights", headers=h).get_json()
+    monthly = {p["label"]: p["value"] for p in body["charts"]["capital_trend"]["monthly"]}
+    feb_label = f"{date.today().year}-02"
+    jan_label = f"{date.today().year}-01"
+    if feb_label in monthly and jan_label in monthly:
+        assert monthly[feb_label] - monthly[jan_label] == pytest.approx(25_000, abs=1)
 
 
 def test_dashboard_insights_includes_assigned_csp_premium(client):
@@ -686,6 +720,41 @@ def test_delete_capital_flow_reverses_budget(client):
     assert deleted.status_code == 200
     prefs = client.get("/api/me/preferences", headers=h).get_json()
     assert prefs["total_capital_budget"] == pytest.approx(10000)
+
+
+def test_preferences_budget_locked_when_flows_exist(client):
+    h = auth_headers()
+    client.post(
+        "/api/me/capital-flows",
+        json={"type": "deposit", "amount": 1000, "event_date": "2026-05-01"},
+        headers=h,
+    )
+    res = client.put(
+        "/api/me/preferences",
+        json={"total_capital_budget": 50_000, "default_contracts": 1, "default_dte": 45},
+        headers=h,
+    )
+    assert res.status_code == 400
+    assert "Capital Management" in res.get_json()["error"]
+
+
+def test_put_capital_flow_update(client):
+    h = auth_headers()
+    set_capital_budget(client, h, 100_000)
+    created = client.post(
+        "/api/me/capital-flows",
+        json={"type": "deposit", "amount": 5000, "event_date": "2026-03-01"},
+        headers=h,
+    ).get_json()
+    updated = client.put(
+        f"/api/me/capital-flows/{created['id']}",
+        json={"type": "deposit", "amount": 8000, "event_date": "2026-03-15"},
+        headers=h,
+    )
+    assert updated.status_code == 200
+    assert updated.get_json()["amount"] == pytest.approx(8000)
+    prefs = client.get("/api/me/preferences", headers=h).get_json()
+    assert prefs["total_capital_budget"] == pytest.approx(108_000)
 
 
 def test_production_app_init_registers_preferences():

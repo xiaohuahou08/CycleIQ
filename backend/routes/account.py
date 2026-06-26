@@ -8,7 +8,12 @@ from backend.auth.supabase import require_auth
 from backend.models import db
 from backend.models.trade import Trade
 from backend.models.wheel_cycle import WheelCycle
-from backend.services.capital_flows import add_capital_flow, delete_capital_flow, list_capital_flows
+from backend.services.capital_flows import (
+    add_capital_flow,
+    delete_capital_flow,
+    list_capital_flows,
+    update_capital_flow,
+)
 from backend.services.trade_limits import trade_limit_snapshot
 
 
@@ -49,6 +54,27 @@ def register_account_routes(account_bp):
         except (TypeError, ValueError) as exc:
             return jsonify({"error": str(exc)}), 400
         return jsonify(flow.to_api_dict()), 201
+
+    @account_bp.route("/capital-flows/<flow_id>", methods=["PUT"])
+    @require_auth
+    def put_capital_flow(user_id: str, flow_id: str):
+        data = request.get_json() or {}
+        try:
+            event_date = _parse_event_date(data.get("event_date"))
+            amount = float(data.get("amount"))
+            flow_type = str(data.get("type", "")).strip().lower()
+            flow = update_capital_flow(
+                user_id,
+                flow_id,
+                event_date=event_date,
+                amount=amount,
+                flow_type=flow_type,
+            )
+        except LookupError:
+            return jsonify({"error": "capital flow not found"}), 404
+        except (TypeError, ValueError) as exc:
+            return jsonify({"error": str(exc)}), 400
+        return jsonify(flow.to_api_dict())
 
     @account_bp.route("/capital-flows/<flow_id>", methods=["DELETE"])
     @require_auth

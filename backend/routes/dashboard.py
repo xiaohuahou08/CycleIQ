@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from flask import jsonify
 
@@ -119,7 +119,7 @@ def register_dashboard_routes(dashboard_bp):
     @require_auth
     def insights(user_id: str):
         trades = Trade.query.filter_by(user_id=user_id).all()
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
         # Active open legs only (matches Trades "Today" — expiry has not passed).
         open_trades = [
             t for t in trades if t.status == "OPEN" and t.expiry is not None and t.expiry >= today
@@ -288,9 +288,6 @@ def register_dashboard_routes(dashboard_bp):
         time_weighted_return_pct, cumulative_total_return_pct, twr_unreliable = (
             compute_time_weighted_return(trades, capital_flows, capital_budget, today)
         )
-        portfolio_actual_return_pct = (
-            (realized_pnl / total_capital) * 100.0 if total_capital > 0 else 0.0
-        )
 
         daily_bucket: dict[str, float] = {}
         weekly_bucket: dict[str, float] = {}
@@ -308,7 +305,9 @@ def register_dashboard_routes(dashboard_bp):
             keys = sorted(bucket.keys())[-limit:]
             return [{"label": k, "value": round(bucket[k], 2)} for k in keys]
 
-        capital_trend = build_capital_trend_charts(trades, capital_budget, today)
+        capital_trend = build_capital_trend_charts(
+            trades, capital_budget, today, flows=capital_flows
+        )
 
         return jsonify(
             {
@@ -326,7 +325,7 @@ def register_dashboard_routes(dashboard_bp):
                     "time_weighted_return_pct": round(time_weighted_return_pct, 2),
                     "cumulative_total_return_pct": round(cumulative_total_return_pct, 2),
                     "time_weighted_return_unreliable": twr_unreliable,
-                    "portfolio_actual_return_pct": round(portfolio_actual_return_pct, 2),
+                    "has_capital_flows": len(capital_flows) > 0,
                     "active_trades": active_trades,
                     "win_rate": round(win_rate, 1),
                     "avg_premium_per_active_day": round(avg_premium_per_active_day, 2),

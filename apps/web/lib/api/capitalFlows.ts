@@ -48,6 +48,20 @@ export async function createCapitalFlow(
   return (await res.json()) as CapitalFlow;
 }
 
+export async function updateCapitalFlow(
+  token: string,
+  flowId: string,
+  payload: { type: "deposit" | "withdrawal"; amount: number; event_date: string }
+): Promise<CapitalFlow> {
+  const res = await fetch(`${API_BASE}/api/me/capital-flows/${flowId}`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await getErrorMessage(res, "Failed to update capital flow"));
+  return (await res.json()) as CapitalFlow;
+}
+
 export async function deleteCapitalFlow(token: string, flowId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/api/me/capital-flows/${flowId}`, {
     method: "DELETE",

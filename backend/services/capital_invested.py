@@ -7,6 +7,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 
 from backend.models.trade import Trade
+from backend.services.portfolio_returns import CapitalFlowEvent, budget_at_end_of_day
 from backend.services.realized_pnl import compute_realized_pnl_as_of
 from backend.services.trade_cost_basis import apply_stock_cost_basis
 
@@ -164,7 +165,14 @@ def _trend_series_start(today: date) -> date:
     return min(_one_year_start(today), date(today.year, 1, 1))
 
 
-def _capital_point(budget: float, trades: list[Trade], as_of: date, label: str) -> dict:
+def _capital_point(
+    current_budget: float,
+    flows: list[CapitalFlowEvent],
+    trades: list[Trade],
+    as_of: date,
+    label: str,
+) -> dict:
+    budget = budget_at_end_of_day(as_of, current_budget, flows)
     return {
         "label": label,
         "date": as_of.isoformat(),
@@ -176,8 +184,10 @@ def build_weekly_capital_series(
     trades: list[Trade],
     budget: float,
     today: date | None = None,
+    flows: list[CapitalFlowEvent] | None = None,
 ) -> list[dict]:
     today = today or date.today()
+    flow_events = flows or []
     start_monday = _start_of_week_monday(_trend_series_start(today))
     end_monday = _start_of_week_monday(today)
 
@@ -186,7 +196,7 @@ def build_weekly_capital_series(
     while monday <= end_monday:
         as_of = _week_end(monday, today)
         points.append(
-            _capital_point(budget, trades, as_of, as_of.strftime("%b %d"))
+            _capital_point(budget, flow_events, trades, as_of, as_of.strftime("%b %d"))
         )
         monday = monday.fromordinal(monday.toordinal() + 7)
     return points
@@ -197,8 +207,10 @@ def build_monthly_capital_series(
     budget: float,
     today: date | None = None,
     limit: int | None = None,
+    flows: list[CapitalFlowEvent] | None = None,
 ) -> list[dict]:
     today = today or date.today()
+    flow_events = flows or []
     start = _trend_series_start(today)
     year, month = start.year, start.month
 
@@ -206,7 +218,9 @@ def build_monthly_capital_series(
     while (year, month) <= (today.year, today.month):
         as_of = _month_end(year, month, today)
         points.append(
-            _capital_point(budget, trades, as_of, f"{year:04d}-{month:02d}")
+            _capital_point(
+                budget, flow_events, trades, as_of, f"{year:04d}-{month:02d}"
+            )
         )
         if month == 12:
             year, month = year + 1, 1
@@ -222,11 +236,13 @@ def build_capital_trend_charts(
     trades: list[Trade],
     budget: float,
     today: date | None = None,
+    flows: list[CapitalFlowEvent] | None = None,
 ) -> dict[str, list[dict]]:
     today = today or date.today()
+    flow_events = flows or []
     return {
-        "weekly": build_weekly_capital_series(trades, budget, today),
-        "monthly": build_monthly_capital_series(trades, budget, today),
+        "weekly": build_weekly_capital_series(trades, budget, today, flow_events),
+        "monthly": build_monthly_capital_series(trades, budget, today, flows=flow_events),
     }
 
 

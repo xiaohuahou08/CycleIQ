@@ -88,3 +88,42 @@ def delete_capital_flow(user_id: str, flow_id: str) -> None:
     prefs.total_capital_budget = new_budget
     db.session.delete(flow)
     db.session.commit()
+
+
+def update_capital_flow(
+    user_id: str,
+    flow_id: str,
+    *,
+    event_date: date,
+    amount: float,
+    flow_type: str,
+    today: date | None = None,
+) -> CapitalFlow:
+    today = today or date.today()
+    if event_date > today:
+        raise ValueError("event_date cannot be in the future")
+
+    raw_amount = float(amount)
+    if raw_amount <= 0:
+        raise ValueError("amount must be > 0")
+
+    normalized_type = flow_type.strip().lower()
+    if normalized_type not in ("deposit", "withdrawal"):
+        raise ValueError("type must be deposit or withdrawal")
+
+    flow = CapitalFlow.query.filter_by(id=flow_id, user_id=user_id).first()
+    if flow is None:
+        raise LookupError("capital flow not found")
+
+    signed_amount = raw_amount if normalized_type == "deposit" else -raw_amount
+    prefs = _get_or_create_preferences(user_id)
+    current_budget = float(prefs.total_capital_budget or DEFAULT_TOTAL_CAPITAL_BUDGET)
+    new_budget = current_budget - float(flow.amount) + signed_amount
+    if new_budget <= 0:
+        raise ValueError("update would reduce capital budget to zero or below")
+
+    flow.event_date = event_date
+    flow.amount = signed_amount
+    prefs.total_capital_budget = new_budget
+    db.session.commit()
+    return flow

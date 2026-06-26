@@ -6,6 +6,7 @@ from flask import jsonify, request
 
 from backend.auth.supabase import require_auth
 from backend.models import db
+from backend.models.capital_flow import CapitalFlow
 from backend.models.user_preferences import (
     DEFAULT_CONTRACTS,
     DEFAULT_DTE,
@@ -65,6 +66,27 @@ def register_preferences_routes(preferences_bp):
             return jsonify({"error": str(exc)}), 400
 
         row = UserPreferences.query.filter_by(user_id=user_id).first()
+        old_budget: float | None = (
+            float(row.total_capital_budget) if row is not None else None
+        )
+        has_flows = CapitalFlow.query.filter_by(user_id=user_id).count() > 0
+        if (
+            has_flows
+            and old_budget is not None
+            and abs(capital_budget - old_budget) > 1e-6
+        ):
+            return (
+                jsonify(
+                    {
+                        "error": (
+                            "Capital budget cannot be edited here after deposits or "
+                            "withdrawals exist. Use Settings → Capital Management."
+                        )
+                    }
+                ),
+                400,
+            )
+
         if not row:
             row = UserPreferences(user_id=user_id)
             db.session.add(row)

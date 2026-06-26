@@ -349,7 +349,11 @@ function CapitalTrendChart({
         <div className="flex items-center gap-2">
           <p className="text-sm font-semibold text-slate-800">Total Capital Trend</p>
           <StatCardHelp
-            tip={`Budget + cumulative realized P&L at each period end. Dashed line = starting budget (${budgetLine != null && budgetLine > 0 ? fmtCurrency(budgetLine) : "Settings"}). ${rangeHint}`}
+            tip={`Budget (adjusted for deposits/withdrawals) + cumulative realized P&L at each period end. ${
+              budgetLine != null && budgetLine > 0
+                ? `Dashed line = current budget (${fmtCurrency(budgetLine)}).`
+                : "No budget reference line when deposit/withdrawal history exists."
+            } ${rangeHint}`}
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -692,14 +696,14 @@ export default function DashboardInsights({
           accent="bg-blue-400"
         />
         <StatCard
-          label="Time-Weighted Return"
-          value={fmtPercent(kpis?.time_weighted_return_pct ?? 0)}
+          label="Period Return"
+          value={fmtPercent(kpis?.cumulative_total_return_pct ?? 0)}
           sub={
             kpis?.time_weighted_return_unreliable
-              ? `Realized ${fmtCurrency(kpis?.realized_pnl ?? 0)} · ${fmtPercent(kpis?.cumulative_total_return_pct ?? 0)} on starting capital · large flows — trust realized $`
-              : `Realized ${fmtCurrency(kpis?.realized_pnl ?? 0)} · ${fmtPercent(kpis?.cumulative_total_return_pct ?? 0)} on starting capital`
+              ? `Realized ${fmtCurrency(kpis?.realized_pnl ?? 0)} · TWR ${fmtPercent(kpis?.time_weighted_return_pct ?? 0)} · large flows — trust realized $`
+              : `Realized ${fmtCurrency(kpis?.realized_pnl ?? 0)} · TWR ${fmtPercent(kpis?.time_weighted_return_pct ?? 0)}`
           }
-          tip="Main value = time-weighted return (TWR): daily returns chained and adjusted for deposits/withdrawals in Settings. Subtitle = dollars you earned (realized P&L) and that profit as % of starting capital at period begin—not % of today's total capital. When large flows make TWR unreliable, focus on realized $ and starting-capital %."
+          tip="Main value = return on starting capital for the period: (end − start − net deposits) ÷ start. Subtitle shows dollars earned (realized P&L) and time-weighted return (TWR), which adjusts for deposit/withdrawal timing. When large flows make TWR unreliable, focus on realized $ and period return %."
           accent={kpis?.time_weighted_return_unreliable ? "bg-amber-400" : "bg-blue-400"}
         />
         <StatCard
@@ -750,7 +754,9 @@ export default function DashboardInsights({
       <div className="animate-stagger-fade-up">
         <CapitalTrendChart
           trend={capitalTrend}
-          budgetLine={capitalBudget > 0 ? capitalBudget : undefined}
+          budgetLine={
+            !kpis?.has_capital_flows && capitalBudget > 0 ? capitalBudget : undefined
+          }
           overBudget={overBudget}
         />
       </div>
