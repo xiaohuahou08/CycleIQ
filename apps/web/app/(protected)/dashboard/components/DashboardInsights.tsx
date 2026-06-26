@@ -696,10 +696,10 @@ export default function DashboardInsights({
           value={fmtPercent(kpis?.time_weighted_return_pct ?? 0)}
           sub={
             kpis?.time_weighted_return_unreliable
-              ? `Total return ${fmtPercent(kpis?.cumulative_total_return_pct ?? 0)} · prefer total when flows are large`
-              : `Total return ${fmtPercent(kpis?.cumulative_total_return_pct ?? 0)} · portfolio ${fmtPercent(kpis?.portfolio_actual_return_pct ?? 0)}`
+              ? `Realized ${fmtCurrency(kpis?.realized_pnl ?? 0)} · ${fmtPercent(kpis?.cumulative_total_return_pct ?? 0)} on starting capital · large flows — trust realized $`
+              : `Realized ${fmtCurrency(kpis?.realized_pnl ?? 0)} · ${fmtPercent(kpis?.cumulative_total_return_pct ?? 0)} on starting capital`
           }
-          tip="Daily TWR (not annualized): chain [Π(1 + daily return) − 1] × 100%. Daily return = daily gain ÷ (yesterday total capital + 0.5 × today net inflow). Record deposits/withdrawals in Settings → Capital Management. When large flows make TWR and total return disagree in sign, use total return."
+          tip="Main value = time-weighted return (TWR): daily returns chained and adjusted for deposits/withdrawals in Settings. Subtitle = dollars you earned (realized P&L) and that profit as % of starting capital at period begin—not % of today's total capital. When large flows make TWR unreliable, focus on realized $ and starting-capital %."
           accent={kpis?.time_weighted_return_unreliable ? "bg-amber-400" : "bg-blue-400"}
         />
         <StatCard
