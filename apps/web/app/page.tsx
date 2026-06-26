@@ -11,7 +11,7 @@ import {
 import { CycleIQMark, iconMd, iconSm, iconStroke } from "@/app/components/icons";
 import MarketingFooter from "@/app/components/marketing/MarketingFooter";
 import MarketingHeader from "@/app/components/marketing/MarketingHeader";
-import { BTN_PRIMARY, BTN_SECONDARY } from "@/app/components/marketing/styles";
+import { BTN_PRIMARY, BTN_SECONDARY, MARKETING_PAGE_PAD } from "@/app/components/marketing/styles";
 import { JsonLd } from "@/lib/seo/json-ld";
 import { createPageMetadata } from "@/lib/seo/metadata";
 import { DEFAULT_DESCRIPTION, SITE_NAME, SITE_TAGLINE, getSiteUrl } from "@/lib/seo/site";
@@ -117,8 +117,8 @@ export default function Home() {
       <MarketingHeader activePage="home" />
 
       <main id="main-content">
-      <section className="border-b border-slate-200/80 bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:py-20">
+        <section className="border-b border-slate-200/80 bg-white">
+          <div className={`${MARKETING_PAGE_PAD} lg:py-20`}>
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
             <div className="animate-page-enter">
               <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200/80 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
@@ -222,8 +222,8 @@ export default function Home() {
 
       {/* How it works */}
       <section id="how-it-works" className="border-b border-slate-200/80 bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-          <div className="mx-auto mb-10 max-w-2xl text-center">
+        <div className={MARKETING_PAGE_PAD}>
+          <div className="mx-auto mb-8 max-w-2xl text-center sm:mb-10">
             <h2 className="text-2xl font-semibold tracking-tight text-slate-900">How it works</h2>
             <p className="mt-3 text-base text-slate-600">
               Log trades manually. CycleIQ links legs into cycles and keeps analytics in sync.
@@ -254,8 +254,8 @@ export default function Home() {
 
       {/* Problem / solution */}
       <section className="border-b border-slate-200/80 bg-slate-50/60">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-          <div className="mx-auto mb-10 max-w-2xl text-center">
+        <div className={MARKETING_PAGE_PAD}>
+          <div className="mx-auto mb-8 max-w-2xl text-center sm:mb-10">
             <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
               Built for the wheel — not generic options
             </h2>
@@ -305,8 +305,8 @@ export default function Home() {
 
       {/* Features */}
       <section className="border-b border-slate-200/80 bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-          <div className="mx-auto mb-10 max-w-2xl text-center">
+        <div className={MARKETING_PAGE_PAD}>
+          <div className="mx-auto mb-8 max-w-2xl text-center sm:mb-10">
             <h2 className="text-2xl font-semibold tracking-tight text-slate-900">What you get</h2>
             <p className="mt-3 text-base text-slate-600">
               Everything in the app today — no vaporware feature list.
@@ -339,7 +339,7 @@ export default function Home() {
 
       {/* CTA */}
       <section className="bg-slate-900">
-        <div className="mx-auto max-w-6xl px-4 py-14 text-center sm:px-6">
+        <div className={`${MARKETING_PAGE_PAD} py-12 text-center sm:py-14`}>
           <CycleIQMark className="mx-auto h-10 w-10 text-emerald-400" />
           <h2 className="mt-4 text-2xl font-semibold tracking-tight text-white">
             Start tracking your wheel today

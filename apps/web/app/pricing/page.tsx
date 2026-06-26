@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import MarketingShell, {
   BTN_PRIMARY,
-  BTN_SECONDARY,
   MarketingCheckListItem,
 } from "@/app/components/marketing/MarketingShell";
+import { MARKETING_PAGE_PAD } from "@/app/components/marketing/styles";
 import { JsonLd } from "@/lib/seo/json-ld";
 import { createPageMetadata } from "@/lib/seo/metadata";
 import { SITE_NAME, getSiteUrl } from "@/lib/seo/site";
@@ -130,7 +130,7 @@ export default function PricingPage() {
         }}
       >
         <section className="border-b border-slate-200/80 bg-white">
-          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:py-20">
+          <div className={MARKETING_PAGE_PAD}>
             <div className="animate-page-enter mx-auto max-w-2xl text-center">
               <div className="inline-flex items-center rounded-full border border-emerald-200/80 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
                 Simple pricing
@@ -145,7 +145,7 @@ export default function PricingPage() {
               </p>
             </div>
 
-            <div className="mx-auto mt-12 grid max-w-4xl grid-cols-1 gap-6 md:grid-cols-2">
+            <div className="mx-auto mt-10 grid max-w-4xl grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
               <PlanCard
                 name="Basic"
                 tagline="For getting started"
@@ -179,15 +179,9 @@ export default function PricingPage() {
               />
             </div>
 
-            <p className="mx-auto mt-8 max-w-lg text-center text-sm text-slate-500">
+            <p className="mx-auto mt-6 max-w-lg text-center text-sm text-slate-500">
               Premium upgrades and billing will be available soon. All new accounts start on Basic.
             </p>
-
-            <div className="mt-16 text-center">
-              <Link href="/" className={BTN_SECONDARY}>
-                ← Back to home
-              </Link>
-            </div>
           </div>
         </section>
       </MarketingShell>

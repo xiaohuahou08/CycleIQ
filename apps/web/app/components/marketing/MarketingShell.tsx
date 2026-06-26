@@ -4,7 +4,7 @@ import { CheckCircle2 } from "lucide-react";
 import { CycleIQMark, iconStroke } from "@/app/components/icons";
 import MarketingFooter from "./MarketingFooter";
 import MarketingHeader from "./MarketingHeader";
-import { BTN_PRIMARY, BTN_SECONDARY, type MarketingPage } from "./styles";
+import { BTN_PRIMARY, BTN_SECONDARY, MARKETING_PAGE_PAD, type MarketingPage } from "./styles";
 
 interface MarketingShellProps {
   activePage?: MarketingPage;
@@ -28,7 +28,7 @@ export default function MarketingShell({
       <main id="main-content">{children}</main>
       {cta ? (
         <section className="bg-slate-900">
-          <div className="mx-auto max-w-6xl px-4 py-14 text-center sm:px-6">
+          <div className={`${MARKETING_PAGE_PAD} py-12 text-center sm:py-14`}>
             <CycleIQMark className="mx-auto h-10 w-10 text-emerald-400" />
             <h2 className="mt-4 text-2xl font-semibold tracking-tight text-white">{cta.title}</h2>
             <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-slate-400">
