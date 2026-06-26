@@ -40,14 +40,20 @@ def _completion_date(t: Trade) -> date:
 
 
 def _effective_completion_date(t: Trade) -> date:
-    end = _completion_date(t)
-    if t.status == "CLOSED" and t.closed_at is None:
+    if t.status == "EXPIRED" and t.expired_at is not None:
+        return t.expired_at
+    if t.status == "CLOSED" and t.closed_at is not None:
+        return t.closed_at
+    if t.status == "ASSIGNED" and t.assigned_at is not None:
+        return t.assigned_at
+    if t.status == "CALLED_AWAY" and t.called_away_at is not None:
+        return t.called_away_at
+    if t.status == "ROLLED" and t.rolled_at is not None:
+        return t.rolled_at
+    # Terminal leg without an explicit lifecycle date — use trade date, not expiry.
+    if t.status in PNL_STATUSES and t.trade_date is not None:
         return t.trade_date
-    if t.status == "EXPIRED" and t.expired_at is None:
-        return t.trade_date
-    if t.status == "ROLLED" and t.rolled_at is None:
-        return t.trade_date
-    return end
+    return _completion_date(t)
 
 
 def _stock_sale_pnl_as_of(trades: list[Trade], as_of: date) -> float:

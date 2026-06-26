@@ -25,6 +25,21 @@ AUTO_ATTACH_PUT_STATES = frozenset({"IDLE"})
 AUTO_ATTACH_CALL_STATES = frozenset({"STOCK_HELD", "CC_OPEN"})
 
 
+def _stamp_lifecycle_dates(trade: Trade, data: dict, status: str | None = None) -> None:
+    """Backfill lifecycle dates when a leg is saved in a terminal state."""
+    st = (status or trade.status).upper()
+    if st == "ASSIGNED" and trade.assigned_at is None and "assigned_at" not in data:
+        trade.assigned_at = trade.trade_date
+    elif st == "CLOSED" and trade.closed_at is None and "closed_at" not in data:
+        trade.closed_at = trade.trade_date
+    elif st == "CALLED_AWAY" and trade.called_away_at is None and "called_away_at" not in data:
+        trade.called_away_at = trade.trade_date
+    elif st == "ROLLED" and trade.rolled_at is None and "rolled_at" not in data:
+        trade.rolled_at = trade.trade_date
+    elif st == "EXPIRED" and trade.expired_at is None and "expired_at" not in data:
+        trade.expired_at = trade.trade_date
+
+
 def _sum_chain_premium(trade: Trade, user_id: str) -> Decimal:
     """Walk the rolled_from_id chain and return net prior-roll premium per share.
 
@@ -163,6 +178,7 @@ def register_trades_routes(trades_bp):
             notes=data.get("notes"),
             rolled_from_id=rolled_from_id or None,
         )
+        _stamp_lifecycle_dates(trade, data, status=status)
 
         budget_err = capital_budget_error(user_id, pending_trade=trade)
         if budget_err:
@@ -348,6 +364,7 @@ def register_trades_routes(trades_bp):
             if st not in ALLOWED_TRADE_STATUSES:
                 return jsonify({"error": f"Invalid status; allowed: {sorted(ALLOWED_TRADE_STATUSES)}"}), 400
             trade.status = st
+            _stamp_lifecycle_dates(trade, data, status=st)
             if st != "EXPIRED":
                 trade.expired_at = None
                 trade.expire_type = None
@@ -447,6 +464,7 @@ def register_trades_routes(trades_bp):
         if st not in ALLOWED_TRADE_STATUSES:
             return jsonify({"error": f"Invalid status; allowed: {sorted(ALLOWED_TRADE_STATUSES)}"}), 400
         trade.status = st
+        _stamp_lifecycle_dates(trade, data, status=st)
         trade.updated_at = datetime.now(timezone.utc)
         apply_stock_cost_basis(trade)
         db.session.commit()

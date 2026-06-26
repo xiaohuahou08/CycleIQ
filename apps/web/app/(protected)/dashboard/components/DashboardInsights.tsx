@@ -159,6 +159,31 @@ function BarChartCard({
   );
 }
 
+function chartYDomain(values: number[], budgetLine?: number): { min: number; max: number } {
+  const all = [...values, ...(budgetLine != null && budgetLine > 0 ? [budgetLine] : [])];
+  if (all.length === 0) return { min: 0, max: 1 };
+
+  const rawMin = Math.min(...all);
+  const rawMax = Math.max(...all);
+  const magnitude = Math.max(rawMax, 1);
+  // Ensure small P&L moves are visible on a large capital base (e.g. $100k + $450).
+  const minHalfSpan = magnitude * 0.025;
+  const halfSpan = Math.max((rawMax - rawMin) / 2, minHalfSpan);
+  const center = (rawMin + rawMax) / 2;
+
+  return {
+    min: Math.max(0, center - halfSpan * 1.12),
+    max: center + halfSpan * 1.12,
+  };
+}
+
+function yAxisTicks(min: number, max: number, count = 4): number[] {
+  const span = max - min;
+  if (span <= 0) return [min];
+  const step = span / (count - 1);
+  return Array.from({ length: count }, (_, i) => min + step * i);
+}
+
 function LineChartCard({
   title,
   points,
@@ -177,20 +202,25 @@ function LineChartCard({
 
   const width = 640;
   const height = 168;
-  const padX = 28;
+  const padLeft = 56;
+  const padRight = 20;
   const padY = 24;
-  const plotW = width - padX * 2;
+  const plotW = width - padLeft - padRight;
   const plotH = height - padY * 2;
 
   const values = points.map((p) => p.value);
-  const min = Math.min(0, ...values, budgetLine ?? 0);
-  const max = Math.max(1, ...values, budgetLine ?? 0);
+  const { min, max } = chartYDomain(values, budgetLine);
   const range = max - min || 1;
+  const yTicks = yAxisTicks(min, max);
+
+  const toY = (value: number) => padY + plotH - ((value - min) / range) * plotH;
+  const toX = (i: number) =>
+    padLeft + (points.length === 1 ? plotW / 2 : (i / (points.length - 1)) * plotW);
 
   const coords = points.map((p, i) => ({
     ...p,
-    x: padX + (points.length === 1 ? plotW / 2 : (i / (points.length - 1)) * plotW),
-    y: padY + plotH - ((p.value - min) / range) * plotH,
+    x: toX(i),
+    y: toY(p.value),
   }));
 
   const linePath = coords.map((c, i) => `${i === 0 ? "M" : "L"} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(" ");
@@ -200,9 +230,7 @@ function LineChartCard({
       : "";
 
   const budgetY =
-    budgetLine != null && budgetLine > 0
-      ? padY + plotH - ((budgetLine - min) / range) * plotH
-      : null;
+    budgetLine != null && budgetLine > 0 ? toY(budgetLine) : null;
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -216,6 +244,7 @@ function LineChartCard({
             className="h-44 w-full"
             role="img"
             aria-label={title}
+            preserveAspectRatio="xMidYMid meet"
           >
             <defs>
               <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
@@ -223,11 +252,35 @@ function LineChartCard({
                 <stop offset="100%" stopColor={fill} stopOpacity="0.03" />
               </linearGradient>
             </defs>
+            {yTicks.map((tick) => {
+              const y = toY(tick);
+              return (
+                <g key={tick}>
+                  <line
+                    x1={padLeft}
+                    y1={y}
+                    x2={width - padRight}
+                    y2={y}
+                    stroke="#f1f5f9"
+                    strokeWidth="1"
+                  />
+                  <text
+                    x={padLeft - 6}
+                    y={y + 3}
+                    textAnchor="end"
+                    className="fill-slate-400"
+                    fontSize="9"
+                  >
+                    {fmtCurrency(tick)}
+                  </text>
+                </g>
+              );
+            })}
             {budgetY != null && (
               <line
-                x1={padX}
+                x1={padLeft}
                 y1={budgetY}
-                x2={width - padX}
+                x2={width - padRight}
                 y2={budgetY}
                 stroke="#cbd5e1"
                 strokeWidth="1.5"
@@ -250,7 +303,7 @@ function LineChartCard({
               </g>
             ))}
           </svg>
-          <div className="mt-1 flex justify-between gap-1 px-1">
+          <div className="mt-1 flex justify-between gap-1 pl-12 pr-1">
             {points.map((p) => (
               <span key={p.label} className="min-w-0 truncate text-center text-[10px] text-slate-400">
                 {p.label}
