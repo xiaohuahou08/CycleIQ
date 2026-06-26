@@ -6,13 +6,14 @@ from flask_migrate import Migrate
 
 from backend.config import Config
 from backend.models import db
-from backend.routes import trades_bp, dashboard_bp, cycles_bp, metrics_bp, preferences_bp, account_bp
+from backend.routes import trades_bp, dashboard_bp, cycles_bp, metrics_bp, preferences_bp, account_bp, billing_bp
 from backend.routes.trades import register_trades_routes
 from backend.routes.dashboard import register_dashboard_routes
 from backend.routes.cycles import register_cycles_routes
 from backend.routes.metrics import register_metrics_routes
 from backend.routes.preferences import register_preferences_routes
 from backend.routes.account import register_account_routes
+from backend.routes.billing import register_billing_routes, register_stripe_webhook
 
 migrate = Migrate()
 _ROUTES_REGISTERED = False
@@ -38,6 +39,7 @@ def create_app(config_class=Config):
         register_metrics_routes(metrics_bp)
         register_preferences_routes(preferences_bp)
         register_account_routes(account_bp)
+        register_billing_routes(billing_bp)
         _ROUTES_REGISTERED = True
     app.register_blueprint(trades_bp)
     app.register_blueprint(dashboard_bp)
@@ -45,6 +47,8 @@ def create_app(config_class=Config):
     app.register_blueprint(metrics_bp)
     app.register_blueprint(preferences_bp)
     app.register_blueprint(account_bp)
+    app.register_blueprint(billing_bp)
+    register_stripe_webhook(app)
 
     @app.route("/health", methods=["GET"])
     def health():

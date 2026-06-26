@@ -5,9 +5,12 @@ Copy .env.example to .env and fill in real values before running locally.
 """
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
+# Load backend/.env regardless of cwd (repo root vs backend/)
+load_dotenv(Path(__file__).resolve().parent / ".env")
 load_dotenv()
 
 
@@ -36,6 +39,12 @@ class Config:
     # Supabase Auth JWT secret – used to verify tokens issued by Supabase Auth.
     # Find it in: Supabase Dashboard → Settings → API → JWT Settings → JWT Secret
     SUPABASE_JWT_SECRET: str = os.environ.get("SUPABASE_JWT_SECRET", "")
+
+    # Stripe billing
+    STRIPE_SECRET_KEY: str = os.environ.get("STRIPE_SECRET_KEY", "")
+    STRIPE_WEBHOOK_SECRET: str = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+    STRIPE_PRICE_PREMIUM_MONTHLY: str = os.environ.get("STRIPE_PRICE_PREMIUM_MONTHLY", "")
+    FRONTEND_URL: str = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
 
 
 class DevelopmentConfig(Config):

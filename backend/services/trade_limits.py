@@ -41,6 +41,8 @@ def monthly_trade_limit(plan: str) -> int | None:
 def plan_price_usd(plan: str) -> float | None:
     if plan == BASIC_PLAN:
         return 0.0
+    if plan == PREMIUM_PLAN:
+        return 1.0
     return None
 
 

@@ -42,3 +42,15 @@ services:
       # Supabase → Settings → API → JWT Settings → JWT Secret
       - key: SUPABASE_JWT_SECRET
         sync: false
+      # Stripe → Developers → API keys (Restricted Key recommended)
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      # Stripe → Developers → Webhooks → signing secret for /webhooks/stripe
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      # Stripe → Product catalog → CycleIQ Premium monthly price id
+      - key: STRIPE_PRICE_PREMIUM_MONTHLY
+        sync: false
+      # Vercel frontend URL (Checkout redirects)
+      - key: FRONTEND_URL
+        sync: false

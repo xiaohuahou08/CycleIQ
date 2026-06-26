@@ -1,10 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Check, X, ArrowDownCircle, ArrowUpCircle, Pencil, Trash2 } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
-import { resetTradingData } from "@/lib/api/account";
+import {
+  createCheckoutSession,
+  createPortalSession,
+  fetchBillingStatus,
+  type BillingStatus,
+} from "@/lib/api/billing";
 import {
   createCapitalFlow,
   deleteCapitalFlow,
@@ -85,6 +90,136 @@ function Toast({
       )}
       {message}
     </div>
+  );
+}
+
+// ─── Billing section ──────────────────────────────────────────────────────────
+function BillingSection() {
+  const { token } = useProtectedAuth();
+  const searchParams = useSearchParams();
+  const [status, setStatus] = useState<BillingStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const load = async () => {
+    if (!token) return;
+    setLoading(true);
+    setError(null);
+    try {
+      setStatus(await fetchBillingStatus(token));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load billing.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+  }, [token]);
+
+  useEffect(() => {
+    if (searchParams.get("billing") === "success") {
+      setToast("Premium activated — thank you!");
+      void load();
+    }
+  }, [searchParams]);
+
+  const onUpgrade = async () => {
+    if (!token) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { url } = await createCheckoutSession(token);
+      window.location.href = url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Checkout failed.");
+      setBusy(false);
+    }
+  };
+
+  const onManage = async () => {
+    if (!token) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { url } = await createPortalSession(token);
+      window.location.href = url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not open billing portal.");
+      setBusy(false);
+    }
+  };
+
+  const isPremium = status?.plan === "premium";
+
+  return (
+    <>
+      {toast ? (
+        <Toast message={toast} type="success" />
+      ) : null}
+      <Section
+        title="Billing"
+        description="Manage your CycleIQ plan. Premium is $1/month via Stripe."
+      >
+        {loading ? (
+          <p className="text-sm text-gray-500">Loading plan…</p>
+        ) : (
+          <>
+            <FieldRow label="Current plan">
+              <span className="inline-flex items-center rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-800">
+                {status?.plan_label ?? "Basic"}
+                {status?.price_usd != null ? ` · $${status.price_usd}/mo` : ""}
+              </span>
+            </FieldRow>
+            {status?.subscription_status ? (
+              <FieldRow label="Subscription" hint="Synced from Stripe webhooks.">
+                <span className="text-sm text-gray-700 capitalize">
+                  {status.subscription_status.replace(/_/g, " ")}
+                  {status.current_period_end
+                    ? ` · renews ${new Date(status.current_period_end).toLocaleDateString()}`
+                    : ""}
+                </span>
+              </FieldRow>
+            ) : null}
+            {status?.trades_limit != null ? (
+              <FieldRow
+                label="Trade usage"
+                hint={`${status.trades_this_month} of ${status.trades_limit} new trades this month (UTC).`}
+              >
+                <span className="text-sm text-gray-700">
+                  {status.trades_remaining ?? 0} remaining
+                </span>
+              </FieldRow>
+            ) : null}
+            <div className="mt-4 flex flex-wrap gap-2">
+              {isPremium && status?.can_manage_billing ? (
+                <button
+                  type="button"
+                  onClick={() => void onManage()}
+                  disabled={busy}
+                  className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {busy ? "Opening…" : "Manage subscription"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void onUpgrade()}
+                  disabled={busy}
+                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {busy ? "Redirecting…" : "Upgrade to Premium — $1/mo"}
+                </button>
+              )}
+            </div>
+            {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+          </>
+        )}
+      </Section>
+    </>
   );
 }
 
@@ -803,6 +938,7 @@ export default function SettingsPage() {
   return (
     <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-slate-50 px-4 py-4 sm:px-6 sm:py-6">
       <div className="mx-auto w-full max-w-2xl space-y-6">
+        <BillingSection />
         <AccountSection email={email} displayName={displayName} />
         <TradingDefaultsSection hasCapitalFlows={hasCapitalFlows} />
         <CapitalManagementSection onFlowsChange={setHasCapitalFlows} />

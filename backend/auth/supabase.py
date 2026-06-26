@@ -111,6 +111,7 @@ def require_auth(f):
             ), 401
 
         g.user_id = uuid.UUID(payload["sub"])
+        g.user_email = payload.get("email")
         return f(str(g.user_id), *args, **kwargs)
 
     return decorated
