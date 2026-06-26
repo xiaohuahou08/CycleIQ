@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test lib/**/*.test.mjs"
+    "test": "node --import tsx --test lib/**/*.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "3.9.1",
@@ -31,6 +31,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
+    "tsx": "^4.22.4",
     "typescript": "^5"
   }
 }
