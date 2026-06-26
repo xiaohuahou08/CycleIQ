@@ -13,8 +13,10 @@ env/
 .env.local
 .env.*.local
 
-# SQLite dev database
+# SQLite dev database (local fallback only; production uses Supabase Postgres)
+instance/
 *.db
+*.sqlite
 *.sqlite3
 
 # Distribution / packaging
