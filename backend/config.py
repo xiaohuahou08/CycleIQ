@@ -5,6 +5,7 @@ Copy .env.example to .env and fill in real values before running locally.
 """
 
 import os
+import re
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -47,6 +48,10 @@ class Config:
     FRONTEND_URL: str = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
 
 
+# Vercel preview deploys (*.vercel.app) — allowed in production CORS alongside FRONTEND_URL.
+VERCEL_PREVIEW_ORIGIN = re.compile(r"^https://[\w-]+(?:-[\w-]+)*\.vercel\.app$")
+
+
 def cors_allowed_origins() -> list[str] | None:
     """Explicit browser origins for CORS, or None to allow all (local dev only)."""
     # Non-production: allow any origin (localhost, 127.0.0.1, alternate dev ports).
@@ -66,6 +71,7 @@ def cors_allowed_origins() -> list[str] | None:
         if origin not in origins:
             origins.append(origin)
     if origins:
+        origins.append(VERCEL_PREVIEW_ORIGIN)
         return origins
     if os.environ.get("FLASK_ENV") == "production":
         return []

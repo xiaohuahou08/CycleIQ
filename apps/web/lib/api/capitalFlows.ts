@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
+import { getApiBase } from "@/lib/api/base";
 
 export interface CapitalFlow {
   id: string;
@@ -27,7 +27,7 @@ async function getErrorMessage(res: Response, fallback: string): Promise<string>
 }
 
 export async function getCapitalFlows(token: string): Promise<CapitalFlow[]> {
-  const res = await fetch(`${API_BASE}/api/me/capital-flows`, {
+  const res = await fetch(`${getApiBase()}/api/me/capital-flows`, {
     headers: authHeaders(token),
   });
   if (!res.ok) throw new Error(await getErrorMessage(res, "Failed to load capital flows"));
@@ -39,7 +39,7 @@ export async function createCapitalFlow(
   token: string,
   payload: { type: "deposit" | "withdrawal"; amount: number; event_date: string }
 ): Promise<CapitalFlow> {
-  const res = await fetch(`${API_BASE}/api/me/capital-flows`, {
+  const res = await fetch(`${getApiBase()}/api/me/capital-flows`, {
     method: "POST",
     headers: authHeaders(token),
     body: JSON.stringify(payload),
@@ -53,7 +53,7 @@ export async function updateCapitalFlow(
   flowId: string,
   payload: { type: "deposit" | "withdrawal"; amount: number; event_date: string }
 ): Promise<CapitalFlow> {
-  const res = await fetch(`${API_BASE}/api/me/capital-flows/${flowId}`, {
+  const res = await fetch(`${getApiBase()}/api/me/capital-flows/${flowId}`, {
     method: "PUT",
     headers: authHeaders(token),
     body: JSON.stringify(payload),
@@ -63,7 +63,7 @@ export async function updateCapitalFlow(
 }
 
 export async function deleteCapitalFlow(token: string, flowId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/me/capital-flows/${flowId}`, {
+  const res = await fetch(`${getApiBase()}/api/me/capital-flows/${flowId}`, {
     method: "DELETE",
     headers: authHeaders(token),
   });

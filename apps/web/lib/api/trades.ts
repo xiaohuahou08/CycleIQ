@@ -153,7 +153,7 @@ export interface ExpireTradeInput {
   expire_type?: "expired_worthless" | "expired_itm";
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
+import { getApiBase } from "@/lib/api/base";
 
 function authHeaders(token: string): HeadersInit {
   return {
@@ -176,7 +176,7 @@ async function getErrorMessage(res: Response, fallback: string): Promise<string>
 async function realListTrades(token: string, params?: { status?: string }): Promise<Trade[]> {
   const qs = new URLSearchParams();
   if (params?.status) qs.set("status", params.status);
-  const url = qs.size ? `${API_BASE}/api/trades?${qs}` : `${API_BASE}/api/trades`;
+  const url = qs.size ? `${getApiBase()}/api/trades?${qs}` : `${getApiBase()}/api/trades`;
   const res = await fetch(url, { headers: authHeaders(token) });
   if (!res.ok) throw new Error(await getErrorMessage(res, "Failed to load trades"));
   const data = (await res.json()) as Trade[] | { trades: Trade[]; total: number };
@@ -185,7 +185,7 @@ async function realListTrades(token: string, params?: { status?: string }): Prom
 }
 
 async function realGetMetricsSummary(token: string): Promise<MetricsSummary> {
-  const res = await fetch(`${API_BASE}/api/metrics/summary`, {
+  const res = await fetch(`${getApiBase()}/api/metrics/summary`, {
     headers: authHeaders(token),
   });
   if (!res.ok) throw new Error(await getErrorMessage(res, "Failed to load metrics"));
@@ -193,7 +193,7 @@ async function realGetMetricsSummary(token: string): Promise<MetricsSummary> {
 }
 
 async function realGetDashboardInsights(token: string): Promise<DashboardInsights> {
-  const res = await fetch(`${API_BASE}/api/dashboard/insights`, {
+  const res = await fetch(`${getApiBase()}/api/dashboard/insights`, {
     headers: authHeaders(token),
   });
   if (!res.ok) throw new Error(await getErrorMessage(res, "Failed to load dashboard insights"));
@@ -201,7 +201,7 @@ async function realGetDashboardInsights(token: string): Promise<DashboardInsight
 }
 
 async function realCreateTrade(token: string, input: CreateTradeInput): Promise<Trade> {
-  const res = await fetch(`${API_BASE}/api/trades`, {
+  const res = await fetch(`${getApiBase()}/api/trades`, {
     method: "POST",
     headers: authHeaders(token),
     body: JSON.stringify(input),
@@ -211,7 +211,7 @@ async function realCreateTrade(token: string, input: CreateTradeInput): Promise<
 }
 
 async function realDeleteTrade(_token: string, id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/trades/${id}`, {
+  const res = await fetch(`${getApiBase()}/api/trades/${id}`, {
     method: "DELETE",
     headers: authHeaders(_token),
   });
@@ -223,7 +223,7 @@ async function realUpdateTrade(
   id: string,
   input: UpdateTradeInput
 ): Promise<Trade> {
-  const res = await fetch(`${API_BASE}/api/trades/${id}`, {
+  const res = await fetch(`${getApiBase()}/api/trades/${id}`, {
     method: "PUT",
     headers: authHeaders(token),
     body: JSON.stringify(input),
@@ -237,7 +237,7 @@ async function realPostCycleTransition(
   cycleId: string,
   input: CycleTransitionInput
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/cycles/${cycleId}/transitions`, {
+  const res = await fetch(`${getApiBase()}/api/cycles/${cycleId}/transitions`, {
     method: "POST",
     headers: authHeaders(token),
     body: JSON.stringify(input),
@@ -246,7 +246,7 @@ async function realPostCycleTransition(
 }
 
 async function realListCycles(token: string): Promise<CycleSummary[]> {
-  const res = await fetch(`${API_BASE}/api/cycles`, {
+  const res = await fetch(`${getApiBase()}/api/cycles`, {
     headers: authHeaders(token),
   });
   if (!res.ok) throw new Error(await getErrorMessage(res, "Failed to load cycles"));
@@ -306,7 +306,7 @@ export async function expireTrade(
   id: string,
   input: ExpireTradeInput
 ): Promise<Trade> {
-  const res = await fetch(`${API_BASE}/api/trades/${id}/expire`, {
+  const res = await fetch(`${getApiBase()}/api/trades/${id}/expire`, {
     method: "PATCH",
     headers: authHeaders(_token),
     body: JSON.stringify(input),
