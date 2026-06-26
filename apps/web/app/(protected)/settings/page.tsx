@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Check, X, ArrowDownCircle, ArrowUpCircle, Pencil, Trash2 } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
@@ -18,6 +19,7 @@ import {
   updateCapitalFlow,
   type CapitalFlow,
 } from "@/lib/api/capitalFlows";
+import { resetTradingData } from "@/lib/api/account";
 import { useProtectedAuth } from "../auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { getUserDisplayName } from "@/lib/auth/user-profile";
@@ -938,7 +940,9 @@ export default function SettingsPage() {
   return (
     <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-slate-50 px-4 py-4 sm:px-6 sm:py-6">
       <div className="mx-auto w-full max-w-2xl space-y-6">
-        <BillingSection />
+        <Suspense fallback={null}>
+          <BillingSection />
+        </Suspense>
         <AccountSection email={email} displayName={displayName} />
         <TradingDefaultsSection hasCapitalFlows={hasCapitalFlows} />
         <CapitalManagementSection onFlowsChange={setHasCapitalFlows} />

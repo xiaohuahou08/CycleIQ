@@ -8,6 +8,7 @@ import MarketingShell, {
 import { MARKETING_PAGE_PAD } from "@/app/components/marketing/styles";
 import PremiumUpgradeButton from "./PremiumUpgradeButton";
 import { createPageMetadata } from "@/lib/seo/metadata";
+import { JsonLd } from "@/lib/seo/json-ld";
 import { SITE_NAME, getSiteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = createPageMetadata({
