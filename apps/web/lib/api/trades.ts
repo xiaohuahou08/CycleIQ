@@ -117,6 +117,8 @@ export interface DashboardInsights {
     weekly_premium_income: DashboardSeriesPoint[];
     monthly_premium_income: DashboardSeriesPoint[];
     capital_trend: CapitalTrendCharts;
+    /** @deprecated use capital_trend.monthly */
+    monthly_capital_invested?: DashboardSeriesPoint[];
   };
 }
 

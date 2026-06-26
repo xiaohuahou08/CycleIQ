@@ -225,27 +225,64 @@ function formatTrendAxisLabel(
   return point.label;
 }
 
+function parseTrendPointDate(point: DashboardSeriesPoint): Date | null {
+  if (point.date) {
+    const [y, m, d] = point.date.split("-").map(Number);
+    if (Number.isFinite(y) && Number.isFinite(m)) {
+      return new Date(y, m - 1, d ?? 1);
+    }
+  }
+  const monthMatch = /^(\d{4})-(\d{2})$/.exec(point.label);
+  if (monthMatch) {
+    return new Date(Number(monthMatch[1]), Number(monthMatch[2]) - 1, 1);
+  }
+  return null;
+}
+
 function filterTrendRange(points: DashboardSeriesPoint[], range: TrendRange): DashboardSeriesPoint[] {
   if (points.length === 0) return [];
 
-  const today = new Date();
-  const y = today.getFullYear();
-  const m = String(today.getMonth() + 1).padStart(2, "0");
-  const d = String(today.getDate()).padStart(2, "0");
-  const todayIso = `${y}-${m}-${d}`;
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
 
+  const start = new Date(end);
   if (range === "ytd") {
-    const ytdStart = `${y}-01-01`;
-    return points.filter((p) => (p.date ?? p.label) >= ytdStart && (p.date ?? p.label) <= todayIso);
+    start.setMonth(0, 1);
+    start.setHours(0, 0, 0, 0);
+  } else {
+    start.setDate(start.getDate() - 364);
+    start.setHours(0, 0, 0, 0);
   }
 
-  const cutoff = new Date(today);
-  cutoff.setDate(cutoff.getDate() - 364);
-  const cy = cutoff.getFullYear();
-  const cm = String(cutoff.getMonth() + 1).padStart(2, "0");
-  const cd = String(cutoff.getDate()).padStart(2, "0");
-  const cutoffIso = `${cy}-${cm}-${cd}`;
-  return points.filter((p) => (p.date ?? p.label) >= cutoffIso);
+  return points.filter((p) => {
+    const asOf = parseTrendPointDate(p);
+    if (!asOf) return true;
+    return asOf >= start && asOf <= end;
+  });
+}
+
+function normalizeCapitalTrend(
+  charts: DashboardInsightsData["charts"] | undefined
+): CapitalTrendCharts | undefined {
+  if (!charts) return undefined;
+
+  if (charts.capital_trend?.weekly?.length || charts.capital_trend?.monthly?.length) {
+    return charts.capital_trend;
+  }
+
+  const legacy = (charts as { monthly_capital_invested?: DashboardSeriesPoint[] })
+    .monthly_capital_invested;
+  if (!legacy?.length) {
+    return charts.capital_trend;
+  }
+
+  return {
+    weekly: [],
+    monthly: legacy.map((p) => ({
+      ...p,
+      date: p.date ?? (/^\d{4}-\d{2}$/.test(p.label) ? `${p.label}-01` : p.date),
+    })),
+  };
 }
 
 function SegmentToggle<T extends string>({
@@ -296,7 +333,9 @@ function CapitalTrendChart({
 
   const points = useMemo(() => {
     const raw = granularity === "week" ? trend?.weekly : trend?.monthly;
-    return filterTrendRange(raw ?? [], range);
+    const base = raw ?? [];
+    const filtered = filterTrendRange(base, range);
+    return filtered.length > 0 ? filtered : base;
   }, [granularity, range, trend]);
 
   const rangeHint =
@@ -434,7 +473,7 @@ function LineChartCard({
             className={embedded ? "h-56 w-full" : "h-44 w-full"}
             role="img"
             aria-label={title ?? "Total capital trend"}
-            preserveAspectRatio="none"
+            preserveAspectRatio="xMidYMid meet"
             onMouseLeave={() => setHoveredIndex(null)}
           >
             <defs>
@@ -580,6 +619,7 @@ export default function DashboardInsights({
 }) {
   const kpis = insights?.kpis;
   const charts = insights?.charts;
+  const capitalTrend = normalizeCapitalTrend(charts);
   const capitalInvested = kpis?.total_capital_invested ?? 0;
   const totalCapital = kpis?.total_capital ?? kpis?.capital_budget ?? 0;
   const capitalBudget = kpis?.capital_budget ?? 0;
@@ -698,7 +738,7 @@ export default function DashboardInsights({
       </div>
       <div className="animate-stagger-fade-up">
         <CapitalTrendChart
-          trend={charts?.capital_trend}
+          trend={capitalTrend}
           budgetLine={capitalBudget > 0 ? capitalBudget : undefined}
           overBudget={overBudget}
         />

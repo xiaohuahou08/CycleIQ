@@ -298,6 +298,8 @@ def register_dashboard_routes(dashboard_bp):
             keys = sorted(bucket.keys())[-limit:]
             return [{"label": k, "value": round(bucket[k], 2)} for k in keys]
 
+        capital_trend = build_capital_trend_charts(trades, capital_budget, today)
+
         return jsonify(
             {
                 "kpis": {
@@ -329,7 +331,8 @@ def register_dashboard_routes(dashboard_bp):
                     "daily_premium_income": _series(daily_bucket, 7),
                     "weekly_premium_income": _series(weekly_bucket, 6),
                     "monthly_premium_income": _series(monthly_bucket, 6),
-                    "capital_trend": build_capital_trend_charts(trades, capital_budget, today),
+                    "capital_trend": capital_trend,
+                    "monthly_capital_invested": capital_trend["monthly"],
                 },
             }
         )
