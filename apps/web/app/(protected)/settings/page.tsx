@@ -6,9 +6,8 @@ import { Check, X } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
 import { resetTradingData } from "@/lib/api/account";
 import { useProtectedAuth } from "../auth-context";
-import UserAvatar from "@/app/components/UserAvatar";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { getUserAvatarUrl, getUserDisplayName } from "@/lib/auth/user-profile";
+import { getUserDisplayName } from "@/lib/auth/user-profile";
 import { useTradeDefaults } from "@/lib/hooks/useTradeDefaults";
 
 // ─── Section shell ────────────────────────────────────────────────────────────
@@ -416,51 +415,12 @@ function DangerZoneSection() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
-  const { email, displayName, avatarUrl, onLogout } = useProtectedAuth();
-  const [profileAvatar, setProfileAvatar] = useState(avatarUrl);
-  const [profileName, setProfileName] = useState(displayName);
-  const [profileEmail, setProfileEmail] = useState(email);
-
-  useEffect(() => {
-    setProfileAvatar(avatarUrl);
-    setProfileName(displayName);
-    setProfileEmail(email);
-  }, [avatarUrl, displayName, email]);
-
-  useEffect(() => {
-    void getSupabaseClient()
-      .auth.getUser()
-      .then(({ data }) => {
-        if (!data.user) return;
-        setProfileEmail(data.user.email ?? null);
-        setProfileName(getUserDisplayName(data.user));
-        setProfileAvatar(getUserAvatarUrl(data.user));
-      });
-  }, []);
+  const { email, displayName, onLogout } = useProtectedAuth();
 
   return (
     <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-slate-50 px-4 py-4 sm:px-6 sm:py-6">
       <div className="mx-auto w-full max-w-2xl space-y-6">
-        <header className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <UserAvatar
-            src={profileAvatar}
-            displayName={profileName}
-            email={profileEmail}
-            size="xl"
-          />
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-semibold tracking-tight text-slate-900">Settings</h1>
-            <p className="mt-0.5 truncate text-sm font-medium text-slate-800">
-              {profileName ?? "CycleIQ user"}
-            </p>
-            <p className="truncate text-sm text-slate-500">{profileEmail ?? "—"}</p>
-            {profileAvatar ? (
-              <p className="mt-1 text-xs text-slate-400">Profile photo from Google</p>
-            ) : null}
-          </div>
-        </header>
-
-        <AccountSection email={profileEmail} displayName={profileName} />
+        <AccountSection email={email} displayName={displayName} />
         <TradingDefaultsSection />
         <DangerZoneSection />
 

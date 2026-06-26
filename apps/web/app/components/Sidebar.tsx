@@ -7,7 +7,6 @@ import {
   ChevronRight,
   LayoutDashboard,
   RefreshCw,
-  Settings,
   TrendingUp,
   type LucideIcon,
 } from "lucide-react";
@@ -29,7 +28,6 @@ const navItems: { label: string; href: string; icon: LucideIcon }[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Trades", href: "/trades", icon: TrendingUp },
   { label: "Cycles", href: "/cycles", icon: RefreshCw },
-  { label: "Settings", href: "/settings", icon: Settings },
 ];
 
 interface SidebarProps {
@@ -103,18 +101,18 @@ export default function Sidebar({ collapsed = false, onToggleCollapsed }: Sideba
           title={profileLabel}
           className={`flex w-full items-center rounded-lg text-slate-300 transition-colors hover:bg-slate-800 hover:text-white ${
             narrow ? "justify-center p-2" : "gap-2.5 px-2 py-2"
-          } ${pathname === "/settings" ? "bg-slate-800/60" : ""}`}
+          } ${pathname === "/settings" ? "bg-emerald-500/10 ring-1 ring-inset ring-emerald-500/20" : ""}`}
         >
           <UserAvatar
             src={avatarUrl}
             displayName={displayName}
             email={email}
-            size="sm"
+            size="md"
             className="ring-slate-700"
           />
           {!narrow && (
             <span className="min-w-0 flex-1 text-left">
-              <span className="block truncate text-sm font-medium text-slate-200">
+              <span className="block truncate text-base font-semibold leading-snug text-slate-100">
                 {profileLabel}
               </span>
               {displayName && email ? (
