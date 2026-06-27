@@ -42,6 +42,24 @@ export function oauthCallbackRelayTarget(pathname, searchParams) {
 }
 
 /**
+ * @param {string} pathname
+ * @param {Record<string, string | string[] | undefined>} params Next.js searchParams
+ * @returns {string | null}
+ */
+export function oauthCallbackRelayFromRecord(pathname, params) {
+  const code = params?.code;
+  if (typeof code !== "string" || !code) return null;
+  const q = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (typeof value === "string") q.set(key, value);
+    else if (Array.isArray(value)) {
+      for (const v of value) q.append(key, v);
+    }
+  }
+  return oauthCallbackRelayTarget(pathname, q);
+}
+
+/**
  * @param {string | null | undefined} path
  * @returns {string | null}
  */

@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
+import { Suspense } from "react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import { Inter, Space_Grotesk } from "next/font/google";
+import OAuthCodeRelay from "@/app/components/OAuthCodeRelay";
 import { DEFAULT_DESCRIPTION, DEFAULT_KEYWORDS, SITE_NAME, SITE_TAGLINE, getSiteUrl } from "@/lib/seo/site";
 import "./globals.css";
 
@@ -92,6 +94,9 @@ export default function RootLayout({
           Skip to main content
         </a>
         {children}
+        <Suspense fallback={null}>
+          <OAuthCodeRelay />
+        </Suspense>
         <SpeedInsights />
         <Analytics />
         {adsenseClient ? (

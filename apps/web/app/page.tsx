@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   BarChart2,
   CheckCircle2,
@@ -15,6 +16,7 @@ import { BTN_PRIMARY, BTN_SECONDARY, MARKETING_PAGE_PAD } from "@/app/components
 import { JsonLd } from "@/lib/seo/json-ld";
 import { createPageMetadata } from "@/lib/seo/metadata";
 import { DEFAULT_DESCRIPTION, SITE_NAME, SITE_TAGLINE, getSiteUrl } from "@/lib/seo/site";
+import { oauthCallbackRelayFromRecord } from "@/lib/auth-redirect.mjs";
 
 export const metadata: Metadata = createPageMetadata({
   title: SITE_TAGLINE,
@@ -110,7 +112,15 @@ const HOME_JSON_LD = [
   },
 ];
 
-export default function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const relay = oauthCallbackRelayFromRecord("/", params);
+  if (relay) redirect(relay);
+
   return (
     <div className="min-h-screen bg-slate-50/40">
       <JsonLd data={HOME_JSON_LD} />

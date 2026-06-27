@@ -64,6 +64,11 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
+    // PKCE relay: any page with ?code= (except static assets / callback itself)
+    {
+      source: "/((?!auth/callback|_next/static|_next/image|.*\\..*).*)",
+      has: [{ type: "query", key: "code" }],
+    },
     "/",
     "/dashboard/:path*",
     "/trades/:path*",

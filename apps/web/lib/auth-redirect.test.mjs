@@ -4,9 +4,18 @@ import {
   isAuthRoute,
   isProtectedRoute,
   oauthCallbackRelayTarget,
+  oauthCallbackRelayFromRecord,
   resolveAuthRedirect,
   safeInternalRedirectPath,
 } from "./auth-redirect.mjs";
+
+test("oauthCallbackRelayFromRecord forwards code from Next searchParams", () => {
+  assert.equal(
+    oauthCallbackRelayFromRecord("/", { code: "abc", next: "/dashboard" }),
+    "/auth/callback?code=abc&next=%2Fdashboard",
+  );
+  assert.equal(oauthCallbackRelayFromRecord("/", {}), null);
+});
 
 test("oauthCallbackRelayTarget forwards PKCE code from Site URL root", () => {
   const params = new URLSearchParams("code=abc&next=%2Fdashboard");
