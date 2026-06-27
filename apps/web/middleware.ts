@@ -1,8 +1,37 @@
 ﻿import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { isProtectedRoute, resolveAuthRedirect } from "@/lib/auth-redirect.mjs";
+import { isProtectedRoute, oauthCallbackRelayTarget, resolveAuthRedirect } from "@/lib/auth-redirect.mjs";
+
+function oauthErrorRelay(req: NextRequest): NextResponse | null {
+  const { pathname, searchParams } = req.nextUrl;
+  if (pathname === "/auth/callback") return null;
+  const oauthError = searchParams.get("error_code") ?? searchParams.get("error");
+  if (
+    oauthError !== "bad_oauth_callback" &&
+    oauthError !== "bad_oauth_state" &&
+    searchParams.get("error") !== "invalid_request"
+  ) {
+    return null;
+  }
+  const login = new URL("/login", req.url);
+  login.searchParams.set("error", "oauth");
+  return NextResponse.redirect(login);
+}
+
+/** Relay `?code=` from `/` or `/login` to /auth/callback for server PKCE exchange. */
+function oauthCodeRelay(req: NextRequest): NextResponse | null {
+  const target = oauthCallbackRelayTarget(req.nextUrl.pathname, req.nextUrl.searchParams);
+  if (!target) return null;
+  return NextResponse.redirect(new URL(target, req.url));
+}
 
 export async function middleware(req: NextRequest) {
+  const errorRelay = oauthErrorRelay(req);
+  if (errorRelay) return errorRelay;
+
+  const codeRelay = oauthCodeRelay(req);
+  if (codeRelay) return codeRelay;
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 

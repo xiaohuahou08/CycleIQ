@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { safeInternalRedirectPath } from "@/lib/auth-redirect.mjs";
 import { resolveRequestOrigin } from "@/lib/auth-origin";
 import { AUTH_NEXT_COOKIE, readAuthNextFromCookieHeader } from "@/lib/auth-oauth-next";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server";
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
+export async function GET(request: NextRequest) {
+  const { searchParams } = request.nextUrl;
   const origin = resolveRequestOrigin(request);
   const code = searchParams.get("code");
   const cookieHeader = request.headers.get("cookie");
@@ -16,12 +16,12 @@ export async function GET(request: Request) {
     "/dashboard";
 
   if (code) {
-    const supabase = await createSupabaseServerClient();
+    const success = NextResponse.redirect(`${origin}${next}`);
+    const supabase = createSupabaseRouteHandlerClient(request, success);
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      const response = NextResponse.redirect(`${origin}${next}`);
-      response.cookies.delete(AUTH_NEXT_COOKIE);
-      return response;
+      success.cookies.delete(AUTH_NEXT_COOKIE);
+      return success;
     }
   }
 

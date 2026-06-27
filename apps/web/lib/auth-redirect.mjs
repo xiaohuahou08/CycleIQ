@@ -24,8 +24,8 @@ const ALLOWED_POST_LOGIN_PREFIXES = [
 ];
 
 /**
- * When Supabase rejects redirectTo it falls back to Site URL with `?code=` on `/`.
- * Returns the callback path+query to relay, or null if no relay is needed.
+ * When Supabase lands `?code=` outside /auth/callback, relay to the Route Handler
+ * so the server can exchange the PKCE code (HttpOnly verifier cookies).
  *
  * @param {string} pathname
  * @param {URLSearchParams | { get: (key: string) => string | null }} searchParams

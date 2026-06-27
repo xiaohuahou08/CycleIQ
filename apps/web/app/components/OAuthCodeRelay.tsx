@@ -2,14 +2,13 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { safeInternalRedirectPath } from "@/lib/auth-redirect.mjs";
-import { consumeAuthNextPath } from "@/lib/auth-oauth-next";
-import { getSupabaseClient } from "@/lib/supabase/client";
+import { oauthCallbackRelayTarget } from "@/lib/auth-redirect.mjs";
 
 /**
- * When Supabase rejects redirectTo it falls back to Site URL with `?code=` on
- * `/` (not `/auth/callback`). The PKCE code must be exchanged on the page the
- * user actually landed on — redirecting to /auth/callback breaks the exchange.
+ * OAuth starts on the server (/auth/google) with HttpOnly PKCE cookies. When
+ * Supabase lands `?code=` on `/` (Site URL fallback), relay to /auth/callback
+ * so the Route Handler can exchange the code — client-side exchange cannot
+ * read HttpOnly verifier cookies.
  */
 export default function OAuthCodeRelay() {
   const pathname = usePathname();
@@ -32,29 +31,11 @@ export default function OAuthCodeRelay() {
       return;
     }
 
-    const code = searchParams.get("code");
-    if (!code) return;
+    const relay = oauthCallbackRelayTarget(pathname, searchParams);
+    if (!relay) return;
 
     started.current = true;
-
-    void (async () => {
-      try {
-        const supabase = getSupabaseClient();
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) {
-          router.replace("/login?error=oauth");
-          return;
-        }
-        const next =
-          safeInternalRedirectPath(consumeAuthNextPath()) ??
-          safeInternalRedirectPath(searchParams.get("next")) ??
-          "/dashboard";
-        router.replace(next);
-        router.refresh();
-      } catch {
-        router.replace("/login?error=oauth");
-      }
-    })();
+    router.replace(relay);
   }, [pathname, router, searchParams]);
 
   return null;
