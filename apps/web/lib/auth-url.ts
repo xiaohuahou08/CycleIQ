@@ -1,17 +1,19 @@
+import { getSiteUrl } from "@/lib/seo/site";
+
 /**
  * Origin used for Supabase OAuth / email redirect URLs.
- * Prefer NEXT_PUBLIC_SITE_URL so callbacks land on the canonical domain (cycleiq.xyz),
- * not a Vercel *.vercel.app host — must match Supabase Auth → URL Configuration.
+ *
+ * - **Browser:** always the current page origin so Vercel preview deploys
+ *   (`*.vercel.app`) callback to themselves, not to `NEXT_PUBLIC_SITE_URL`
+ *   (which is baked into the client bundle for production canonical domain).
+ * - **Server:** same rules as SEO `getSiteUrl()` (production → canonical,
+ *   preview → Vercel host, local → localhost).
  */
 export function getAuthRedirectOrigin(): string {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim()?.replace(/\/$/, "");
-  if (configured) {
-    return configured;
-  }
   if (typeof window !== "undefined") {
     return window.location.origin;
   }
-  return "";
+  return getSiteUrl();
 }
 
 export function authCallbackUrl(nextPath?: string | null): string {
