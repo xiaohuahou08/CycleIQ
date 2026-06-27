@@ -1,18 +1,8 @@
 ﻿import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { isProtectedRoute, oauthCallbackRelayTarget, resolveAuthRedirect } from "@/lib/auth-redirect.mjs";
-
-/** Supabase sometimes lands PKCE `code` on Site URL root instead of redirectTo. */
-function oauthCodeRelay(req: NextRequest): NextResponse | null {
-  const target = oauthCallbackRelayTarget(req.nextUrl.pathname, req.nextUrl.searchParams);
-  if (!target) return null;
-  return NextResponse.redirect(new URL(target, req.url));
-}
+import { isProtectedRoute, resolveAuthRedirect } from "@/lib/auth-redirect.mjs";
 
 export async function middleware(req: NextRequest) {
-  const relay = oauthCodeRelay(req);
-  if (relay) return relay;
-
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -64,11 +54,6 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    // PKCE relay: any page with ?code= (except static assets / callback itself)
-    {
-      source: "/((?!auth/callback|_next/static|_next/image|.*\\..*).*)",
-      has: [{ type: "query", key: "code" }],
-    },
     "/",
     "/dashboard/:path*",
     "/trades/:path*",
