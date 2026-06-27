@@ -31,12 +31,14 @@ export async function middleware(req: NextRequest) {
     },
   });
 
+  // Use getUser() (not getSession()) so the token is validated against the
+  // Supabase auth server, rejecting tampered or expired cookies.
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const authNext = req.nextUrl.searchParams.get("next");
-  const redirectPath = resolveAuthRedirect(req.nextUrl.pathname, Boolean(session), authNext);
+  const redirectPath = resolveAuthRedirect(req.nextUrl.pathname, Boolean(user), authNext);
   if (redirectPath) {
     const redirectUrl = new URL(redirectPath, req.url);
     const redirectRes = NextResponse.redirect(redirectUrl);
@@ -57,7 +59,6 @@ export const config = {
     "/cycles/:path*",
     "/reports/:path*",
     "/settings/:path*",
-    "/orders/:path*",
     "/login",
     "/register",
   ],

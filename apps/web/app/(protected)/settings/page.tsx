@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Check, X, ArrowDownCircle, ArrowUpCircle, Pencil, Trash2 } from "lucide-react";
@@ -23,7 +23,7 @@ import {
 import { resetTradingData } from "@/lib/api/account";
 import { useProtectedAuth } from "../auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { getAuthRedirectOrigin } from "@/lib/auth-url";
+import { authCallbackUrl } from "@/lib/auth-url";
 import { getUserDisplayName } from "@/lib/auth/user-profile";
 import { useTradeDefaults, TRADE_DEFAULTS_UPDATED_EVENT } from "@/lib/hooks/useTradeDefaults";
 
@@ -101,6 +101,8 @@ function Toast({
 function BillingSection() {
   const { token, isAuthLoading } = useProtectedAuth();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const syncedRef = useRef(false);
   const [status, setStatus] = useState<BillingStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -150,6 +152,9 @@ function BillingSection() {
 
   useEffect(() => {
     if (searchParams.get("billing") !== "success" || !token) return;
+    // Guard against React Strict Mode / re-render double-runs.
+    if (syncedRef.current) return;
+    syncedRef.current = true;
     const sessionId = searchParams.get("session_id");
     void (async () => {
       try {
@@ -158,9 +163,18 @@ function BillingSection() {
       } catch {
         setToast("Payment received — syncing plan…");
         await load();
+      } finally {
+        // Strip billing/session_id from the URL so a refresh won't re-sync.
+        router.replace("/settings");
       }
     })();
-  }, [searchParams, token]);
+  }, [searchParams, token, router]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   const onUpgrade = async () => {
     if (!token) return;
@@ -302,7 +316,9 @@ function AccountSection({
     try {
       const supabase = getSupabaseClient();
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${getAuthRedirectOrigin() || window.location.origin}/settings`,
+        // Recovery links carry a PKCE `code`; route through /auth/callback so the
+        // session is exchanged before landing back on /settings.
+        redirectTo: authCallbackUrl("/settings"),
       });
       if (error) throw error;
       showToast("Password reset email sent. Check your inbox.", "success");

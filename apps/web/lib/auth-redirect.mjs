@@ -4,8 +4,7 @@ export function isProtectedRoute(pathname) {
     pathname.startsWith("/trades") ||
     pathname.startsWith("/cycles") ||
     pathname.startsWith("/reports") ||
-    pathname.startsWith("/settings") ||
-    pathname.startsWith("/orders")
+    pathname.startsWith("/settings")
   );
 }
 
@@ -19,7 +18,9 @@ const ALLOWED_POST_LOGIN_PREFIXES = [
   "/cycles",
   "/reports",
   "/settings",
-  "/orders",
+  // Public page, but a valid post-login target for the upgrade flow
+  // (e.g. /login?next=/pricing) so users return to pricing after signing in.
+  "/pricing",
 ];
 
 /**

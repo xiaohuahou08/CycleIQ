@@ -16,6 +16,7 @@ export default function DashboardPage() {
   const [allTrades, setAllTrades] = useState<Trade[]>([]);
   const [insights, setInsights] = useState<DashboardInsightsData | null>(null);
   const [tradesLoading, setTradesLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const activeTrades = useMemo(
     () => allTrades.filter((trade) => trade.status === "OPEN"),
     [allTrades]
@@ -23,11 +24,23 @@ export default function DashboardPage() {
 
   const loadData = useCallback(async (accessToken: string) => {
     setTradesLoading(true);
+    setLoadError(null);
 
-    await Promise.allSettled([
-      listTrades(accessToken).then(setAllTrades).catch(() => setAllTrades([])),
-      getDashboardInsights(accessToken).then(setInsights).catch(() => setInsights(null)),
-    ]).finally(() => setTradesLoading(false));
+    const [tradesRes, insightsRes] = await Promise.allSettled([
+      listTrades(accessToken),
+      getDashboardInsights(accessToken),
+    ]);
+
+    setAllTrades(tradesRes.status === "fulfilled" ? tradesRes.value : []);
+    setInsights(insightsRes.status === "fulfilled" ? insightsRes.value : null);
+
+    if (tradesRes.status === "rejected" && insightsRes.status === "rejected") {
+      const reason = tradesRes.reason;
+      setLoadError(
+        reason instanceof Error ? reason.message : "Failed to load dashboard data."
+      );
+    }
+    setTradesLoading(false);
   }, []);
 
   useEffect(() => {
@@ -43,6 +56,23 @@ export default function DashboardPage() {
     <>
       <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-slate-50 px-4 py-4 sm:px-6 sm:py-6">
         <div className="w-full space-y-6">
+          {loadError ? (
+            <div
+              role="alert"
+              className="flex items-center justify-between gap-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            >
+              <span>{loadError}</span>
+              {token ? (
+                <button
+                  type="button"
+                  onClick={() => void loadData(token)}
+                  className="shrink-0 font-semibold underline-offset-2 hover:underline"
+                >
+                  Retry
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           <DashboardInsights insights={insights} loading={tradesLoading} />
           <ActivePositionsTable trades={activeTrades} loading={tradesLoading} />
         </div>

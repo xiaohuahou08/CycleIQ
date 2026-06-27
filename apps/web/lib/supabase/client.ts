@@ -20,16 +20,18 @@ export function getSupabaseClient(rememberMe?: boolean) {
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value, options }) => {
-          const expires = rememberMe === false
-            ? ""
-            : options?.maxAge
-              ? `; max-age=${options.maxAge}`
-              : "";
-          const path = options?.path ? `; path=${options.path}` : "; path=/";
-          const sameSite = options?.sameSite ? `; samesite=${options.sameSite}` : "";
-          const secure = options?.domain ? `; secure` : "";
-          const domain = options?.domain ? `; domain=${options.domain}` : "";
-          document.cookie = `${name}=${value}${expires}${path}${sameSite}${secure}${domain}`;
+          const parts = [`${name}=${value}`];
+          // "Remember me" off -> session cookie (no max-age, expires on close).
+          if (rememberMe !== false && options?.maxAge != null) {
+            parts.push(`max-age=${options.maxAge}`);
+          }
+          parts.push(`path=${options?.path ?? "/"}`);
+          if (options?.domain) parts.push(`domain=${options.domain}`);
+          if (options?.sameSite) parts.push(`samesite=${options.sameSite}`);
+          // Secure must follow the cookie's own `secure` option (https), not the
+          // presence of a domain — the previous check left cookies non-secure.
+          if (options?.secure) parts.push("secure");
+          document.cookie = parts.join("; ");
         });
       },
     },

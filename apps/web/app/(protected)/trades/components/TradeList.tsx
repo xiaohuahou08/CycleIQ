@@ -675,8 +675,8 @@ export default function TradeList({
   if (loading) {
     return (
       <div className="space-y-3 px-5 py-8">
-        <div className="h-9 w-full max-w-md animate-pulse rounded-lg bg-slate-100" />
-        <div className="h-48 w-full animate-pulse rounded-xl bg-slate-50 ring-1 ring-slate-100" />
+        <div className="skeleton h-9 w-full max-w-md rounded-lg" />
+        <div className="skeleton h-48 w-full rounded-xl ring-1 ring-slate-100" />
       </div>
     );
   }

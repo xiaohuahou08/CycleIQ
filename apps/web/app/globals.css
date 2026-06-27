@@ -20,12 +20,34 @@
   --color-accent: var(--accent);
   --color-surface: var(--surface);
   --color-border: var(--border);
+
+  /* Typography — Inter for body/UI, Space Grotesk for display headings */
+  --font-sans:
+    var(--font-sans-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+  --font-display:
+    var(--font-display-grotesk), var(--font-sans-inter), ui-sans-serif,
+    system-ui, sans-serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans-inter), Inter, system-ui, sans-serif;
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+  font-optical-sizing: auto;
+  text-rendering: optimizeLegibility;
+}
+
+/* Display font + tightened tracking for all headings, app-wide. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
 }
 
 /* Native date inputs in modals — light chrome aligned with app tokens */
@@ -148,13 +170,34 @@ input[type="date"].date-input:focus::-webkit-calendar-picker-indicator {
   animation: spin-slow 0.7s linear infinite;
 }
 
+@keyframes skeleton-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* Shimmering placeholder for loading states. */
+.skeleton {
+  background-color: #eef2f6;
+  background-image: linear-gradient(
+    90deg,
+    rgba(226, 232, 240, 0) 0%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(226, 232, 240, 0) 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-page-enter,
   .animate-fade-in,
   .animate-scale-in,
   .animate-bar-grow,
-  .animate-stagger-fade-up > *,
-  .loading-spinner {
+    .animate-stagger-fade-up > *,
+    .loading-spinner,
+    .skeleton {
     animation: none !important;
   }
 

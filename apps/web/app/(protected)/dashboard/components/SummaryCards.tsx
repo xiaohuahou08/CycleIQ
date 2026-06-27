@@ -39,7 +39,7 @@ export default function SummaryCards({ summary, loading }: SummaryCardsProps) {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="h-28 animate-pulse rounded-2xl border border-gray-200 bg-gray-100"
+            className="skeleton h-28 rounded-2xl border border-gray-200"
           />
         ))}
       </div>

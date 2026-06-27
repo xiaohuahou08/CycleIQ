@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { ClipboardList } from "lucide-react";
+import { iconStroke } from "@/app/components/icons";
 import type { Trade, TradeStatus } from "@/lib/api/trades";
 
 const statusStyles: Record<TradeStatus, string> = {
@@ -90,12 +92,14 @@ export default function ActivePositionsTable({
       {loading ? (
         <div className="space-y-3 p-5">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-8 animate-pulse rounded bg-slate-100" />
+            <div key={i} className="skeleton h-8 rounded" />
           ))}
         </div>
       ) : trades.length === 0 ? (
         <div className="flex flex-col items-center px-6 py-12 text-center">
-          <div className="text-4xl">📋</div>
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+            <ClipboardList className="h-6 w-6" strokeWidth={iconStroke} aria-hidden />
+          </span>
           <p className="mt-3 text-sm font-medium text-slate-900">No trades yet</p>
           <p className="mt-1 text-xs text-slate-500">No active positions at the moment.</p>
         </div>

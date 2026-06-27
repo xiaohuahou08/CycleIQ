@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Integer, Numeric, String
+from sqlalchemy import DateTime, Index, Integer, Numeric, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.models import db
@@ -18,6 +18,15 @@ class UserPreferences(db.Model):
     """Per-user UI defaults for trade entry (commission, contracts, DTE)."""
 
     __tablename__ = "user_preferences"
+    __table_args__ = (
+        Index(
+            "uq_user_preferences_stripe_customer_id",
+            "stripe_customer_id",
+            unique=True,
+            sqlite_where=text("stripe_customer_id IS NOT NULL"),
+            postgresql_where=text("stripe_customer_id IS NOT NULL"),
+        ),
+    )
 
     user_id: Mapped[str] = mapped_column(String(36), primary_key=True)
     commission_per_contract: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)

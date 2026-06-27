@@ -187,8 +187,17 @@ export default function TradesPage() {
 
   const onDeleteTrade = async (id: string) => {
     if (!token) return;
+    setSaveError(null);
+    // Optimistic removal; restore the prior list if the request fails.
+    const previous = allTrades;
     setAllTrades((prev) => prev.filter((t) => t.id !== id));
-    await deleteTrade(token, id);
+    try {
+      await deleteTrade(token, id);
+      await refreshPlanUsage();
+    } catch (err) {
+      setAllTrades(previous);
+      setSaveError(err instanceof Error ? err.message : "Failed to delete trade.");
+    }
   };
 
   const onEditTrade = (trade: Trade) => {

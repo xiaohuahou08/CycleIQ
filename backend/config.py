@@ -86,7 +86,9 @@ def resolve_frontend_origin(request_origin: str | None) -> str:
 
     if candidate in _trusted_redirect_origins():
         return candidate
-    if _LOCALHOST_ORIGIN.match(candidate):
+    # Localhost is only trusted outside production (local dev redirects).
+    is_production = os.environ.get("FLASK_ENV", "development") == "production"
+    if not is_production and _LOCALHOST_ORIGIN.match(candidate):
         return candidate
     if VERCEL_PREVIEW_ORIGIN.match(candidate):
         return candidate
@@ -130,6 +132,45 @@ class ProductionConfig(Config):
         os.environ.get("DATABASE_URL", ""),
     )
 
+    # Settings that must be present (and non-default) before serving production.
+    _REQUIRED_ENV = (
+        "SUPABASE_URL",
+        "SUPABASE_JWT_SECRET",
+        "STRIPE_SECRET_KEY",
+        "STRIPE_WEBHOOK_SECRET",
+        "STRIPE_PRICE_PREMIUM_MONTHLY",
+    )
+
+    @classmethod
+    def validate(cls) -> None:
+        """Fail fast if production is missing critical configuration."""
+        errors: list[str] = []
+
+        secret = os.environ.get("SECRET_KEY", "").strip()
+        if not secret or secret == "dev-secret-key":
+            errors.append("SECRET_KEY must be set to a strong, non-default value")
+
+        if not (
+            os.environ.get("DATABASE_POOL_URL", "").strip()
+            or os.environ.get("DATABASE_URL", "").strip()
+        ):
+            errors.append("DATABASE_POOL_URL or DATABASE_URL must be set")
+
+        for key in cls._REQUIRED_ENV:
+            if not os.environ.get(key, "").strip():
+                errors.append(f"{key} must be set")
+
+        if not cors_allowed_origins():
+            errors.append(
+                "FRONTEND_URL (and/or CORS_EXTRA_ORIGINS) must be set so CORS "
+                "allows the web app origin"
+            )
+
+        if errors:
+            raise RuntimeError(
+                "Invalid production configuration:\n- " + "\n- ".join(errors)
+            )
+
 
 class TestingConfig(Config):
     TESTING = True
@@ -143,7 +184,14 @@ config_by_name: dict[str, type[Config]] = {
     "default": DevelopmentConfig,
 }
 
+_VALID_FLASK_ENVS = frozenset({"development", "production", "testing"})
+
 
 def get_config() -> type[Config]:
     env = os.environ.get("FLASK_ENV", "development")
-    return config_by_name.get(env, DevelopmentConfig)
+    if env not in _VALID_FLASK_ENVS:
+        raise RuntimeError(
+            f"Invalid FLASK_ENV={env!r}; expected one of "
+            f"{sorted(_VALID_FLASK_ENVS)} (a typo would silently run dev config)"
+        )
+    return config_by_name[env]

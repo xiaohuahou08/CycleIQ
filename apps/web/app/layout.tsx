@@ -1,15 +1,25 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
-import { Inter } from "next/font/google";
+import { Inter, Space_Grotesk } from "next/font/google";
 import { DEFAULT_DESCRIPTION, DEFAULT_KEYWORDS, SITE_NAME, SITE_TAGLINE, getSiteUrl } from "@/lib/seo/site";
 import "./globals.css";
+
+const adsenseClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
 
 const inter = Inter({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   display: "swap",
   variable: "--font-sans-inter",
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  display: "swap",
+  variable: "--font-display-grotesk",
 });
 
 export const metadata: Metadata = {
@@ -52,6 +62,10 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
+  // Only advertise the AdSense account when ads are actually enabled.
+  ...(adsenseClient
+    ? { other: { "google-adsense-account": adsenseClient } }
+    : {}),
 };
 
 export const viewport: Viewport = {
@@ -69,7 +83,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable} h-full antialiased`}>
       <body className={`${inter.className} min-h-full flex flex-col`}>
         <a
           href="#main-content"
@@ -80,6 +94,15 @@ export default function RootLayout({
         {children}
         <SpeedInsights />
         <Analytics />
+        {adsenseClient ? (
+          <Script
+            id="google-adsense"
+            async
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClient}`}
+            crossOrigin="anonymous"
+            strategy="afterInteractive"
+          />
+        ) : null}
       </body>
     </html>
   );

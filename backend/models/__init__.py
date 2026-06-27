@@ -7,3 +7,4 @@ from backend.models.trade import Trade  # noqa: E402, F401
 from backend.models.user_preferences import UserPreferences  # noqa: E402, F401
 from backend.models.capital_flow import CapitalFlow  # noqa: E402, F401
 from backend.models.wheel_cycle import WheelCycle  # noqa: E402, F401
+from backend.models.stripe_event import StripeWebhookEvent  # noqa: E402, F401

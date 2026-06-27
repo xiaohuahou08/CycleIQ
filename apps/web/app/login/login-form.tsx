@@ -31,12 +31,12 @@ export function LoginForm() {
 
   const isValidEmail = useMemo(() => /\S+@\S+\.\S+/.test(email), [email]);
   const registrationMessage =
-    typeof window !== "undefined" && searchParams.get("registered") === "1"
+    searchParams.get("registered") === "1"
       ? "Registration successful. Please check your email to confirm your account if required."
       : null;
 
   const oauthErrorMessage =
-    typeof window !== "undefined" && searchParams.get("error") === "oauth"
+    searchParams.get("error") === "oauth"
       ? "Google sign-in failed. Please try again or use email and password."
       : null;
 
@@ -106,13 +106,13 @@ export function LoginForm() {
     >
       <form className="space-y-4" onSubmit={onSubmit}>
         {registrationMessage ? (
-          <p className="rounded-lg border border-emerald-200/80 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
+          <p role="status" className="rounded-lg border border-emerald-200/80 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
             {registrationMessage}
           </p>
         ) : null}
 
         {oauthErrorMessage ? (
-          <p className="rounded-lg border border-red-200/80 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+          <p role="alert" className="rounded-lg border border-red-200/80 bg-red-50 px-3 py-2.5 text-sm text-red-700">
             {oauthErrorMessage}
           </p>
         ) : null}
@@ -178,7 +178,7 @@ export function LoginForm() {
         </div>
 
         {error ? (
-          <p className="rounded-lg border border-red-200/80 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+          <p role="alert" className="rounded-lg border border-red-200/80 bg-red-50 px-3 py-2.5 text-sm text-red-700">
             {error}
           </p>
         ) : null}

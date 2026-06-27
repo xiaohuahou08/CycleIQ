@@ -10,7 +10,7 @@ import AuthShell, {
 } from "@/app/components/AuthShell";
 import GoogleSignInButton from "@/app/components/GoogleSignInButton";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { getAuthRedirectOrigin } from "@/lib/auth-url";
+import { authCallbackUrl } from "@/lib/auth-url";
 import { safeInternalRedirectPath } from "@/lib/auth-redirect.mjs";
 
 export function RegisterForm() {
@@ -48,8 +48,9 @@ export function RegisterForm() {
 
     try {
       const supabase = getSupabaseClient();
-      const authOrigin = getAuthRedirectOrigin() || window.location.origin;
-      const redirectTo = `${authOrigin}/dashboard`;
+      // Email-confirmation links carry a PKCE `code` that must be exchanged by
+      // /auth/callback; sending users straight to /dashboard would skip that.
+      const confirmTarget = safeInternalRedirectPath(nextPath) ?? "/dashboard";
       const {
         data: { session },
         error: signUpError,
@@ -57,7 +58,7 @@ export function RegisterForm() {
         email,
         password,
         options: {
-          emailRedirectTo: redirectTo,
+          emailRedirectTo: authCallbackUrl(confirmTarget),
         },
       });
 
@@ -178,7 +179,7 @@ export function RegisterForm() {
         </div>
 
         {error ? (
-          <p className="rounded-lg border border-red-200/80 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+          <p role="alert" className="rounded-lg border border-red-200/80 bg-red-50 px-3 py-2.5 text-sm text-red-700">
             {error}
           </p>
         ) : null}

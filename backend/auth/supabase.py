@@ -30,6 +30,18 @@ def _jwks_client(url: str) -> PyJWKClient:
     return _jwks_clients[url]
 
 
+def _expected_issuer() -> str | None:
+    """Canonical Supabase Auth issuer derived from ``SUPABASE_URL``.
+
+    Returns ``https://<ref>.supabase.co/auth/v1`` or ``None`` when ``SUPABASE_URL``
+    is not configured (local dev forging HS256 tokens without an issuer).
+    """
+    base = (current_app.config.get("SUPABASE_URL") or "").strip().rstrip("/")
+    if not base:
+        return None
+    return f"{base}/auth/v1"
+
+
 def _verify_token(token: str) -> dict[str, Any]:
     """Decode and verify a Supabase Auth JWT.
 
@@ -38,6 +50,7 @@ def _verify_token(token: str) -> dict[str, Any]:
     """
     header = jwt.get_unverified_header(token)
     alg = (header.get("alg") or "HS256").upper()
+    expected_issuer = _expected_issuer()
 
     if alg == "HS256":
         secret = (current_app.config.get("SUPABASE_JWT_SECRET") or "").strip()
@@ -46,14 +59,25 @@ def _verify_token(token: str) -> dict[str, Any]:
                 "SUPABASE_JWT_SECRET is not set; add it in Render (or .env) from "
                 "Supabase Dashboard → Settings → API → JWT Settings → JWT Secret"
             )
-        return jwt.decode(
-            token,
-            secret,
-            algorithms=["HS256"],
-            audience="authenticated",
-        )
+        decode_kwargs: dict[str, Any] = {
+            "algorithms": ["HS256"],
+            "audience": "authenticated",
+        }
+        # Enforce issuer only when SUPABASE_URL is configured so locally-forged
+        # HS256 tokens (which omit `iss`) still work for development.
+        if expected_issuer:
+            decode_kwargs["issuer"] = expected_issuer
+        return jwt.decode(token, secret, **decode_kwargs)
 
     if alg in ("ES256", "RS256"):
+        # Asymmetric tokens are verified against a JWKS fetched from the issuer.
+        # The issuer MUST be pinned to our Supabase project, otherwise an attacker
+        # who controls any domain could host a JWKS and mint valid-looking tokens.
+        if not expected_issuer:
+            raise ValueError(
+                "SUPABASE_URL is not set; it is required to verify ES256/RS256 "
+                "Supabase tokens (used to pin the trusted JWKS issuer)."
+            )
         unverified = jwt.decode(
             token,
             options={
@@ -65,7 +89,11 @@ def _verify_token(token: str) -> dict[str, Any]:
         issuer = unverified.get("iss")
         if not issuer or not isinstance(issuer, str):
             raise jwt.InvalidTokenError("Token missing iss claim")
-        jwks_url = f"{issuer.rstrip('/')}/.well-known/jwks.json"
+        if issuer.rstrip("/") != expected_issuer:
+            raise jwt.InvalidIssuerError(
+                "Token issuer does not match the configured Supabase project"
+            )
+        jwks_url = f"{expected_issuer}/.well-known/jwks.json"
         jwk_client = _jwks_client(jwks_url)
         signing_key = jwk_client.get_signing_key_from_jwt(token)
         return jwt.decode(
@@ -73,7 +101,7 @@ def _verify_token(token: str) -> dict[str, Any]:
             signing_key.key,
             algorithms=[alg],
             audience="authenticated",
-            issuer=issuer,
+            issuer=expected_issuer,
         )
 
     raise jwt.InvalidTokenError(f"Unsupported JWT algorithm: {alg}")

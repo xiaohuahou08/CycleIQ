@@ -323,7 +323,7 @@ export default function CyclesPage() {
         {loading ? (
           <div className="mt-5 space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-100 ring-1 ring-slate-100" />
+              <div key={i} className="skeleton h-24 rounded-xl ring-1 ring-slate-100" />
             ))}
           </div>
         ) : cycles.length === 0 ? (

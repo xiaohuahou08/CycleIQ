@@ -635,15 +635,15 @@ export default function DashboardInsights({
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 9 }).map((_, i) => (
-            <div key={i} className="h-28 animate-pulse rounded-2xl border border-slate-200 bg-slate-100" />
+            <div key={i} className="skeleton h-28 rounded-2xl border border-slate-200" />
           ))}
         </div>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-56 animate-pulse rounded-2xl border border-slate-200 bg-slate-100" />
+            <div key={i} className="skeleton h-56 rounded-2xl border border-slate-200" />
           ))}
         </div>
-        <div className="h-56 animate-pulse rounded-2xl border border-slate-200 bg-slate-100" />
+        <div className="skeleton h-56 rounded-2xl border border-slate-200" />
       </div>
     );
   }

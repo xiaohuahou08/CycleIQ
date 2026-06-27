@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 import stripe
 from flask import current_app, g, jsonify, request
 
@@ -8,6 +10,20 @@ from urllib.parse import urlsplit
 from backend.auth.supabase import require_auth
 from backend.services import stripe_billing
 from backend.services.trade_limits import trade_limit_snapshot
+
+# Minimum seconds between user-triggered Stripe sync calls (per user). Prevents
+# an authenticated user from hammering the Stripe API via /api/billing/sync.
+_SYNC_MIN_INTERVAL_SECONDS = 5.0
+_last_sync_at: dict[str, float] = {}
+
+
+def _sync_rate_limited(user_id: str) -> bool:
+    now = time.monotonic()
+    last = _last_sync_at.get(user_id)
+    if last is not None and (now - last) < _SYNC_MIN_INTERVAL_SECONDS:
+        return True
+    _last_sync_at[user_id] = now
+    return False
 
 
 def _origin_of(url: str | None) -> str | None:
@@ -64,6 +80,8 @@ def register_billing_routes(billing_bp):
     @billing_bp.route("/sync", methods=["POST"])
     @require_auth
     def sync_billing(user_id: str):
+        if not current_app.config.get("TESTING") and _sync_rate_limited(user_id):
+            return jsonify({"error": "Too many sync requests; please wait a moment."}), 429
         payload = request.get_json(silent=True) or {}
         session_id = payload.get("session_id")
         try:

@@ -32,6 +32,9 @@ def app():
     application = create_app(config_class=TestingConfig)
     application.config.update(
         SUPABASE_JWT_SECRET=os.environ["SUPABASE_JWT_SECRET"],
+        # Forged HS256 tokens omit `iss` (legacy/local dev pattern); leaving
+        # SUPABASE_URL empty disables issuer enforcement for these tests.
+        SUPABASE_URL="",
         STRIPE_SECRET_KEY=os.environ["STRIPE_SECRET_KEY"],
         STRIPE_WEBHOOK_SECRET=os.environ["STRIPE_WEBHOOK_SECRET"],
         STRIPE_PRICE_PREMIUM_MONTHLY=os.environ["STRIPE_PRICE_PREMIUM_MONTHLY"],
@@ -119,12 +122,14 @@ def test_checkout_session_rejects_untrusted_origin(mock_customer, mock_session, 
 def test_webhook_checkout_completed_sets_premium(mock_construct, client, app):
     user_id = "00000000-0000-0000-0000-000000000099"
     event = {
+        "id": "evt_checkout_1",
         "type": "checkout.session.completed",
         "data": {
             "object": {
                 "client_reference_id": user_id,
                 "customer": "cus_test",
                 "subscription": "sub_test",
+                "payment_status": "paid",
                 "metadata": {"user_id": user_id},
             }
         },
@@ -136,7 +141,7 @@ def test_webhook_checkout_completed_sets_premium(mock_construct, client, app):
             "id": "sub_test",
             "customer": "cus_test",
             "status": "active",
-            "current_period_end": 1782513782,
+            "current_period_end": 4102444800,
         }
         r = client.post(
             "/webhooks/stripe",
@@ -166,7 +171,7 @@ def test_sync_endpoint_upgrades_from_stripe(mock_list, client, app):
                 "id": "sub_test",
                 "customer": "cus_test",
                 "status": "active",
-                "current_period_end": 1782513782,
+                "current_period_end": 4102444800,
             }
         ]
     )
@@ -186,13 +191,14 @@ def test_sync_endpoint_uses_checkout_session_id(mock_session, mock_sub, client, 
         "client_reference_id": user_id,
         "customer": "cus_test",
         "subscription": "sub_test",
+        "payment_status": "paid",
         "metadata": {"user_id": user_id},
     }
     mock_sub.return_value = {
         "id": "sub_test",
         "customer": "cus_test",
         "status": "active",
-        "current_period_end": 1782513782,
+        "current_period_end": 4102444800,
     }
 
     r = client.post(
@@ -236,3 +242,65 @@ def test_webhook_subscription_deleted_downgrades(mock_construct, client, app):
     with app.app_context():
         row = UserPreferences.query.filter_by(user_id=user_id).first()
         assert row.plan == BASIC_PLAN
+
+
+@patch("backend.services.stripe_billing.stripe.Webhook.construct_event")
+def test_webhook_duplicate_event_is_skipped(mock_construct, client, app):
+    user_id = "00000000-0000-0000-0000-000000000077"
+    event = {
+        "id": "evt_dup_1",
+        "type": "customer.subscription.updated",
+        "data": {
+            "object": {
+                "id": "sub_dup",
+                "customer": "cus_dup",
+                "status": "active",
+                "current_period_end": 4102444800,
+                "metadata": {"user_id": user_id},
+            }
+        },
+    }
+    mock_construct.return_value = event
+
+    r1 = client.post("/webhooks/stripe", data=b"{}", headers={"Stripe-Signature": "t"})
+    assert r1.status_code == 200
+    with app.app_context():
+        assert UserPreferences.query.filter_by(user_id=user_id).first().plan == PREMIUM_PLAN
+
+    # Simulate a downgrade locally, then re-deliver the SAME event id. The
+    # duplicate must be skipped so the local downgrade is not overwritten.
+    with app.app_context():
+        row = UserPreferences.query.filter_by(user_id=user_id).first()
+        row.plan = BASIC_PLAN
+        row.subscription_status = "canceled"
+        db.session.commit()
+
+    r2 = client.post("/webhooks/stripe", data=b"{}", headers={"Stripe-Signature": "t"})
+    assert r2.status_code == 200
+    with app.app_context():
+        row = UserPreferences.query.filter_by(user_id=user_id).first()
+        assert row.plan == BASIC_PLAN  # unchanged: duplicate event was skipped
+
+
+@patch("backend.services.stripe_billing.stripe.Webhook.construct_event")
+def test_webhook_unpaid_checkout_does_not_grant_premium(mock_construct, client, app):
+    user_id = "00000000-0000-0000-0000-000000000066"
+    mock_construct.return_value = {
+        "id": "evt_unpaid_1",
+        "type": "checkout.session.completed",
+        "data": {
+            "object": {
+                "client_reference_id": user_id,
+                "customer": "cus_unpaid",
+                "subscription": "sub_unpaid",
+                "payment_status": "unpaid",
+                "metadata": {"user_id": user_id},
+            }
+        },
+    }
+    r = client.post("/webhooks/stripe", data=b"{}", headers={"Stripe-Signature": "t"})
+    assert r.status_code == 200
+    with app.app_context():
+        row = UserPreferences.query.filter_by(user_id=user_id).first()
+        # Row may be created lazily but must not be premium.
+        assert row is None or row.plan == BASIC_PLAN

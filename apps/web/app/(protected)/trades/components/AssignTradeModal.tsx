@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Package } from "lucide-react";
-import { iconMd, iconStroke } from "@/app/components/icons";
+import { Calendar, Layers, Package } from "lucide-react";
+import { iconMd, iconSm, iconStroke } from "@/app/components/icons";
 import type { Trade } from "@/lib/api/trades";
 import {
   ModalActionButtons,
@@ -176,17 +176,7 @@ export default function AssignTradeModal({
             htmlFor="assign_action_date"
             className="mb-1 flex items-center gap-1.5 text-sm font-medium text-gray-700"
           >
-            <svg
-              className="h-4 w-4 text-gray-500"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden
-            >
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-              <path d="M16 2v4M8 2v4M3 10h18" />
-            </svg>
+            <Calendar className={`${iconSm} text-gray-500`} strokeWidth={iconStroke} aria-hidden />
             Action Date
           </label>
           <input
@@ -262,17 +252,7 @@ export default function AssignTradeModal({
           <div className="mt-4">
             <OptionalFieldsCard>
               <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-purple-800">
-                <svg
-                  className="h-4 w-4 shrink-0"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  aria-hidden
-                >
-                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                  <path d="M2 17l10 5 10-5M2 12l10 5 10-5" />
-                </svg>
+                <Layers className={iconSm} strokeWidth={iconStroke} aria-hidden />
                 Optional Details
               </p>
 
