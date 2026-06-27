@@ -1,10 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Check, X, ArrowDownCircle, ArrowUpCircle, Pencil, Trash2 } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
-import { resetTradingData } from "@/lib/api/account";
+import {
+  createCheckoutSession,
+  createPortalSession,
+  fetchBillingStatus,
+  syncBillingAfterCheckout,
+  type BillingStatus,
+} from "@/lib/api/billing";
 import {
   createCapitalFlow,
   deleteCapitalFlow,
@@ -13,8 +20,10 @@ import {
   updateCapitalFlow,
   type CapitalFlow,
 } from "@/lib/api/capitalFlows";
+import { resetTradingData } from "@/lib/api/account";
 import { useProtectedAuth } from "../auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { getAuthRedirectOrigin } from "@/lib/auth-url";
 import { getUserDisplayName } from "@/lib/auth/user-profile";
 import { useTradeDefaults, TRADE_DEFAULTS_UPDATED_EVENT } from "@/lib/hooks/useTradeDefaults";
 
@@ -88,6 +97,167 @@ function Toast({
   );
 }
 
+// ─── Billing section ──────────────────────────────────────────────────────────
+function BillingSection() {
+  const { token, isAuthLoading } = useProtectedAuth();
+  const searchParams = useSearchParams();
+  const [status, setStatus] = useState<BillingStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const load = async () => {
+    if (!token) return;
+    setLoading(true);
+    setError(null);
+    try {
+      setStatus(await fetchBillingStatus(token));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load billing.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Wait for auth to settle before deciding whether we can load billing.
+    if (isAuthLoading) return;
+    let active = true;
+    void (async () => {
+      if (!token) {
+        if (active) {
+          setError("You need to be signed in to view billing.");
+          setLoading(false);
+        }
+        return;
+      }
+      try {
+        const next = await fetchBillingStatus(token);
+        if (active) setStatus(next);
+      } catch (err) {
+        if (active) {
+          setError(err instanceof Error ? err.message : "Failed to load billing.");
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [token, isAuthLoading]);
+
+  useEffect(() => {
+    if (searchParams.get("billing") !== "success" || !token) return;
+    const sessionId = searchParams.get("session_id");
+    void (async () => {
+      try {
+        setStatus(await syncBillingAfterCheckout(token, sessionId));
+        setToast("Premium activated — thank you!");
+      } catch {
+        setToast("Payment received — syncing plan…");
+        await load();
+      }
+    })();
+  }, [searchParams, token]);
+
+  const onUpgrade = async () => {
+    if (!token) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { url } = await createCheckoutSession(token);
+      window.location.href = url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Checkout failed.");
+      setBusy(false);
+    }
+  };
+
+  const onManage = async () => {
+    if (!token) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { url } = await createPortalSession(token);
+      window.location.href = url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not open billing portal.");
+      setBusy(false);
+    }
+  };
+
+  const isPremium = status?.plan === "premium";
+
+  return (
+    <>
+      {toast ? (
+        <Toast message={toast} type="success" />
+      ) : null}
+      <Section
+        title="Billing"
+        description="Manage your CycleIQ plan. Premium is $1/month via Stripe."
+      >
+        {loading ? (
+          <p className="text-sm text-gray-500">Loading plan…</p>
+        ) : (
+          <>
+            <FieldRow label="Current plan">
+              <span className="inline-flex items-center rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-800">
+                {status?.plan_label ?? "Basic"}
+                {status?.price_usd != null ? ` · $${status.price_usd}/mo` : ""}
+              </span>
+            </FieldRow>
+            {status?.subscription_status ? (
+              <FieldRow label="Subscription" hint="Synced from Stripe webhooks.">
+                <span className="text-sm text-gray-700 capitalize">
+                  {status.subscription_status.replace(/_/g, " ")}
+                  {status.current_period_end
+                    ? ` · renews ${new Date(status.current_period_end).toLocaleDateString()}`
+                    : ""}
+                </span>
+              </FieldRow>
+            ) : null}
+            {status?.trades_limit != null ? (
+              <FieldRow
+                label="Trade usage"
+                hint={`${status.trades_this_month} of ${status.trades_limit} new trades this month (UTC).`}
+              >
+                <span className="text-sm text-gray-700">
+                  {status.trades_remaining ?? 0} remaining
+                </span>
+              </FieldRow>
+            ) : null}
+            <div className="mt-4 flex flex-wrap gap-2">
+              {isPremium && status?.can_manage_billing ? (
+                <button
+                  type="button"
+                  onClick={() => void onManage()}
+                  disabled={busy}
+                  className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {busy ? "Opening…" : "Manage subscription"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void onUpgrade()}
+                  disabled={busy}
+                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {busy ? "Redirecting…" : "Upgrade to Premium — $1/mo"}
+                </button>
+              )}
+            </div>
+            {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+          </>
+        )}
+      </Section>
+    </>
+  );
+}
+
 // ─── Account section ──────────────────────────────────────────────────────────
 function AccountSection({
   email: emailProp,
@@ -132,7 +302,7 @@ function AccountSection({
     try {
       const supabase = getSupabaseClient();
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/settings`,
+        redirectTo: `${getAuthRedirectOrigin() || window.location.origin}/settings`,
       });
       if (error) throw error;
       showToast("Password reset email sent. Check your inbox.", "success");
@@ -803,6 +973,9 @@ export default function SettingsPage() {
   return (
     <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-slate-50 px-4 py-4 sm:px-6 sm:py-6">
       <div className="mx-auto w-full max-w-2xl space-y-6">
+        <Suspense fallback={null}>
+          <BillingSection />
+        </Suspense>
         <AccountSection email={email} displayName={displayName} />
         <TradingDefaultsSection hasCapitalFlows={hasCapitalFlows} />
         <CapitalManagementSection onFlowsChange={setHasCapitalFlows} />

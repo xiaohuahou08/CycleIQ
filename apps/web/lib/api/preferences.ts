@@ -1,6 +1,6 @@
 import type { TradeDefaults } from "@/lib/hooks/useTradeDefaults";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
+import { getApiBase } from "@/lib/api/base";
 
 export interface TradeDefaultsApi {
   commission_per_contract: number | null;
@@ -48,7 +48,7 @@ export function tradeDefaultsToApi(defaults: TradeDefaults): TradeDefaultsApi {
 }
 
 export async function getTradeDefaults(token: string): Promise<TradeDefaults> {
-  const res = await fetch(`${API_BASE}/api/me/preferences`, {
+  const res = await fetch(`${getApiBase()}/api/me/preferences`, {
     headers: authHeaders(token),
   });
   if (!res.ok) throw new Error(await getErrorMessage(res, "Failed to load trading defaults"));
@@ -60,7 +60,7 @@ export async function updateTradeDefaults(
   token: string,
   defaults: TradeDefaults
 ): Promise<TradeDefaults> {
-  const res = await fetch(`${API_BASE}/api/me/preferences`, {
+  const res = await fetch(`${getApiBase()}/api/me/preferences`, {
     method: "PUT",
     headers: authHeaders(token),
     body: JSON.stringify(tradeDefaultsToApi(defaults)),

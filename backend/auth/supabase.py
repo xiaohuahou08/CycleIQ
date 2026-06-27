@@ -109,8 +109,25 @@ def require_auth(f):
                     ),
                 }
             ), 401
+        except Exception:
+            # JWKS fetch failures, SSL/network errors, or any unexpected error.
+            # Treat as an auth failure (401) rather than a 500 so the client can react.
+            current_app.logger.exception("Token verification raised an unexpected error")
+            return jsonify(
+                {
+                    "error": "Could not verify token",
+                    "hint": "JWKS endpoint unreachable or token malformed. Try signing in again.",
+                }
+            ), 401
 
-        g.user_id = uuid.UUID(payload["sub"])
+        sub = payload.get("sub")
+        if not sub:
+            return jsonify({"error": "Token missing sub claim"}), 401
+        try:
+            g.user_id = uuid.UUID(str(sub))
+        except (ValueError, TypeError):
+            return jsonify({"error": "Token sub is not a valid UUID"}), 401
+        g.user_email = payload.get("email")
         return f(str(g.user_id), *args, **kwargs)
 
     return decorated

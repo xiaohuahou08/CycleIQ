@@ -27,6 +27,10 @@ class UserPreferences(db.Model):
         Numeric(14, 2), nullable=False, default=DEFAULT_TOTAL_CAPITAL_BUDGET
     )
     plan: Mapped[str] = mapped_column(String(20), nullable=False, default=DEFAULT_PLAN)
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    stripe_subscription_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    subscription_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

@@ -218,11 +218,13 @@ All routes require `Authorization: Bearer <supabase_access_token>`.
 
 ## Deployment
 
-| Service | Platform |
-|---------|---------|
-| Frontend | [Vercel](https://vercel.com) — push to `main`, auto-deploys |
-| Backend | [Render](https://render.com) — `gunicorn --bind 0.0.0.0:$PORT backend.wsgi:app` |
-| Database | [Supabase](https://supabase.com) — PostgreSQL + Auth + RLS |
+| Service | Platform | Production URL |
+|---------|----------|----------------|
+| Frontend | [Vercel](https://vercel.com) | `https://cycleiq.xyz` |
+| Backend | [Render](https://render.com) | `https://cycleiq-sbze.onrender.com` |
+| Database | [Supabase](https://supabase.com) | PostgreSQL + Auth + RLS |
+
+Production env vars: [`.env.production.example`](.env.production.example).
 
 ### Database migrations
 

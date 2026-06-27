@@ -6,14 +6,15 @@ import MarketingShell, {
   MarketingCheckListItem,
 } from "@/app/components/marketing/MarketingShell";
 import { MARKETING_PAGE_PAD } from "@/app/components/marketing/styles";
-import { JsonLd } from "@/lib/seo/json-ld";
+import PremiumUpgradeButton from "./PremiumUpgradeButton";
 import { createPageMetadata } from "@/lib/seo/metadata";
+import { JsonLd } from "@/lib/seo/json-ld";
 import { SITE_NAME, getSiteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Pricing",
   description:
-    "CycleIQ Basic and Premium plans. Basic is free with 20 trades per month. Premium offers unlimited trade logging — pricing coming soon.",
+    "CycleIQ Basic and Premium plans. Basic is free with 20 trades per month. Premium is $1/month with unlimited trade logging.",
   path: "/pricing",
 });
 
@@ -51,7 +52,9 @@ const PRICING_JSON_LD = [
     url: `${siteUrl}/pricing`,
     offers: {
       "@type": "Offer",
-      availability: "https://schema.org/PreOrder",
+      price: "1",
+      priceCurrency: "USD",
+      availability: "https://schema.org/InStock",
       url: `${siteUrl}/pricing`,
     },
   },
@@ -142,7 +145,7 @@ export default function PricingPage() {
               </h1>
               <p className="mt-5 text-base leading-relaxed text-slate-600">
                 Start on Basic for free with 20 new trades each calendar month. Move to Premium
-                when you need unlimited trade logging — pricing coming soon.
+                when you need unlimited trade logging for $1 per month.
               </p>
             </div>
 
@@ -163,25 +166,17 @@ export default function PricingPage() {
               <PlanCard
                 name="Premium"
                 tagline="For active wheel traders"
-                price="TBD"
-                priceNote="pricing coming soon"
+                price="$1"
+                priceNote="per month"
                 tradeLimit="Unlimited new trades per month."
                 accentClass="bg-emerald-400"
                 featured
-                cta={
-                  <button
-                    type="button"
-                    disabled
-                    className={`${BTN_SECONDARY} w-full cursor-not-allowed opacity-60`}
-                  >
-                    Upgrade coming soon
-                  </button>
-                }
+                cta={<PremiumUpgradeButton />}
               />
             </div>
 
             <p className="mx-auto mt-6 max-w-lg text-center text-sm text-slate-500">
-              Premium upgrades and billing will be available soon. All new accounts start on Basic.
+              Premium is billed monthly via Stripe. Cancel anytime from Settings → Billing.
             </p>
           </div>
         </section>

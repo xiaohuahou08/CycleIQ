@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
+import { getApiBase } from "@/lib/api/base";
 
 export interface ResetTradingDataResult {
   trades_deleted: number;
@@ -6,7 +6,7 @@ export interface ResetTradingDataResult {
 }
 
 export async function resetTradingData(token: string): Promise<ResetTradingDataResult> {
-  const res = await fetch(`${API_BASE}/api/me/reset-trading-data`, {
+  const res = await fetch(`${getApiBase()}/api/me/reset-trading-data`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
