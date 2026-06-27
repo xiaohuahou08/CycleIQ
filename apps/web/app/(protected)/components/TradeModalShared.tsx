@@ -1,6 +1,16 @@
+"use client";
+
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
-import { ChevronDown, ChevronUp, X } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface TradeModalShellProps {
   open: boolean;
@@ -28,13 +38,6 @@ export function TradeModalShell({
   const dragStartRef = useRef<{ x: number; y: number; offsetX: number; offsetY: number } | null>(
     null
   );
-
-  useEffect(() => {
-    if (open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setModalOffset({ x: 0, y: 0 });
-    }
-  }, [open]);
 
   useEffect(() => {
     if (!draggable) return;
@@ -75,24 +78,29 @@ export function TradeModalShell({
     document.body.style.cursor = "grabbing";
   };
 
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 animate-fade-in"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={labelledById}
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (isOpen) {
+          setModalOffset({ x: 0, y: 0 });
+        } else {
+          onClose();
+        }
+      }}
     >
-      <div style={{ transform: `translate(${modalOffset.x}px, ${modalOffset.y}px)` }}>
-        <div className="animate-scale-in relative w-full max-w-lg rounded-2xl bg-white shadow-xl">
-        <div
-          className={`flex items-start justify-between gap-3 border-b border-gray-200 px-6 py-4 ${
+      <DialogContent
+        showCloseButton
+        className="max-w-lg gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-lg"
+      >
+        <div style={draggable ? { transform: `translate(${modalOffset.x}px, ${modalOffset.y}px)` } : undefined}>
+        <DialogHeader
+          className={`border-b border-slate-200 px-6 py-4 text-left ${
             draggable ? "cursor-grab active:cursor-grabbing" : ""
           }`}
           onMouseDown={onDragStart}
         >
-          <div className="flex min-w-0 items-start gap-3">
+          <div className="flex min-w-0 items-start gap-3 pr-8">
             {headerIcon ? (
               <div
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white [&_svg]:h-5 [&_svg]:w-5"
@@ -101,26 +109,22 @@ export function TradeModalShell({
                 {headerIcon}
               </div>
             ) : null}
-            <div className="min-w-0 pt-0.5">
-              <h2 id={labelledById} className="text-base font-semibold text-gray-900">
+            <div className="min-w-0">
+              <DialogTitle id={labelledById} className="text-base font-semibold text-slate-900">
                 {title}
-              </h2>
-              {subtitle ? <p className="mt-1 text-sm text-gray-500">{subtitle}</p> : null}
+              </DialogTitle>
+              {subtitle ? (
+                <DialogDescription className="mt-1 text-sm text-slate-500">
+                  {subtitle}
+                </DialogDescription>
+              ) : null}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-            aria-label="Close"
-          >
-            <X className={iconSm} strokeWidth={iconStroke} aria-hidden />
-          </button>
-        </div>
+        </DialogHeader>
         {children}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -173,28 +177,23 @@ export function ModalActionButtons({
   submitTone?: "dark" | "blue";
   submitDisabled?: boolean;
 }) {
-  const submitClass =
-    submitTone === "blue"
-      ? "rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-      : "rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-60";
   return (
     <div className="mt-6 flex justify-end gap-3">
-      <button
-        type="button"
-        onClick={onCancel}
-        disabled={isSubmitting}
-        className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-      >
+      <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
         Cancel
-      </button>
-      <button
+      </Button>
+      <Button
         type={onSubmit ? "button" : "submit"}
         onClick={onSubmit}
         disabled={isSubmitting || submitDisabled}
-        className={submitClass}
+        className={
+          submitTone === "blue"
+            ? "bg-blue-600 text-white hover:bg-blue-700"
+            : undefined
+        }
       >
         {isSubmitting ? submittingLabel : submitLabel}
-      </button>
+      </Button>
     </div>
   );
 }

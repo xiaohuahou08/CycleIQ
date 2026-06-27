@@ -77,41 +77,41 @@ export default function ExpireTradeModal({
       onClose={onClose}
       labelledById="expire-trade-title"
     >
-      <p className="px-6 pt-4 text-sm text-gray-500">
+      <p className="px-6 pt-4 text-sm text-slate-500">
         Record that this option expired worthless and premium was kept.
       </p>
       
         <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
-          <div className="rounded-xl border border-gray-200 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+          <div className="rounded-xl border border-slate-200 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
               Position
             </p>
             <div className="mt-2 flex items-center gap-3">
-              <span className="text-2xl font-semibold text-gray-900">{trade.ticker}</span>
+              <span className="text-2xl font-semibold text-slate-900">{trade.ticker}</span>
               <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
                 {strategyLabel}
               </span>
             </div>
             <div className="mt-4 grid grid-cols-3 gap-3">
-              <div className="rounded-xl border border-gray-200 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+              <div className="rounded-xl border border-slate-200 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                   Strike
                 </p>
-                <p className="mt-1 text-lg font-semibold text-gray-900">
+                <p className="mt-1 text-lg font-semibold text-slate-900">
                   ${trade.strike.toFixed(2)}
                 </p>
               </div>
-              <div className="rounded-xl border border-gray-200 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+              <div className="rounded-xl border border-slate-200 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                   Contracts
                 </p>
-                <p className="mt-1 text-lg font-semibold text-gray-900">{trade.contracts}</p>
+                <p className="mt-1 text-lg font-semibold text-slate-900">{trade.contracts}</p>
               </div>
-              <div className="rounded-xl border border-gray-200 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+              <div className="rounded-xl border border-slate-200 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                   Shares
                 </p>
-                <p className="mt-1 text-lg font-semibold text-gray-900">{shares}</p>
+                <p className="mt-1 text-lg font-semibold text-slate-900">{shares}</p>
               </div>
             </div>
           </div>
@@ -119,7 +119,7 @@ export default function ExpireTradeModal({
           <div className="mt-5">
             <label
               htmlFor="expire_action_date"
-              className="mb-1 block text-sm font-medium text-gray-700"
+              className="mb-1 block text-sm font-medium text-slate-700"
             >
               Action Date
             </label>
@@ -128,7 +128,7 @@ export default function ExpireTradeModal({
               type="date"
               value={actionDate}
               onChange={(e) => setActionDate(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-700 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-700 focus:outline-none"
             />
           </div>
 
@@ -148,10 +148,10 @@ export default function ExpireTradeModal({
 
                 <div className="mt-3">
                   <div className="flex items-center justify-between">
-                    <label htmlFor="expire_fees" className="text-sm font-medium text-gray-700">
+                    <label htmlFor="expire_fees" className="text-sm font-medium text-slate-700">
                       Fees
                     </label>
-                    <span className="text-sm text-gray-500">optional</span>
+                    <span className="text-sm text-slate-500">optional</span>
                   </div>
                   <input
                     id="expire_fees"
@@ -161,16 +161,16 @@ export default function ExpireTradeModal({
                     value={fees}
                     onChange={(e) => setFees(e.target.value)}
                     placeholder="$ 0.00"
-                    className="mt-2 w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-purple-400 focus:outline-none"
+                    className="mt-2 w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-purple-400 focus:outline-none"
                   />
                 </div>
 
                 <div className="mt-4">
                   <div className="flex items-center justify-between">
-                    <label htmlFor="expire_notes" className="text-sm font-medium text-gray-700">
+                    <label htmlFor="expire_notes" className="text-sm font-medium text-slate-700">
                       Notes
                     </label>
-                    <span className="text-sm text-gray-500">optional</span>
+                    <span className="text-sm text-slate-500">optional</span>
                   </div>
                   <textarea
                     id="expire_notes"
@@ -178,7 +178,7 @@ export default function ExpireTradeModal({
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Add optional notes about this lifecycle event..."
-                    className="mt-2 w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-purple-400 focus:outline-none"
+                    className="mt-2 w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-purple-400 focus:outline-none"
                   />
                 </div>
               </OptionalFieldsCard>

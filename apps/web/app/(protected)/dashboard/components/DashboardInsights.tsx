@@ -4,6 +4,9 @@ import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from "
 import { createPortal } from "react-dom";
 import { Info } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
+import { CARD_BASE, KPI_ACCENT, profitLossClass } from "@/app/components/ui/styles";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import type {
   CapitalTrendCharts,
   DashboardInsights as DashboardInsightsData,
@@ -125,7 +128,7 @@ function BarChartCard({
   const max = Math.max(1, ...points.map((p) => p.value));
   const recentPoints = points.slice(-6);
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className={`${CARD_BASE} p-5`}>
       <p className="mb-4 text-sm font-semibold text-slate-800">{title}</p>
       <div className="flex h-40 items-end gap-2">
         {points.length === 0 ? (
@@ -137,7 +140,7 @@ function BarChartCard({
               <div key={p.label} className="flex min-w-0 flex-1 flex-col items-center gap-1">
                 <span className="text-[10px] font-semibold text-slate-600">{fmtCurrency(p.value)}</span>
                 <div
-                  className={`animate-bar-grow w-full rounded-md ${gradient}`}
+                  className={`animate-bar-grow w-full rounded-md transition-[filter] duration-150 hover:brightness-110 ${gradient}`}
                   style={{ height: `${height}px`, animationDelay: `${i * 60}ms` }}
                   title={`${p.label}: ${fmtCurrency(p.value)}`}
                 />
@@ -344,7 +347,7 @@ function CapitalTrendChart({
       : "Trailing 12 months, snapshot at each week/month end.";
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className={`${CARD_BASE} p-5`}>
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <p className="text-sm font-semibold text-slate-800">Total Capital Trend</p>
@@ -406,6 +409,14 @@ function LineChartCard({
 }) {
   const gradientId = useId().replace(/:/g, "");
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const linePathRef = useRef<SVGPathElement>(null);
+  const [lineLength, setLineLength] = useState(1000);
+
+  useLayoutEffect(() => {
+    if (linePathRef.current) {
+      setLineLength(linePathRef.current.getTotalLength());
+    }
+  }, [points]);
 
   const width = 640;
   const height = embedded ? 220 : 168;
@@ -523,12 +534,16 @@ function LineChartCard({
             )}
             <path d={areaPath} fill={`url(#${gradientId})`} />
             <path
+              ref={linePathRef}
               d={linePath}
               fill="none"
               stroke={stroke}
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
+              strokeDasharray={lineLength}
+              style={{ "--line-length": lineLength } as React.CSSProperties}
+              className="animate-line-draw"
             />
             {coords.map((c, i) => (
               <g key={`${c.label}-${i}`}>
@@ -546,6 +561,7 @@ function LineChartCard({
                   fill="#fff"
                   stroke={stroke}
                   strokeWidth="2"
+                  className="transition-[r] duration-150"
                 />
               </g>
             ))}
@@ -575,7 +591,7 @@ function LineChartCard({
   if (embedded) return chartBody;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className={`${CARD_BASE} p-5`}>
       {title && <p className="mb-4 text-sm font-semibold text-slate-800">{title}</p>}
       {chartBody}
     </div>
@@ -598,19 +614,19 @@ function StatCard({
   valueClassName?: string;
 }) {
   return (
-    <div className="card-hover-lift relative overflow-visible rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <Card className="card-hover-lift relative overflow-visible gap-0 rounded-2xl py-0 ring-1 ring-slate-900/[0.04]">
       <div className={`absolute left-0 top-0 h-1 w-full rounded-t-2xl ${accent}`} />
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-2 p-4">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-medium text-slate-400">{label}</p>
-          <p className={`mt-2 text-2xl font-bold tabular-nums ${valueClassName ?? "text-slate-800"}`}>
+          <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
+          <p className={`animate-count-up mt-2 text-2xl font-bold tabular-nums ${valueClassName ?? "text-slate-800"}`}>
             {value}
           </p>
           <p className="mt-1 text-xs text-slate-500">{sub}</p>
         </div>
         {tip && <StatCardHelp tip={tip} />}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -635,15 +651,15 @@ export default function DashboardInsights({
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 9 }).map((_, i) => (
-            <div key={i} className="skeleton h-28 rounded-2xl border border-slate-200" />
+            <Skeleton key={i} className="h-28 rounded-2xl" />
           ))}
         </div>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="skeleton h-56 rounded-2xl border border-slate-200" />
+            <Skeleton key={i} className="h-56 rounded-2xl" />
           ))}
         </div>
-        <div className="skeleton h-56 rounded-2xl border border-slate-200" />
+        <Skeleton className="h-56 rounded-2xl" />
       </div>
     );
   }
@@ -657,43 +673,44 @@ export default function DashboardInsights({
           value={fmtCurrency(totalCapital)}
           sub={`${fmtCurrency(capitalInvested)} deployed (${capitalUtilPct.toFixed(0)}%) · budget ${fmtCurrency(capitalBudget)} + P&L`}
           tip="Total capital = starting budget + cumulative realized P&L (profits add, losses subtract). Deployed = open CSP + stock held. New trades cannot push deployed capital above total capital."
-          accent={overBudget ? "bg-red-400" : "bg-emerald-400"}
-          valueClassName={overBudget ? "text-red-600" : "text-slate-800"}
+          accent={overBudget ? KPI_ACCENT.loss : KPI_ACCENT.capital}
+          valueClassName={overBudget ? "text-loss" : "text-slate-800"}
         />
         <StatCard
           label="Total Premium"
           value={fmtCurrency(kpis?.total_premium ?? 0)}
           sub="Gross premium, all legs"
           tip="Sum of premium × contracts × 100 for every trade (includes open, rolled, and bought-back legs). Not net cash after fees or buybacks."
-          accent="bg-emerald-400"
+          accent={KPI_ACCENT.premium}
         />
         <StatCard
           label="Realized P&L"
           value={fmtCurrency(kpis?.realized_pnl ?? 0)}
           sub="Option cashflow + stock sales"
           tip="Net option cashflow (premium − fees − buyback) on CLOSED, EXPIRED, ROLLED, CALLED_AWAY, and ASSIGNED legs, plus stock P&L when CC shares are called away (strike − assignment basis)."
-          accent="bg-emerald-400"
+          accent={KPI_ACCENT.profit}
+          valueClassName={profitLossClass(kpis?.realized_pnl ?? 0)}
         />
         <StatCard
           label="Yearly Income"
           value={fmtCurrency(kpis?.yearly_income ?? 0)}
           sub={`${fmtCurrency(kpis?.daily_avg_income ?? 0)} / day`}
           tip="Projection only: (total gross premium ÷ days since first trade) × 365. Not realized income; ignores fees, buybacks, and assignment timing."
-          accent="bg-emerald-400"
+          accent={KPI_ACCENT.premium}
         />
         <StatCard
           label="Open Premium Ann. Yield"
           value={fmtPercent(kpis?.open_premium_annualized_yield ?? kpis?.avg_annual_roi ?? 0)}
           sub="Based on open premium and capital"
           tip="(sum of open-leg gross premium ÷ total capital invested) × (365 ÷ simple average DTE of open legs). Uses unweighted DTE, not the premium-weighted DTE on the card below."
-          accent="bg-blue-400"
+          accent={KPI_ACCENT.ratio}
         />
         <StatCard
           label="Realized Annual ROI"
           value={fmtPercent(kpis?.realized_annual_roi ?? 0)}
           sub="Annualized · simple avg hold"
           tip="(realized P&L ÷ capital at risk on realized legs) × (365 ÷ simple average holding days). Annualized projection using unweighted average hold time."
-          accent="bg-blue-400"
+          accent={KPI_ACCENT.ratio}
         />
         <StatCard
           label="Period Return"
@@ -704,21 +721,21 @@ export default function DashboardInsights({
               : `Realized ${fmtCurrency(kpis?.realized_pnl ?? 0)} · TWR ${fmtPercent(kpis?.time_weighted_return_pct ?? 0)}`
           }
           tip="Main value = return on starting capital for the period: (end − start − net deposits) ÷ start. Subtitle shows dollars earned (realized P&L) and time-weighted return (TWR), which adjusts for deposit/withdrawal timing. When large flows make TWR unreliable, focus on realized $ and period return %."
-          accent={kpis?.time_weighted_return_unreliable ? "bg-amber-400" : "bg-blue-400"}
+          accent={kpis?.time_weighted_return_unreliable ? KPI_ACCENT.warning : KPI_ACCENT.ratio}
         />
         <StatCard
           label="Win Rate"
           value={fmtPercent(kpis?.win_rate ?? 0)}
           sub="Based on strategy outcomes"
           tip="Wins ÷ terminal legs (CLOSED, EXPIRED, ASSIGNED, CALLED_AWAY). Win = OTM expire, called away, or CLOSED with positive net cashflow. ASSIGNED CSP counts in the denominator but not as a win."
-          accent="bg-blue-400"
+          accent={KPI_ACCENT.ratio}
         />
         <StatCard
           label="Active Trades"
           value={String(kpis?.active_trades ?? 0)}
           sub="OPEN, expiry not passed"
           tip="Count of OPEN legs with expiry on or after today (same as Trades → Today filter)."
-          accent="bg-violet-400"
+          accent={KPI_ACCENT.count}
         />
         <StatCard
           label="Avg Premium / Weighted DTE"
@@ -729,7 +746,7 @@ export default function DashboardInsights({
               : "No open positions"
           }
           tip="Weighted open DTE = Σ(premium × DTE) ÷ Σ(premium). Avg premium/day = open premium ÷ weighted open DTE."
-          accent="bg-violet-400"
+          accent={KPI_ACCENT.count}
         />
       </div>
 

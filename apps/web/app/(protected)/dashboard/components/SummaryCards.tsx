@@ -1,4 +1,5 @@
 import type { MetricsSummary } from "@/lib/api/trades";
+import { CARD_BASE } from "@/app/components/ui/styles";
 
 function fmt(value: number, style: "currency" | "percent"): string {
   if (style === "currency") {
@@ -19,10 +20,10 @@ interface CardProps {
 
 function Card({ label, value, sub }: CardProps) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-gray-900">{value}</p>
-      <p className="mt-1 text-xs text-gray-500">{sub}</p>
+    <div className={`${CARD_BASE} p-5`}>
+      <p className="text-xs text-slate-500">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-slate-900">{value}</p>
+      <p className="mt-1 text-xs text-slate-500">{sub}</p>
     </div>
   );
 }
@@ -39,7 +40,7 @@ export default function SummaryCards({ summary, loading }: SummaryCardsProps) {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="skeleton h-28 rounded-2xl border border-gray-200"
+            className="skeleton h-28 rounded-2xl border border-slate-200"
           />
         ))}
       </div>
@@ -49,22 +50,22 @@ export default function SummaryCards({ summary, loading }: SummaryCardsProps) {
   const cards: CardProps[] = [
     {
       label: "Total Premium",
-      value: summary ? fmt(summary.total_premium, "currency") : "—",
+      value: summary ? fmt(summary.total_premium, "currency") : "?",
       sub: "All time",
     },
     {
       label: "Annualized Return",
-      value: summary ? fmt(summary.annualized_return, "percent") : "—",
+      value: summary ? fmt(summary.annualized_return, "percent") : "?",
       sub: "Capital deployed",
     },
     {
       label: "Active Positions",
-      value: summary ? String(summary.active_positions) : "—",
+      value: summary ? String(summary.active_positions) : "?",
       sub: "CSP + CC",
     },
     {
       label: "Win Rate",
-      value: summary ? fmt(summary.win_rate, "percent") : "—",
+      value: summary ? fmt(summary.win_rate, "percent") : "?",
       sub: "Expired OTM",
     },
   ];

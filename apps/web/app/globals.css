@@ -1,15 +1,65 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
 
   /* Design tokens */
   --page-bg: #f8fafc;
+  --page-bg-end: #f1f5f9;
   --sidebar-bg: #0f172a;
-  --accent: #10b981;
+  --accent: #ecfdf5;
+  --accent-light: #ecfdf5;
+  --accent-muted: #34d399;
+  --accent-foreground: #059669;
   --surface: #ffffff;
-  --border: #e2e8f0;
+  --border: oklch(0.922 0 0);
+
+  /* Semantic colors */
+  --primary: #0f172a;
+  --primary-hover: #1e293b;
+  --profit: #059669;
+  --profit-bg: #ecfdf5;
+  --loss: #dc2626;
+  --loss-bg: #fef2f2;
+  --warning: #d97706;
+  --warning-bg: #fffbeb;
+  --text-muted: #64748b;
+  --muted-bg: #f1f5f9;
+
+  /* Chart accent colors */
+  --chart-blue: #60a5fa;
+  --chart-violet: #a78bfa;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: var(--text-muted);
+  --destructive: oklch(0.577 0.245 27.325);
+  --input: oklch(0.922 0 0);
+  --ring: #10b981;
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
 @theme inline {
@@ -18,8 +68,22 @@
   --color-page-bg: var(--page-bg);
   --color-sidebar: var(--sidebar-bg);
   --color-accent: var(--accent);
+  --color-accent-light: var(--accent-light);
+  --color-accent-muted: var(--accent-muted);
   --color-surface: var(--surface);
   --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-profit: var(--profit);
+  --color-profit-bg: var(--profit-bg);
+  --color-loss: var(--loss);
+  --color-loss-bg: var(--loss-bg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-text-muted: var(--text-muted);
+  --color-muted-bg: var(--muted-bg);
+  --color-chart-blue: var(--chart-blue);
+  --color-chart-violet: var(--chart-violet);
 
   /* Typography — Inter for body/UI, Space Grotesk for display headings */
   --font-sans:
@@ -28,11 +92,41 @@
   --font-display:
     var(--font-display-grotesk), var(--font-sans-inter), ui-sans-serif,
     system-ui, sans-serif;
+  --font-heading: var(--font-display);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
   font-family: var(--font-sans);
   font-feature-settings: "cv11", "ss01";
   font-optical-sizing: auto;
@@ -48,6 +142,11 @@ h5,
 h6 {
   font-family: var(--font-display);
   letter-spacing: -0.02em;
+}
+
+/* App page background gradient */
+.app-page-bg {
+  background: linear-gradient(to bottom, var(--page-bg), color-mix(in srgb, var(--page-bg-end) 80%, transparent));
 }
 
 /* Native date inputs in modals — light chrome aligned with app tokens */
@@ -103,6 +202,17 @@ input[type="date"].date-input:focus::-webkit-calendar-picker-indicator {
   }
 }
 
+@keyframes scale-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+}
+
 @keyframes bar-grow {
   from {
     transform: scaleY(0);
@@ -118,6 +228,57 @@ input[type="date"].date-input:focus::-webkit-calendar-picker-indicator {
   }
 }
 
+@keyframes count-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes line-draw {
+  from {
+    stroke-dashoffset: var(--line-length, 1000);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pill-pop {
+  from {
+    transform: scale(0.95);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .animate-page-enter {
   animation: fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -130,9 +291,33 @@ input[type="date"].date-input:focus::-webkit-calendar-picker-indicator {
   animation: scale-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.animate-scale-out {
+  animation: scale-out 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 .animate-bar-grow {
   transform-origin: bottom;
   animation: bar-grow 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-count-up {
+  animation: count-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-line-draw {
+  animation: line-draw 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-pill-pop {
+  animation: pill-pop 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-row-enter {
+  animation: row-enter 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-stagger-fade-up > * {
@@ -147,6 +332,17 @@ input[type="date"].date-input:focus::-webkit-calendar-picker-indicator {
 .animate-stagger-fade-up > *:nth-child(6) { animation-delay: 225ms; }
 .animate-stagger-fade-up > *:nth-child(7) { animation-delay: 270ms; }
 .animate-stagger-fade-up > *:nth-child(8) { animation-delay: 315ms; }
+
+.animate-stagger-rows > * {
+  animation: row-enter 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-stagger-rows > *:nth-child(1) { animation-delay: 0ms; }
+.animate-stagger-rows > *:nth-child(2) { animation-delay: 30ms; }
+.animate-stagger-rows > *:nth-child(3) { animation-delay: 60ms; }
+.animate-stagger-rows > *:nth-child(4) { animation-delay: 90ms; }
+.animate-stagger-rows > *:nth-child(5) { animation-delay: 120ms; }
+.animate-stagger-rows > *:nth-child(6) { animation-delay: 150ms; }
 
 .card-hover-lift {
   transition:
@@ -194,10 +390,17 @@ input[type="date"].date-input:focus::-webkit-calendar-picker-indicator {
   .animate-page-enter,
   .animate-fade-in,
   .animate-scale-in,
+  .animate-scale-out,
   .animate-bar-grow,
-    .animate-stagger-fade-up > *,
-    .loading-spinner,
-    .skeleton {
+  .animate-count-up,
+  .animate-line-draw,
+  .animate-slide-in-right,
+  .animate-pill-pop,
+  .animate-row-enter,
+  .animate-stagger-fade-up > *,
+  .animate-stagger-rows > *,
+  .loading-spinner,
+  .skeleton {
     animation: none !important;
   }
 
@@ -205,5 +408,51 @@ input[type="date"].date-input:focus::-webkit-calendar-picker-indicator {
   .card-hover-lift:hover {
     transform: none;
     transition: none;
+  }
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
   }
 }

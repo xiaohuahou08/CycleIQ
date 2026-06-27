@@ -7,6 +7,7 @@ import {
   type DashboardInsights as DashboardInsightsData,
   type Trade,
 } from "@/lib/api/trades";
+import PageHeader from "@/app/components/PageHeader";
 import { useProtectedAuth } from "../auth-context";
 import ActivePositionsTable from "./components/ActivePositionsTable";
 import DashboardInsights from "./components/DashboardInsights";
@@ -54,8 +55,24 @@ export default function DashboardPage() {
 
   return (
     <>
-      <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-slate-50 px-4 py-4 sm:px-6 sm:py-6">
+      <main className="animate-page-enter flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
         <div className="w-full space-y-6">
+          <PageHeader
+            title="Dashboard"
+            description="Your wheel strategy at a glance"
+            actions={
+              token ? (
+                <button
+                  type="button"
+                  onClick={() => void loadData(token)}
+                  disabled={tradesLoading}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
+                >
+                  {tradesLoading ? "Refreshing…" : "Refresh"}
+                </button>
+              ) : null
+            }
+          />
           {loadError ? (
             <div
               role="alert"

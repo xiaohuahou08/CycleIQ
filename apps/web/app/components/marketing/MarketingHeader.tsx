@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { CycleIQMark } from "@/app/components/icons";
 import { SITE_NAME } from "@/lib/seo/site";
-import { BTN_PRIMARY, marketingNavLinkClass, type MarketingPage } from "./styles";
+import { Button } from "@/components/ui/button";
+import { marketingNavLinkClass, type MarketingPage } from "./styles";
 
 interface MarketingHeaderProps {
   activePage?: MarketingPage;
@@ -31,10 +32,10 @@ export default function MarketingHeader({ activePage }: MarketingHeaderProps) {
           </div>
         </nav>
 
-        <Link href="/login" className={`${BTN_PRIMARY} justify-self-end`}>
+        <Button render={<Link href="/login" />} className="justify-self-end" size="lg">
           <span className="hidden sm:inline">Sign in / Register</span>
           <span className="sm:hidden">Sign in</span>
-        </Link>
+        </Button>
       </div>
     </header>
   );

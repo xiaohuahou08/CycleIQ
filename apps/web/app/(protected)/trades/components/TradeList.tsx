@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronUp, ChevronsUpDown, MoreHorizontal } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
+import { STATUS_COLORS } from "@/app/components/ui/styles";
+import { Button } from "@/components/ui/button";
 import type { Trade, TradeStatus } from "@/lib/api/trades";
 
 interface TradeRowProps {
@@ -25,15 +27,16 @@ interface TradeListProps {
     action: "buy_to_close" | "expire" | "assign" | "roll"
   ) => void;
   statusFilter?: string;
+  onAddTrade?: () => void;
 }
 
 const STATUS_STYLES: Record<TradeStatus, string> = {
-  OPEN: "bg-amber-50 text-amber-800 ring-amber-100",
-  CLOSED: "bg-emerald-50 text-emerald-800 ring-emerald-100",
-  EXPIRED: "bg-slate-200/70 text-slate-800 ring-slate-200",
-  ASSIGNED: "bg-orange-50 text-orange-800 ring-orange-100",
-  CALLED_AWAY: "bg-red-50 text-red-800 ring-red-100",
-  ROLLED: "bg-blue-50 text-blue-800 ring-blue-100",
+  OPEN: STATUS_COLORS.OPEN,
+  CLOSED: STATUS_COLORS.CLOSED,
+  EXPIRED: STATUS_COLORS.EXPIRED,
+  ASSIGNED: STATUS_COLORS.ASSIGNED,
+  CALLED_AWAY: STATUS_COLORS.CALLED_AWAY,
+  ROLLED: STATUS_COLORS.ROLLED,
 };
 
 const LOGO_URL_BUILDERS = [
@@ -78,7 +81,7 @@ function fmtExpirationRibbon(iso: string): { label: string; accent: boolean } {
 }
 
 function holdingDays(trade: Trade): number {
-  // For closed/expired/assigned trades: actual days held (open → end date).
+  // For closed/expired/assigned trades: actual days held (open ? end date).
   const endIso =
     trade.closed_at ??
     trade.expired_at ??
@@ -93,8 +96,8 @@ function holdingDays(trade: Trade): number {
     return Math.max(1, Math.round((close - open) / (1000 * 60 * 60 * 24)));
   }
 
-  // Still OPEN: use full planned duration (trade_date → expiry).
-  // This keeps the annualized ROI stable — it won't inflate as DTE shrinks.
+  // Still OPEN: use full planned duration (trade_date ? expiry).
+  // This keeps the annualized ROI stable ? it won't inflate as DTE shrinks.
   const open = parseDateLike(trade.trade_date).getTime();
   const expiry = parseDateLike(trade.expiry).getTime();
   return Math.max(1, Math.round((expiry - open) / (1000 * 60 * 60 * 24)));
@@ -107,8 +110,8 @@ function annualizedRoiPct(trade: Trade): number | null {
   const net = gross - fee;
 
   // Capital at risk:
-  // • CSP (PUT)  → full strike notional (cash-secured)
-  // • CC  (CALL) → stock cost basis per share when available, else strike
+  // ? CSP (PUT)  ? full strike notional (cash-secured)
+  // ? CC  (CALL) ? stock cost basis per share when available, else strike
   const pricePerShare =
     trade.option_type === "CALL" && trade.stock_cost_basis_per_share != null
       ? trade.stock_cost_basis_per_share
@@ -122,8 +125,8 @@ function annualizedRoiPct(trade: Trade): number | null {
 
 function fmtRoi(trade: Trade): string {
   const r = annualizedRoiPct(trade);
-  if (r == null || !Number.isFinite(r)) return "—";
-  const sign = r < 0 ? "−" : "";
+  if (r == null || !Number.isFinite(r)) return "?";
+  const sign = r < 0 ? "?" : "";
   return `${sign}${Math.abs(r).toFixed(1)}%`;
 }
 
@@ -147,7 +150,7 @@ function fmtStockCostPerShare(trade: Trade): string {
       maximumFractionDigits: 4,
     })}`;
   }
-  return "—";
+  return "?";
 }
 
 function computeMoneyness(
@@ -206,7 +209,7 @@ function formatWeekLabel(weekKey: string): string {
       day: "numeric",
       ...(withYear ? { year: "numeric" } : {}),
     }).format(date);
-  return `Week of ${fmt(monday)} – ${fmt(friday, true)}`;
+  return `Week of ${fmt(monday)} ? ${fmt(friday, true)}`;
 }
 
 function fmtStatusLabel(status: TradeStatus): string {
@@ -367,7 +370,7 @@ function TradeRow({
   return (
     <>
       <tr
-        className={`border-b border-slate-200/80 text-base text-slate-900 transition-colors hover:bg-slate-50 ${
+        className={`border-b border-slate-200/80 text-base text-slate-900 transition-colors hover:bg-emerald-50/40 ${
           rowTint ? "bg-orange-50/35 hover:bg-orange-50/50" : "bg-white"
         }`}
       >
@@ -391,7 +394,7 @@ function TradeRow({
         <td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-slate-800">
           {price != null
             ? `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-            : <span className="text-slate-500">—</span>}
+            : <span className="text-slate-500">?</span>}
         </td>
         <td className="whitespace-nowrap px-5 py-3.5 text-sm">
           {trade.status === "OPEN" && price != null ? (() => {
@@ -406,7 +409,7 @@ function TradeRow({
                 </span>
               </span>
             );
-          })() : <span className="text-slate-500">—</span>}
+          })() : <span className="text-slate-500">?</span>}
         </td>
         <td
           className={`whitespace-nowrap px-5 py-3.5 tabular-nums text-base ${
@@ -416,7 +419,7 @@ function TradeRow({
           {exp.label}
         </td>
         <td className="whitespace-nowrap px-5 py-3.5 tabular-nums font-medium text-slate-800">
-          {trade.status === "OPEN" ? getDte(trade.expiry) : <span className="font-normal text-slate-500">—</span>}
+          {trade.status === "OPEN" ? getDte(trade.expiry) : <span className="font-normal text-slate-500">?</span>}
         </td>
         <td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-base font-semibold text-emerald-700">
           {fmtPremiumTotal(trade)}
@@ -427,7 +430,7 @@ function TradeRow({
               {fmtStockCostPerShare(trade)}
             </span>
           ) : (
-            <span className="text-slate-500">—</span>
+            <span className="text-slate-500">?</span>
           )}
         </td>
         <td className="whitespace-nowrap px-5 py-3.5">
@@ -467,7 +470,7 @@ function TradeRow({
           {menuOpen && menuPos && (
             <div
               ref={menuRef}
-              className="fixed z-[100] w-36 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 text-left text-[13px] shadow-xl"
+              className="fixed z-[100] w-36 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-left text-[13px] shadow-xl"
               style={{ top: menuPos.top, left: menuPos.left }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -477,7 +480,7 @@ function TradeRow({
                   setMenuOpen(false);
                   onEdit();
                 }}
-                className="block w-full px-3 py-2 text-left hover:bg-gray-50"
+                className="block w-full px-3 py-2 text-left hover:bg-slate-50"
               >
                 Edit
               </button>
@@ -491,7 +494,7 @@ function TradeRow({
                       setMenuOpen(false);
                       onAction("buy_to_close");
                     }}
-                    className="block w-full px-3 py-2 text-left hover:bg-gray-50"
+                    className="block w-full px-3 py-2 text-left hover:bg-slate-50"
                   >
                     Buy to Close
                   </button>
@@ -502,7 +505,7 @@ function TradeRow({
                         setMenuOpen(false);
                         onAction("expire");
                       }}
-                      className="block w-full px-3 py-2 text-left hover:bg-gray-50"
+                      className="block w-full px-3 py-2 text-left hover:bg-slate-50"
                     >
                       Expire
                     </button>
@@ -513,7 +516,7 @@ function TradeRow({
                       setMenuOpen(false);
                       onAction("assign");
                     }}
-                    className="block w-full px-3 py-2 text-left hover:bg-gray-50"
+                    className="block w-full px-3 py-2 text-left hover:bg-slate-50"
                   >
                     {trade.option_type === "CALL" ? "Call Away" : "Assign"}
                   </button>
@@ -523,7 +526,7 @@ function TradeRow({
                       setMenuOpen(false);
                       onAction("roll");
                     }}
-                    className="block w-full px-3 py-2 text-left hover:bg-gray-50"
+                    className="block w-full px-3 py-2 text-left hover:bg-slate-50"
                   >
                     Roll
                   </button>
@@ -535,12 +538,12 @@ function TradeRow({
                   onClick={() => setConfirmRolledDelete(true)}
                   className="block w-full px-3 py-2 text-left text-red-600 hover:bg-red-50"
                 >
-                  Delete…
+                  Delete?
                 </button>
               )}
               {trade.status === "ROLLED" && confirmRolledDelete && (
                 <div className="px-3 py-2">
-                  <p className="mb-2 text-[11px] leading-snug text-gray-500">
+                  <p className="mb-2 text-[11px] leading-snug text-slate-500">
                     This is a rolled trade. Deleting it will break the trade chain.
                   </p>
                   <button
@@ -557,7 +560,7 @@ function TradeRow({
                   <button
                     type="button"
                     onClick={() => setConfirmRolledDelete(false)}
-                    className="mt-1 block w-full rounded px-2 py-1.5 text-center text-[11px] text-gray-500 hover:bg-gray-50"
+                    className="mt-1 block w-full rounded px-2 py-1.5 text-center text-[11px] text-slate-500 hover:bg-slate-50"
                   >
                     Cancel
                   </button>
@@ -595,6 +598,7 @@ export default function TradeList({
   onEditTrade,
   onAction,
   statusFilter,
+  onAddTrade,
 }: TradeListProps) {
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "expiry",
@@ -683,11 +687,20 @@ export default function TradeList({
 
   if (trades.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-2 px-6 py-20 text-center">
+      <div className="animate-fade-in flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
         <p className="text-base font-semibold text-slate-900">No trades match your filters</p>
         <p className="max-w-sm text-sm text-slate-600">
           Try a wider date range, a different status tab, or add a new trade.
         </p>
+        {onAddTrade ? (
+          <Button
+            type="button"
+            onClick={onAddTrade}
+            className="mt-2 bg-emerald-600 text-white hover:bg-emerald-700"
+          >
+            Add your first trade
+          </Button>
+        ) : null}
       </div>
     );
   }
@@ -716,11 +729,11 @@ export default function TradeList({
           const list = groups[weekKey];
           const rowTint = wi % 2 === 1;
           return (
-            <tbody key={weekKey}>
+            <tbody key={weekKey} className={wi < 6 ? "animate-row-enter" : undefined} style={wi < 6 ? { animationDelay: `${wi * 30}ms` } : undefined}>
               <tr className="bg-slate-100">
                 <td
                   colSpan={13}
-                  className="border-y border-slate-200 border-l-[3px] border-l-emerald-600 px-5 py-2.5 text-sm font-semibold tracking-wide text-slate-800"
+                  className="sticky top-0 z-[5] border-y border-slate-200 border-l-[3px] border-l-emerald-600 bg-slate-100 px-5 py-2.5 text-sm font-semibold tracking-wide text-slate-800 backdrop-blur-sm"
                 >
                   {formatWeekLabel(weekKey)}
                 </td>

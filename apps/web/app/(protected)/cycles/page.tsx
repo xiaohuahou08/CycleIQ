@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { CircleDollarSign, Search } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
+import PageHeader from "@/app/components/PageHeader";
+import { BTN_ACCENT, PILL_ACTIVE, PILL_IDLE } from "@/app/components/ui/styles";
 import { listCycles, listTrades, type CycleSummary, type Trade } from "@/lib/api/trades";
 import {
   buildCcCostBasisRows,
@@ -48,9 +51,8 @@ function stateBadgeStyle(state: string): string {
 const SEARCH_INPUT_CLS =
   "h-9 w-full rounded-lg border border-slate-300 bg-white py-0 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/25";
 
-const PILL_ACTIVE = "bg-slate-900 text-white shadow-sm";
-const PILL_IDLE =
-  "border border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:text-slate-950";
+const PILL_ACTIVE_CLS = PILL_ACTIVE;
+const PILL_IDLE_CLS = PILL_IDLE;
 
 const STAT_LABEL = "text-xs font-medium text-slate-600";
 const STAT_VALUE = "mt-1 text-2xl font-semibold tabular-nums text-slate-900";
@@ -272,7 +274,13 @@ export default function CyclesPage() {
   if (isAuthLoading) return null;
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50/40">
+    <main className="animate-page-enter flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="shrink-0 border-b border-slate-200/80 bg-white px-4 pt-4 sm:px-6">
+        <PageHeader
+          title="Cycles"
+          description="Track wheel cycles and covered call cost basis"
+        />
+      </div>
       <div className="shrink-0 border-b border-slate-200/80 bg-white">
         <div className="flex flex-col gap-3 px-4 py-3.5 sm:px-6">
           <div className="flex flex-wrap items-center gap-3">
@@ -288,7 +296,7 @@ export default function CyclesPage() {
                   type="button"
                   onClick={() => setViewTab(key)}
                   className={`inline-flex h-9 items-center rounded-lg px-3.5 text-xs font-semibold uppercase tracking-wide transition ${
-                    viewTab === key ? PILL_ACTIVE : PILL_IDLE
+                    viewTab === key ? PILL_ACTIVE_CLS : PILL_IDLE_CLS
                   }`}
                 >
                   {label}
@@ -327,11 +335,14 @@ export default function CyclesPage() {
             ))}
           </div>
         ) : cycles.length === 0 ? (
-          <div className="mt-5 flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-16 text-center">
+          <div className="animate-fade-in mt-5 flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-300 bg-white py-16 text-center ring-1 ring-slate-900/[0.04]">
             <p className="text-base font-semibold text-slate-900">No cycles yet</p>
             <p className="max-w-sm text-sm text-slate-600">
-              Create trades to auto-link cycles.
+              Add trades to automatically link wheel cycles.
             </p>
+            <Link href="/trades" className={BTN_ACCENT}>
+              Go to Trades
+            </Link>
           </div>
         ) : viewTab === "CC_COST_BASIS" ? (
           <div className="mt-5 space-y-4">

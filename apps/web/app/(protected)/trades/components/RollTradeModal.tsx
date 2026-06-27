@@ -122,35 +122,35 @@ export default function RollTradeModal({
       labelledById="roll-trade-title"
     >
       <div className="max-h-[78vh] overflow-y-auto px-6 py-5">
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Current Position</p>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Current Position</p>
           <div className="mt-2 flex items-center gap-3">
-            <span className="text-3xl font-semibold text-gray-900">{trade.ticker}</span>
+            <span className="text-3xl font-semibold text-slate-900">{trade.ticker}</span>
             <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
               {trade.option_type === "PUT" ? "Cash Secured Put" : "Covered Call"}
             </span>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-3">
-            <div className="rounded-xl border border-gray-200 bg-white p-3 min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Strike</p>
-              <p className="mt-1 text-lg font-semibold text-gray-900 truncate">${trade.strike.toFixed(2)}</p>
+            <div className="rounded-xl border border-slate-200 bg-white p-3 min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Strike</p>
+              <p className="mt-1 text-lg font-semibold text-slate-900 truncate">${trade.strike.toFixed(2)}</p>
             </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-3 min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Premium</p>
+            <div className="rounded-xl border border-slate-200 bg-white p-3 min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Premium</p>
               <p className="mt-1 text-lg font-semibold text-emerald-600 truncate">
                 +${(trade.premium * trade.contracts * 100).toFixed(2)}
               </p>
             </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-3 min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Expires</p>
-              <p className="mt-1 text-sm font-semibold text-gray-900 truncate">{trade.expiry}</p>
+            <div className="rounded-xl border border-slate-200 bg-white p-3 min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Expires</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900 truncate">{trade.expiry}</p>
             </div>
           </div>
         </div>
 
         <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label htmlFor="roll_date" className="mb-1 block text-sm font-medium text-gray-700">
+            <label htmlFor="roll_date" className="mb-1 block text-sm font-medium text-slate-700">
               Roll Date
             </label>
             <input
@@ -158,11 +158,11 @@ export default function RollTradeModal({
               type="date"
               value={rollDate}
               onChange={(e) => setRollDate(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
             />
           </div>
           <div>
-            <label htmlFor="roll_expiry" className="mb-1 block text-sm font-medium text-gray-700">
+            <label htmlFor="roll_expiry" className="mb-1 block text-sm font-medium text-slate-700">
               New Expiration
             </label>
             <input
@@ -170,11 +170,11 @@ export default function RollTradeModal({
               type="date"
               value={newExpiry}
               onChange={(e) => setNewExpiry(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
             />
           </div>
           <div>
-            <label htmlFor="roll_strike" className="mb-1 block text-sm font-medium text-gray-700">
+            <label htmlFor="roll_strike" className="mb-1 block text-sm font-medium text-slate-700">
               New Strike Price
             </label>
             <input
@@ -184,11 +184,11 @@ export default function RollTradeModal({
               min="0"
               value={newStrike}
               onChange={(e) => setNewStrike(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
             />
           </div>
           <div>
-            <label htmlFor="roll_premium" className="mb-1 block text-sm font-medium text-gray-700">
+            <label htmlFor="roll_premium" className="mb-1 block text-sm font-medium text-slate-700">
               New Premium / Share
             </label>
             <input
@@ -198,14 +198,14 @@ export default function RollTradeModal({
               min="0"
               value={newPremium}
               onChange={(e) => setNewPremium(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
             />
-            <p className="mt-1 text-xs text-gray-500">Per share - auto-multiplied by contracts × 100</p>
+            <p className="mt-1 text-xs text-slate-500">Per share - auto-multiplied by contracts × 100</p>
           </div>
         </div>
 
         <div className="mt-4">
-          <label htmlFor="roll_buyback" className="mb-1 block text-sm font-medium text-gray-700">
+          <label htmlFor="roll_buyback" className="mb-1 block text-sm font-medium text-slate-700">
             Buyback Cost / Share
           </label>
           <input
@@ -215,14 +215,14 @@ export default function RollTradeModal({
             min="0"
             value={buybackCost}
             onChange={(e) => setBuybackCost(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
           />
-          <p className="mt-1 text-xs text-gray-500">Per share - cost to close original</p>
+          <p className="mt-1 text-xs text-slate-500">Per share - cost to close original</p>
         </div>
 
-        <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-          <p className="text-sm font-medium text-gray-700">Roll Type</p>
-          <p className="mt-1 text-sm text-gray-500">{rollTypeText}</p>
+        <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+          <p className="text-sm font-medium text-slate-700">Roll Type</p>
+          <p className="mt-1 text-sm text-slate-500">{rollTypeText}</p>
           <p className="mt-1 text-xs text-emerald-700">
             Net premium / share:{" "}
             {netPremiumPerShare != null
@@ -232,7 +232,7 @@ export default function RollTradeModal({
                 })}`
               : "-"}
           </p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-slate-500">
             Net premium total:{" "}
             {netPremiumPerShare != null
               ? `$${(netPremiumPerShare * shares).toLocaleString(undefined, {
@@ -258,10 +258,10 @@ export default function RollTradeModal({
               </p>
               <div className="mt-3">
                 <div className="flex items-center justify-between">
-                  <label htmlFor="roll_fees" className="text-sm font-medium text-gray-700">
+                  <label htmlFor="roll_fees" className="text-sm font-medium text-slate-700">
                     Fees
                   </label>
-                  <span className="text-sm text-gray-500">optional</span>
+                  <span className="text-sm text-slate-500">optional</span>
                 </div>
                 <input
                   id="roll_fees"
@@ -271,15 +271,15 @@ export default function RollTradeModal({
                   value={fees}
                   onChange={(e) => setFees(e.target.value)}
                   placeholder="$ 0.00"
-                  className="mt-2 w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-purple-400 focus:outline-none"
+                  className="mt-2 w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-purple-400 focus:outline-none"
                 />
               </div>
               <div className="mt-4">
                 <div className="flex items-center justify-between">
-                  <label htmlFor="roll_notes" className="text-sm font-medium text-gray-700">
+                  <label htmlFor="roll_notes" className="text-sm font-medium text-slate-700">
                     Notes
                   </label>
-                  <span className="text-sm text-gray-500">optional</span>
+                  <span className="text-sm text-slate-500">optional</span>
                 </div>
                 <textarea
                   id="roll_notes"
@@ -287,7 +287,7 @@ export default function RollTradeModal({
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Reason for rolling..."
-                  className="mt-2 w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-purple-400 focus:outline-none"
+                  className="mt-2 w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-purple-400 focus:outline-none"
                 />
               </div>
             </OptionalFieldsCard>

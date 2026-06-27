@@ -22,6 +22,8 @@ import ExpireTradeModal from "./components/ExpireTradeModal";
 import RollTradeModal from "./components/RollTradeModal";
 import { Clock } from "lucide-react";
 import { iconXs, iconStroke } from "@/app/components/icons";
+import PageHeader from "@/app/components/PageHeader";
+import { useToast } from "@/app/components/Toast";
 import { applyFilters, getClosedCycleIds } from "@/lib/trades/filters";
 import TradeFilters, { type FilterState } from "./components/TradeFilters";
 import TradeList from "./components/TradeList";
@@ -36,6 +38,7 @@ function todayIso(): string {
 
 export default function TradesPage() {
   const { token, isAuthLoading } = useProtectedAuth();
+  const { showToast } = useToast();
   const [allTrades, setAllTrades] = useState<Trade[]>([]);
   const [tradesLoading, setTradesLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -45,8 +48,6 @@ export default function TradesPage() {
   const [rollingTrade, setRollingTrade] = useState<Trade | null>(null);
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [pricesUpdatedAt, setPricesUpdatedAt] = useState<Date | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [planUsage, setPlanUsage] = useState<PlanUsage | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     type: "PUT",
@@ -78,12 +79,6 @@ export default function TradesPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refreshPlanUsage();
   }, [token]);
-
-  useEffect(() => {
-    if (!saveSuccess) return;
-    const timeout = window.setTimeout(() => setSaveSuccess(null), 3000);
-    return () => window.clearTimeout(timeout);
-  }, [saveSuccess]);
 
   const tickerSuggestions = useMemo(
     () =>
@@ -146,8 +141,6 @@ export default function TradesPage() {
 
   const onSaveTrade = async (input: CreateTradeInput) => {
     if (!token) return;
-    setSaveError(null);
-    setSaveSuccess(null);
     try {
       const created = await createTrade(token, input);
       setModalOpen(false);
@@ -160,10 +153,10 @@ export default function TradesPage() {
         type: created.option_type,
         status: created.status === "OPEN" ? "OPEN" : prev.status,
       }));
-      setSaveSuccess("Trade saved successfully.");
+      showToast("Trade saved successfully.", "success");
       await refreshPlanUsage();
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Failed to save trade.");
+      showToast(err instanceof Error ? err.message : "Failed to save trade.", "error");
     } finally {
       setTradesLoading(false);
     }
@@ -171,23 +164,20 @@ export default function TradesPage() {
 
   const onSaveEditedTrade = async (input: CreateTradeInput) => {
     if (!token || !editingTrade) return;
-    setSaveError(null);
-    setSaveSuccess(null);
     try {
       await updateTrade(token, editingTrade.id, input);
       const trades = await listTrades(token);
       setAllTrades(trades);
       setModalOpen(false);
       setEditingTrade(null);
-      setSaveSuccess("Trade updated successfully.");
+      showToast("Trade updated successfully.", "success");
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Failed to update trade.");
+      showToast(err instanceof Error ? err.message : "Failed to update trade.", "error");
     }
   };
 
   const onDeleteTrade = async (id: string) => {
     if (!token) return;
-    setSaveError(null);
     // Optimistic removal; restore the prior list if the request fails.
     const previous = allTrades;
     setAllTrades((prev) => prev.filter((t) => t.id !== id));
@@ -196,12 +186,11 @@ export default function TradesPage() {
       await refreshPlanUsage();
     } catch (err) {
       setAllTrades(previous);
-      setSaveError(err instanceof Error ? err.message : "Failed to delete trade.");
+      showToast(err instanceof Error ? err.message : "Failed to delete trade.", "error");
     }
   };
 
   const onEditTrade = (trade: Trade) => {
-    setSaveError(null);
     setEditingTrade(trade);
     setModalOpen(true);
   };
@@ -218,7 +207,7 @@ export default function TradesPage() {
           closed_at: todayIso(),
         });
         setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
-        setSaveSuccess("Trade closed successfully.");
+        showToast("Trade closed successfully.", "success");
         return;
       }
 
@@ -239,10 +228,11 @@ export default function TradesPage() {
 
       const updated = await updateTrade(token, trade.id, { status: "CLOSED" as TradeStatus });
       setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
-      setSaveSuccess("Trade updated successfully.");
+      showToast("Trade updated successfully.", "success");
     } catch (err) {
-      setSaveError(
-        err instanceof Error ? err.message : "Failed to apply trade action."
+      showToast(
+        err instanceof Error ? err.message : "Failed to apply trade action.",
+        "error"
       );
     }
   };
@@ -262,17 +252,7 @@ export default function TradesPage() {
   if (isAuthLoading) return null;
   return (
     <>
-      <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50/40">
-        {saveError && (
-          <div className="shrink-0 border-b border-red-200/80 bg-red-50 px-5 py-2.5 text-sm text-red-700">
-            {saveError}
-          </div>
-        )}
-        {saveSuccess && (
-          <div className="shrink-0 border-b border-emerald-200/80 bg-emerald-50 px-5 py-2.5 text-sm text-emerald-700">
-            {saveSuccess}
-          </div>
-        )}
+      <main className="animate-page-enter flex min-h-0 flex-1 flex-col overflow-hidden">
         {planUsage?.limit_reached && (
           <div className="shrink-0 border-b border-amber-200/80 bg-amber-50 px-5 py-2.5 text-sm text-amber-900">
             You&apos;ve used all {planUsage.trades_limit} trades for this month on the Basic
@@ -284,6 +264,13 @@ export default function TradesPage() {
           </div>
         )}
 
+        <div className="shrink-0 border-b border-slate-200/80 bg-white px-4 pt-4 sm:px-6">
+          <PageHeader
+            title="Trades"
+            description="Manage CSP and covered call positions"
+          />
+        </div>
+
         <TradeFilters
           embedded
           filters={filters}
@@ -294,8 +281,6 @@ export default function TradesPage() {
           addTradeDisabledReason={addTradeDisabledReason}
           onAddTrade={() => {
             if (addTradeDisabled) return;
-            setSaveError(null);
-            setSaveSuccess(null);
             setEditingTrade(null);
             setModalOpen(true);
           }}
@@ -310,6 +295,14 @@ export default function TradesPage() {
             onEditTrade={onEditTrade}
             onAction={onAction}
             statusFilter={filters.status}
+            onAddTrade={
+              addTradeDisabled
+                ? undefined
+                : () => {
+                    setEditingTrade(null);
+                    setModalOpen(true);
+                  }
+            }
           />
         </div>
 
@@ -360,7 +353,6 @@ export default function TradesPage() {
         onClose={() => setAssigningTrade(null)}
         onConfirm={async (input) => {
           if (!token || !assigningTrade) return;
-          setSaveError(null);
           try {
             if (assigningTrade.cycle_id) {
               await postCycleTransition(token, assigningTrade.cycle_id, {
@@ -397,13 +389,14 @@ export default function TradesPage() {
               prev.map((t) => (t.id === assigningTrade.id ? updated : t))
             );
             setAssigningTrade(null);
-            setSaveSuccess(
+            showToast(
               assigningTrade.option_type === "CALL"
                 ? "Position marked called away successfully."
-                : "Trade assigned successfully."
+                : "Trade assigned successfully.",
+              "success"
             );
           } catch (err) {
-            setSaveError(err instanceof Error ? err.message : "Failed to assign trade.");
+            showToast(err instanceof Error ? err.message : "Failed to assign trade.", "error");
             throw err;
           }
         }}
@@ -415,7 +408,6 @@ export default function TradesPage() {
         onClose={() => setRollingTrade(null)}
         onConfirm={async (input) => {
           if (!token || !rollingTrade) return;
-          setSaveError(null);
           try {
             const netPremiumPerShare = input.new_premium_per_share - input.buyback_cost_per_share;
 
@@ -478,10 +470,10 @@ export default function TradesPage() {
               newLeg,
             ]);
             setRollingTrade(null);
-            setSaveSuccess("Trade rolled successfully. New leg added as OPEN position.");
+            showToast("Trade rolled successfully. New leg added as OPEN position.", "success");
             await refreshPlanUsage();
           } catch (err) {
-            setSaveError(err instanceof Error ? err.message : "Failed to roll trade.");
+            showToast(err instanceof Error ? err.message : "Failed to roll trade.", "error");
             throw err;
           }
         }}
@@ -493,7 +485,6 @@ export default function TradesPage() {
         onClose={() => setExpiringTrade(null)}
         onConfirm={async (input) => {
           if (!token || !expiringTrade) return;
-          setSaveError(null);
           try {
             const updated = await expireTrade(token, expiringTrade.id, {
               expired_at: input.expired_at,
@@ -518,9 +509,9 @@ export default function TradesPage() {
             }
 
             setExpiringTrade(null);
-            setSaveSuccess("Trade expired successfully.");
+            showToast("Trade expired successfully.", "success");
           } catch (err) {
-            setSaveError(err instanceof Error ? err.message : "Failed to expire trade.");
+            showToast(err instanceof Error ? err.message : "Failed to expire trade.", "error");
             throw err;
           }
         }}

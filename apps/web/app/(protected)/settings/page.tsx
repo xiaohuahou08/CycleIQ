@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Check, X, ArrowDownCircle, ArrowUpCircle, Pencil, Trash2 } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, Pencil, Trash2 } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
 import {
   createCheckoutSession,
@@ -25,6 +25,10 @@ import { useProtectedAuth } from "../auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { authCallbackUrl } from "@/lib/auth-url";
 import { getUserDisplayName } from "@/lib/auth/user-profile";
+import PageHeader from "@/app/components/PageHeader";
+import { useToast } from "@/app/components/Toast";
+import { CARD_BASE } from "@/app/components/ui/styles";
+import { Button } from "@/components/ui/button";
 import { useTradeDefaults, TRADE_DEFAULTS_UPDATED_EVENT } from "@/lib/hooks/useTradeDefaults";
 
 // ─── Section shell ────────────────────────────────────────────────────────────
@@ -38,7 +42,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className={`${CARD_BASE} overflow-hidden rounded-xl py-0`}>
       <div className="border-b border-slate-100 px-6 py-4">
         <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
         {description && (
@@ -61,38 +65,12 @@ function FieldRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-8 py-3 first:pt-0 last:pb-0 [&+&]:border-t [&+&]:border-gray-100">
+    <div className="flex items-start justify-between gap-8 py-3 first:pt-0 last:pb-0 [&+&]:border-t [&+&]:border-slate-100">
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-gray-900">{label}</p>
-        {hint && <p className="mt-0.5 text-xs text-gray-500">{hint}</p>}
+        <p className="text-sm font-medium text-slate-900">{label}</p>
+        {hint && <p className="mt-0.5 text-xs text-slate-500">{hint}</p>}
       </div>
       <div className="shrink-0">{children}</div>
-    </div>
-  );
-}
-
-// ─── Toast ────────────────────────────────────────────────────────────────────
-function Toast({
-  message,
-  type,
-}: {
-  message: string;
-  type: "success" | "error";
-}) {
-  return (
-    <div
-      className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium shadow-lg ${
-        type === "success"
-          ? "bg-emerald-600 text-white"
-          : "bg-red-600 text-white"
-      }`}
-    >
-      {type === "success" ? (
-        <Check className={iconSm} strokeWidth={iconStroke} aria-hidden />
-      ) : (
-        <X className={iconSm} strokeWidth={iconStroke} aria-hidden />
-      )}
-      {message}
     </div>
   );
 }
@@ -107,7 +85,7 @@ function BillingSection() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   const load = async () => {
     if (!token) return;
@@ -159,22 +137,16 @@ function BillingSection() {
     void (async () => {
       try {
         setStatus(await syncBillingAfterCheckout(token, sessionId));
-        setToast("Premium activated — thank you!");
+        showToast("Premium activated — thank you!", "success");
       } catch {
-        setToast("Payment received — syncing plan…");
+        showToast("Payment received — syncing plan…", "warning");
         await load();
       } finally {
         // Strip billing/session_id from the URL so a refresh won't re-sync.
         router.replace("/settings");
       }
     })();
-  }, [searchParams, token, router]);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(timer);
-  }, [toast]);
+  }, [searchParams, token, router, showToast]);
 
   const onUpgrade = async () => {
     if (!token) return;
@@ -205,27 +177,23 @@ function BillingSection() {
   const isPremium = status?.plan === "premium";
 
   return (
-    <>
-      {toast ? (
-        <Toast message={toast} type="success" />
-      ) : null}
-      <Section
+    <Section
         title="Billing"
         description="Manage your CycleIQ plan. Premium is $1/month via Stripe."
       >
         {loading ? (
-          <p className="text-sm text-gray-500">Loading plan…</p>
+          <p className="text-sm text-slate-500">Loading plan…</p>
         ) : (
           <>
             <FieldRow label="Current plan">
-              <span className="inline-flex items-center rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-800">
+              <span className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-800">
                 {status?.plan_label ?? "Basic"}
                 {status?.price_usd != null ? ` · $${status.price_usd}/mo` : ""}
               </span>
             </FieldRow>
             {status?.subscription_status ? (
               <FieldRow label="Subscription" hint="Synced from Stripe webhooks.">
-                <span className="text-sm text-gray-700 capitalize">
+                <span className="text-sm text-slate-700 capitalize">
                   {status.subscription_status.replace(/_/g, " ")}
                   {status.current_period_end
                     ? ` · renews ${new Date(status.current_period_end).toLocaleDateString()}`
@@ -238,7 +206,7 @@ function BillingSection() {
                 label="Trade usage"
                 hint={`${status.trades_this_month} of ${status.trades_limit} new trades this month (UTC).`}
               >
-                <span className="text-sm text-gray-700">
+                <span className="text-sm text-slate-700">
                   {status.trades_remaining ?? 0} remaining
                 </span>
               </FieldRow>
@@ -249,7 +217,7 @@ function BillingSection() {
                   type="button"
                   onClick={() => void onManage()}
                   disabled={busy}
-                  className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                  className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-50 disabled:opacity-50"
                 >
                   {busy ? "Opening…" : "Manage subscription"}
                 </button>
@@ -268,7 +236,6 @@ function BillingSection() {
           </>
         )}
       </Section>
-    </>
   );
 }
 
@@ -283,10 +250,7 @@ function AccountSection({
   const [email, setEmail] = useState(emailProp);
   const [displayName, setDisplayName] = useState(displayNameProp);
   const [sending, setSending] = useState(false);
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "error";
-  } | null>(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -304,11 +268,6 @@ function AccountSection({
         setDisplayName(getUserDisplayName(data.user));
       });
   }, []);
-
-  const showToast = (message: string, type: "success" | "error") => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3500);
-  };
 
   const handlePasswordReset = async () => {
     if (!email) return;
@@ -330,19 +289,17 @@ function AccountSection({
   };
 
   return (
-    <>
-      {toast && <Toast message={toast.message} type={toast.type} />}
-      <Section
+    <Section
         title="Account"
         description="Your account information and authentication settings."
       >
         <FieldRow label="Display name" hint="Name from your sign-in provider.">
-          <span className="inline-flex max-w-[14rem] items-center truncate rounded-lg bg-gray-100 px-3 py-1.5 text-sm text-gray-700">
+          <span className="inline-flex max-w-[14rem] items-center truncate rounded-lg bg-slate-100 px-3 py-1.5 text-sm text-slate-700">
             {displayName ?? "—"}
           </span>
         </FieldRow>
         <FieldRow label="Email address" hint="Your Supabase Auth email.">
-          <span className="inline-flex items-center rounded-lg bg-gray-100 px-3 py-1.5 text-sm text-gray-700">
+          <span className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-sm text-slate-700">
             {email ?? "—"}
           </span>
         </FieldRow>
@@ -354,13 +311,12 @@ function AccountSection({
             type="button"
             onClick={() => void handlePasswordReset()}
             disabled={sending || !email}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {sending ? "Sending…" : "Send reset email"}
           </button>
         </FieldRow>
       </Section>
-    </>
   );
 }
 
@@ -432,7 +388,7 @@ function TradingDefaultsSection({ hasCapitalFlows }: { hasCapitalFlows: boolean 
         hint="Auto-fills total opening commission when adding a trade (per-contract rate × contracts). Leave blank to skip."
       >
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">$</span>
+          <span className="text-sm text-slate-500">$</span>
           <input
             type="number"
             min="0"
@@ -440,9 +396,9 @@ function TradingDefaultsSection({ hasCapitalFlows }: { hasCapitalFlows: boolean 
             value={commissionPerContract}
             onChange={(e) => setCommissionPerContract(e.target.value)}
             placeholder="0.65"
-            className="w-24 rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            className="w-24 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
           />
-          <span className="text-xs text-gray-400">/ contract</span>
+          <span className="text-xs text-slate-400">/ contract</span>
         </div>
       </FieldRow>
 
@@ -456,7 +412,7 @@ function TradingDefaultsSection({ hasCapitalFlows }: { hasCapitalFlows: boolean 
           step="1"
           value={defaultContracts}
           onChange={(e) => setDefaultContracts(e.target.value)}
-          className="w-20 rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+          className="w-20 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
         />
       </FieldRow>
 
@@ -469,9 +425,9 @@ function TradingDefaultsSection({ hasCapitalFlows }: { hasCapitalFlows: boolean 
         }
       >
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">$</span>
+          <span className="text-sm text-slate-500">$</span>
           {hasCapitalFlows ? (
-            <span className="inline-flex w-28 items-center rounded-lg bg-gray-100 px-2.5 py-1.5 text-sm font-medium text-gray-800">
+            <span className="inline-flex w-28 items-center rounded-lg bg-slate-100 px-2.5 py-1.5 text-sm font-medium text-slate-800">
               {Number(totalCapitalBudget).toLocaleString()}
             </span>
           ) : (
@@ -481,7 +437,7 @@ function TradingDefaultsSection({ hasCapitalFlows }: { hasCapitalFlows: boolean 
               step="100"
               value={totalCapitalBudget}
               onChange={(e) => setTotalCapitalBudget(e.target.value)}
-              className="w-28 rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+              className="w-28 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
             />
           )}
         </div>
@@ -498,9 +454,9 @@ function TradingDefaultsSection({ hasCapitalFlows }: { hasCapitalFlows: boolean 
             step="1"
             value={defaultDte}
             onChange={(e) => setDefaultDte(e.target.value)}
-            className="w-20 rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            className="w-20 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
           />
-          <span className="text-xs text-gray-400">days</span>
+          <span className="text-xs text-slate-400">days</span>
         </div>
       </FieldRow>
 
@@ -509,7 +465,7 @@ function TradingDefaultsSection({ hasCapitalFlows }: { hasCapitalFlows: boolean 
           type="button"
           onClick={() => void handleSave()}
           disabled={loading || saving}
-          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save defaults"}
         </button>
@@ -615,34 +571,34 @@ function CapitalFlowModal({
       aria-modal="true"
     >
       <div className="animate-scale-in w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="text-base font-semibold text-gray-900">{title}</h2>
-        <p className="mt-1 text-sm text-gray-500">
+        <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+        <p className="mt-1 text-sm text-slate-500">
           Updates your capital budget and feeds time-weighted return calculations.
         </p>
         <div className="mt-4 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-700">{label}</label>
+            <label className="block text-xs font-medium text-slate-700">{label}</label>
             <div className="mt-1 flex items-center gap-2">
-              <span className="text-sm text-gray-500">$</span>
+              <span className="text-sm text-slate-500">$</span>
               <input
                 type="number"
                 min="1"
                 step="100"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                 autoFocus
               />
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700">Date</label>
+            <label className="block text-xs font-medium text-slate-700">Date</label>
             <input
               type="date"
               value={eventDate}
               max={localTodayIsoDate()}
               onChange={(e) => setEventDate(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+              className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
             />
           </div>
         </div>
@@ -652,7 +608,7 @@ function CapitalFlowModal({
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
           >
             Cancel
           </button>
@@ -781,7 +737,7 @@ function CapitalManagementSection({
           label="Current capital budget"
           hint="Budget after all recorded flows. Total capital on Dashboard = budget + realized P&L."
         >
-          <span className="inline-flex items-center rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-800">
+          <span className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-800">
             {defaultsLoading ? "…" : formatFlowAmount(defaults.totalCapitalBudget)}
           </span>
         </FieldRow>
@@ -809,38 +765,38 @@ function CapitalManagementSection({
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        <div className="mt-2 overflow-hidden rounded-lg border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50">
+        <div className="mt-2 overflow-hidden rounded-lg border border-slate-200">
+          <table className="min-w-full divide-y divide-slate-200 text-sm">
+            <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 py-2 text-left font-medium text-gray-600">Date</th>
-                <th className="px-4 py-2 text-left font-medium text-gray-600">Type</th>
-                <th className="px-4 py-2 text-right font-medium text-gray-600">Amount</th>
-                <th className="px-4 py-2 text-right font-medium text-gray-600">
+                <th className="px-4 py-2 text-left font-medium text-slate-600">Date</th>
+                <th className="px-4 py-2 text-left font-medium text-slate-600">Type</th>
+                <th className="px-4 py-2 text-right font-medium text-slate-600">Amount</th>
+                <th className="px-4 py-2 text-right font-medium text-slate-600">
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
+            <tbody className="divide-y divide-slate-100 bg-white">
               {loadingFlows ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
+                  <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
                     Loading…
                   </td>
                 </tr>
               ) : flows.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
+                  <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
                     No deposits or withdrawals yet.
                   </td>
                 </tr>
               ) : (
                 flows.map((flow) => (
                   <tr key={flow.id}>
-                    <td className="px-4 py-2.5 text-gray-900">
+                    <td className="px-4 py-2.5 text-slate-900">
                       {formatDisplayDate(flow.event_date)}
                     </td>
-                    <td className="px-4 py-2.5 capitalize text-gray-700">{flow.type}</td>
+                    <td className="px-4 py-2.5 capitalize text-slate-700">{flow.type}</td>
                     <td
                       className={`px-4 py-2.5 text-right font-medium ${
                         flow.type === "deposit" ? "text-emerald-700" : "text-amber-700"
@@ -854,7 +810,7 @@ function CapitalManagementSection({
                         <button
                           type="button"
                           onClick={() => openEdit(flow)}
-                          className="inline-flex items-center rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                          className="inline-flex items-center rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                           aria-label="Edit entry"
                         >
                           <Pencil className="h-4 w-4" strokeWidth={iconStroke} aria-hidden />
@@ -863,7 +819,7 @@ function CapitalManagementSection({
                           type="button"
                           onClick={() => void handleDelete(flow)}
                           disabled={deletingId === flow.id}
-                          className="inline-flex items-center rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 disabled:opacity-50"
+                          className="inline-flex items-center rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-red-600 disabled:opacity-50"
                           aria-label="Delete entry"
                         >
                           <Trash2 className="h-4 w-4" strokeWidth={iconStroke} aria-hidden />
@@ -888,7 +844,7 @@ function DangerZoneSection() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   const handleReset = async () => {
     if (!token) return;
@@ -897,8 +853,9 @@ function DangerZoneSection() {
     try {
       const result = await resetTradingData(token);
       setConfirmOpen(false);
-      setToast(
-        `Deleted ${result.trades_deleted} trade(s) and ${result.cycles_deleted} cycle(s).`
+      showToast(
+        `Deleted ${result.trades_deleted} trade(s) and ${result.cycles_deleted} cycle(s).`,
+        "success"
       );
       setTimeout(() => {
         router.push("/dashboard");
@@ -913,12 +870,6 @@ function DangerZoneSection() {
 
   return (
     <>
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-medium text-white shadow-lg">
-          <Check className={iconSm} strokeWidth={iconStroke} aria-hidden />
-          {toast}
-        </div>
-      )}
       <Section
         title="Danger zone"
         description="Irreversible actions for your trading data."
@@ -948,10 +899,10 @@ function DangerZoneSection() {
           aria-labelledby="reset-data-title"
         >
           <div className="animate-scale-in w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h2 id="reset-data-title" className="text-base font-semibold text-gray-900">
+            <h2 id="reset-data-title" className="text-base font-semibold text-slate-900">
               Reset all trading data?
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-gray-600">
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">
               This will permanently delete all your trades and wheel cycles. Your account,
               login, and trading defaults will not be affected.
             </p>
@@ -961,7 +912,7 @@ function DangerZoneSection() {
                 type="button"
                 onClick={() => setConfirmOpen(false)}
                 disabled={resetting}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
               >
                 Cancel
               </button>
@@ -998,14 +949,15 @@ export default function SettingsPage() {
         <DangerZoneSection />
 
         <div className="flex flex-col items-center gap-4 pt-2 pb-4">
-          <button
+          <Button
             type="button"
+            variant="destructive"
             onClick={() => void onLogout()}
-            className="rounded-lg bg-red-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-red-700"
+            className="px-6"
           >
             Sign out
-          </button>
-          <p className="text-xs text-gray-400">CycleIQ · v0.1</p>
+          </Button>
+          <p className="text-xs text-slate-400">CycleIQ · v0.1</p>
         </div>
       </div>
     </main>

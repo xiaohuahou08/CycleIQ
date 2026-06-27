@@ -145,28 +145,28 @@ export default function AssignTradeModal({
       labelledById="assign-trade-title"
     >
       <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
-        <div className="rounded-xl bg-gray-50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Position</p>
+        <div className="rounded-xl bg-slate-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Position</p>
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <span className="text-2xl font-semibold text-gray-900">{trade.ticker}</span>
+            <span className="text-2xl font-semibold text-slate-900">{trade.ticker}</span>
             <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
               {strategyLabel}
             </span>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-3">
-            <div className="rounded-xl border border-gray-200 bg-white p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Strike</p>
-              <p className="mt-1 text-lg font-semibold text-gray-900">
+            <div className="rounded-xl border border-slate-200 bg-white p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Strike</p>
+              <p className="mt-1 text-lg font-semibold text-slate-900">
                 ${trade.strike.toFixed(2)}
               </p>
             </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Contracts</p>
-              <p className="mt-1 text-lg font-semibold text-gray-900">{trade.contracts}</p>
+            <div className="rounded-xl border border-slate-200 bg-white p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Contracts</p>
+              <p className="mt-1 text-lg font-semibold text-slate-900">{trade.contracts}</p>
             </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Shares</p>
-              <p className="mt-1 text-lg font-semibold text-gray-900">{shares}</p>
+            <div className="rounded-xl border border-slate-200 bg-white p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Shares</p>
+              <p className="mt-1 text-lg font-semibold text-slate-900">{shares}</p>
             </div>
           </div>
         </div>
@@ -174,9 +174,9 @@ export default function AssignTradeModal({
         <div className="mt-5">
           <label
             htmlFor="assign_action_date"
-            className="mb-1 flex items-center gap-1.5 text-sm font-medium text-gray-700"
+            className="mb-1 flex items-center gap-1.5 text-sm font-medium text-slate-700"
           >
-            <Calendar className={`${iconSm} text-gray-500`} strokeWidth={iconStroke} aria-hidden />
+            <Calendar className={`${iconSm} text-slate-500`} strokeWidth={iconStroke} aria-hidden />
             Action Date
           </label>
           <input
@@ -184,19 +184,19 @@ export default function AssignTradeModal({
             type="date"
             value={actionDate}
             onChange={(e) => setActionDate(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
 
         <div className="mt-5">
           <label
             htmlFor="assign_price"
-            className="mb-1 block text-sm font-medium text-gray-700"
+            className="mb-1 block text-sm font-medium text-slate-700"
           >
             {trade.option_type === "CALL" ? "Call Away Price" : "Assignment Price"}
           </label>
           <div className="relative">
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">
               $
             </span>
             <input
@@ -207,12 +207,12 @@ export default function AssignTradeModal({
               inputMode="decimal"
               value={assignmentPrice}
               onChange={(e) => setAssignmentPrice(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 py-2 pl-7 pr-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-slate-300 py-2 pl-7 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-slate-500">
             Total value:{" "}
-            <span className="font-semibold text-gray-700">
+            <span className="font-semibold text-slate-700">
               $
               {totalValue.toLocaleString(undefined, {
                 minimumFractionDigits: 2,
@@ -258,12 +258,12 @@ export default function AssignTradeModal({
 
               <div className="mt-3">
                 <div className="flex items-center justify-between">
-                  <label htmlFor="assign_fees" className="text-sm font-medium text-gray-700">
+                  <label htmlFor="assign_fees" className="text-sm font-medium text-slate-700">
                     Assignment fees
                   </label>
-                  <span className="text-sm text-gray-500">optional</span>
+                  <span className="text-sm text-slate-500">optional</span>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">Total USD for this assignment (not spread per share).</p>
+                <p className="mt-1 text-xs text-slate-500">Total USD for this assignment (not spread per share).</p>
                 <input
                   id="assign_fees"
                   type="number"
@@ -272,7 +272,7 @@ export default function AssignTradeModal({
                   value={fees}
                   onChange={(e) => setFees(e.target.value)}
                   placeholder="0.00"
-                  className="mt-2 w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-purple-400 focus:outline-none"
+                  className="mt-2 w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-purple-400 focus:outline-none"
                 />
               </div>
 
@@ -286,16 +286,16 @@ export default function AssignTradeModal({
               {trade.option_type === "PUT" && (
                 <div className="mt-4">
                   <div className="flex items-center justify-between">
-                    <label htmlFor="assign_prior_roll" className="text-sm font-medium text-gray-700">
+                    <label htmlFor="assign_prior_roll" className="text-sm font-medium text-slate-700">
                       Prior roll premium / share override
                     </label>
-                    <span className="text-sm text-gray-500">optional</span>
+                    <span className="text-sm text-slate-500">optional</span>
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p className="mt-1 text-xs text-slate-500">
                     Leave blank to auto-sum from the roll chain. Fill in only to override (e.g. for manually linked trades).
                   </p>
                   <div className="relative mt-2">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">$</span>
                     <input
                       id="assign_prior_roll"
                       type="number"
@@ -304,7 +304,7 @@ export default function AssignTradeModal({
                       value={priorRollPremium}
                       onChange={(e) => setPriorRollPremium(e.target.value)}
                       placeholder="auto from chain"
-                      className="w-full rounded-lg border border-purple-200 bg-white py-2 pl-7 pr-3 text-sm text-gray-900 focus:border-purple-400 focus:outline-none"
+                      className="w-full rounded-lg border border-purple-200 bg-white py-2 pl-7 pr-3 text-sm text-slate-900 focus:border-purple-400 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -312,10 +312,10 @@ export default function AssignTradeModal({
 
               <div className="mt-4">
                 <div className="flex items-center justify-between">
-                  <label htmlFor="assign_notes" className="text-sm font-medium text-gray-700">
+                  <label htmlFor="assign_notes" className="text-sm font-medium text-slate-700">
                     Notes
                   </label>
-                  <span className="text-sm text-gray-500">optional</span>
+                  <span className="text-sm text-slate-500">optional</span>
                 </div>
                 <textarea
                   id="assign_notes"
@@ -323,7 +323,7 @@ export default function AssignTradeModal({
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Add optional notes about this lifecycle event..."
-                  className="mt-2 w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-purple-400 focus:outline-none"
+                  className="mt-2 w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-purple-400 focus:outline-none"
                 />
               </div>
             </OptionalFieldsCard>
