@@ -99,7 +99,7 @@ function Toast({
 
 // ─── Billing section ──────────────────────────────────────────────────────────
 function BillingSection() {
-  const { token } = useProtectedAuth();
+  const { token, isAuthLoading } = useProtectedAuth();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<BillingStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -121,9 +121,17 @@ function BillingSection() {
   };
 
   useEffect(() => {
-    if (!token) return;
+    // Wait for auth to settle before deciding whether we can load billing.
+    if (isAuthLoading) return;
     let active = true;
     void (async () => {
+      if (!token) {
+        if (active) {
+          setError("You need to be signed in to view billing.");
+          setLoading(false);
+        }
+        return;
+      }
       try {
         const next = await fetchBillingStatus(token);
         if (active) setStatus(next);
@@ -138,7 +146,7 @@ function BillingSection() {
     return () => {
       active = false;
     };
-  }, [token]);
+  }, [token, isAuthLoading]);
 
   useEffect(() => {
     if (searchParams.get("billing") !== "success" || !token) return;
