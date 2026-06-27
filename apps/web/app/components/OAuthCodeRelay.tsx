@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { safeInternalRedirectPath } from "@/lib/auth-redirect.mjs";
+import { consumeAuthNextPath } from "@/lib/auth-oauth-next";
 import { getSupabaseClient } from "@/lib/supabase/client";
 
 /**
@@ -33,7 +34,10 @@ export default function OAuthCodeRelay() {
           router.replace("/login?error=oauth");
           return;
         }
-        const next = safeInternalRedirectPath(searchParams.get("next")) ?? "/dashboard";
+        const next =
+          safeInternalRedirectPath(consumeAuthNextPath()) ??
+          safeInternalRedirectPath(searchParams.get("next")) ??
+          "/dashboard";
         router.replace(next);
         router.refresh();
       } catch {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { authCallbackUrl } from "@/lib/auth-url";
+import { oauthRedirectTo, stashAuthNextPath } from "@/lib/auth-oauth-next";
 import { AUTH_OAUTH_BTN_CLS } from "@/app/components/AuthShell";
 
 function GoogleMark() {
@@ -47,10 +47,11 @@ export default function GoogleSignInButton({
     setIsLoading(true);
     try {
       const supabase = getSupabaseClient(rememberMe);
+      stashAuthNextPath(nextPath);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: authCallbackUrl(nextPath),
+          redirectTo: oauthRedirectTo(),
         },
       });
 
