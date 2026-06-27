@@ -1,10 +1,11 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
+import { getSupabaseAnonKey, getSupabaseProjectUrl } from "@/lib/supabase/env";
 
 function requireSupabaseEnv() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseUrl = getSupabaseProjectUrl();
+  const supabaseAnonKey = getSupabaseAnonKey();
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error(
       "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.",
@@ -85,7 +86,7 @@ export function createSupabaseOAuthRouteClient(request: NextRequest) {
 }
 
 export function supabaseProjectRef(): string | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const url = getSupabaseProjectUrl();
   if (!url) return null;
   try {
     return new URL(url).hostname.split(".")[0] ?? null;

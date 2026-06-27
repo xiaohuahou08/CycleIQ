@@ -36,9 +36,11 @@ export function LoginForm() {
       : null;
 
   const oauthErrorMessage =
-    searchParams.get("error") === "oauth"
+    searchParams.get("error") === "supabase_url"
+      ? "Supabase URL is misconfigured. Set NEXT_PUBLIC_SUPABASE_URL to https://<project>.supabase.co only (no /auth/v1/... path) in Vercel, then redeploy."
+      : searchParams.get("error") === "oauth"
       ? typeof window !== "undefined" && window.location.hostname.endsWith(".vercel.app")
-        ? "Google sign-in failed. In your dev Supabase project, add Redirect URL https://*-.vercel.app/** (see Supabase docs), then retry on this preview URL."
+        ? "Google sign-in failed (bad_oauth_callback). In your dev Supabase project → Authentication → URL Configuration, add Redirect URL https://*-xiaohuahou-4977s-projects.vercel.app/** (or https://*-.vercel.app/**). Also set NEXT_PUBLIC_SUPABASE_URL to the project origin only, redeploy, then retry."
         : "Google sign-in failed. Please try again or use email and password."
       : null;
 

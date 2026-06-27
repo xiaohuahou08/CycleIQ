@@ -1,7 +1,5 @@
 ﻿import { createBrowserClient } from "@supabase/ssr";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+import { getSupabaseAnonKey, getSupabaseProjectUrl } from "@/lib/supabase/env";
 
 /**
  * Browser Supabase client. Uses the default @supabase/ssr cookie adapter so
@@ -9,6 +7,8 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
  * handling caused bad_oauth_callback / state parameter missing).
  */
 export function getSupabaseClient(rememberMe = true) {
+  const supabaseUrl = getSupabaseProjectUrl();
+  const supabaseAnonKey = getSupabaseAnonKey();
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error(
       "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables."

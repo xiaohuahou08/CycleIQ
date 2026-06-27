@@ -1,6 +1,7 @@
 ﻿import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { isProtectedRoute, oauthCallbackRelayTarget, resolveAuthRedirect } from "@/lib/auth-redirect.mjs";
+import { getSupabaseAnonKey, getSupabaseProjectUrl } from "@/lib/supabase/env";
 
 function oauthErrorRelay(req: NextRequest): NextResponse | null {
   const { pathname, searchParams } = req.nextUrl;
@@ -32,8 +33,8 @@ export async function middleware(req: NextRequest) {
   const codeRelay = oauthCodeRelay(req);
   if (codeRelay) return codeRelay;
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseUrl = getSupabaseProjectUrl();
+  const supabaseAnonKey = getSupabaseAnonKey();
 
   if (!supabaseUrl || !supabaseAnonKey) {
     if (isProtectedRoute(req.nextUrl.pathname)) {
