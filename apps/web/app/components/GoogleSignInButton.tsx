@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { getSupabaseClient } from "@/lib/supabase/client";
-import { oauthRedirectTo, stashAuthNextPath } from "@/lib/auth-oauth-next";
 import { AUTH_OAUTH_BTN_CLS } from "@/app/components/AuthShell";
 
 function GoogleMark() {
@@ -38,27 +36,17 @@ interface GoogleSignInButtonProps {
 export default function GoogleSignInButton({
   label = "Continue with Google",
   nextPath,
-  rememberMe = true,
   onError,
 }: GoogleSignInButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
-  const onClick = async () => {
+  const onClick = () => {
     setIsLoading(true);
     try {
-      const supabase = getSupabaseClient(rememberMe);
-      stashAuthNextPath(nextPath);
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: oauthRedirectTo(),
-        },
-      });
-
-      if (error) {
-        onError?.(error.message);
-        setIsLoading(false);
-      }
+      const params = new URLSearchParams();
+      if (nextPath) params.set("next", nextPath);
+      const qs = params.toString();
+      window.location.assign(qs ? `/auth/google?${qs}` : "/auth/google");
     } catch (err) {
       onError?.(err instanceof Error ? err.message : "Failed to start Google sign-in.");
       setIsLoading(false);
@@ -68,7 +56,7 @@ export default function GoogleSignInButton({
   return (
     <button
       type="button"
-      onClick={() => void onClick()}
+      onClick={onClick}
       disabled={isLoading}
       className={AUTH_OAUTH_BTN_CLS}
     >

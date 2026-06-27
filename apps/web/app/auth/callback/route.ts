@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { safeInternalRedirectPath } from "@/lib/auth-redirect.mjs";
+import { resolveRequestOrigin } from "@/lib/auth-origin";
 import { AUTH_NEXT_COOKIE, readAuthNextFromCookieHeader } from "@/lib/auth-oauth-next";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
+  const origin = resolveRequestOrigin(request);
   const code = searchParams.get("code");
   const cookieHeader = request.headers.get("cookie");
   const nextFromCookie = readAuthNextFromCookieHeader(cookieHeader);

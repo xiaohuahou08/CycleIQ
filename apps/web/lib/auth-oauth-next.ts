@@ -1,4 +1,5 @@
-import { authCallbackUrl } from "@/lib/auth-url";
+import { getAuthRedirectOrigin } from "@/lib/auth-url";
+import { oauthCallbackUrlForOrigin } from "@/lib/auth-origin";
 
 /** Cookie for post-OAuth redirect — readable on server /auth/callback and client fallback. */
 export const AUTH_NEXT_COOKIE = "cycleiq_auth_next";
@@ -37,5 +38,5 @@ export function consumeAuthNextPath(): string | null {
 
 /** Supabase redirectTo for OAuth — never include query params (allowlist is path-only). */
 export function oauthRedirectTo(): string {
-  return authCallbackUrl();
+  return oauthCallbackUrlForOrigin(getAuthRedirectOrigin());
 }

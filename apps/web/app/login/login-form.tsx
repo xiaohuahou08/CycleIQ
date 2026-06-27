@@ -37,7 +37,9 @@ export function LoginForm() {
 
   const oauthErrorMessage =
     searchParams.get("error") === "oauth"
-      ? "Google sign-in failed. Please try again or use email and password."
+      ? typeof window !== "undefined" && window.location.hostname.endsWith(".vercel.app")
+        ? "Google sign-in failed. In your dev Supabase project, add Redirect URL https://*-.vercel.app/** (see Supabase docs), then retry on this preview URL."
+        : "Google sign-in failed. Please try again or use email and password."
       : null;
 
   const nextPath = searchParams.get("next");
