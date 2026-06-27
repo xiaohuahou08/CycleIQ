@@ -23,6 +23,17 @@ describe("resolveRequestOrigin", () => {
     });
     assert.equal(resolveRequestOrigin(request), "https://cycle-nijyt74bo-xiaohuahou-4977s-projects.vercel.app");
   });
+
+  it("falls back to VERCEL_URL when headers are missing", () => {
+    const prev = process.env.VERCEL_URL;
+    try {
+      process.env.VERCEL_URL = "cycle-iq-git-dev-acme.vercel.app";
+      const request = new Request("http://127.0.0.1:3000/auth/google");
+      assert.equal(resolveRequestOrigin(request), "https://cycle-iq-git-dev-acme.vercel.app");
+    } finally {
+      process.env.VERCEL_URL = prev;
+    }
+  });
 });
 
 describe("resolveConfiguredAuthOrigin", () => {

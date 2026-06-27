@@ -14,7 +14,8 @@ function normalizeOrigin(value: string): string {
 /** Browser or build-time origin when request headers are unavailable. */
 export function resolveConfiguredAuthOrigin(): string {
   const site = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  const vercel = process.env.NEXT_PUBLIC_VERCEL_URL?.trim();
+  const vercel =
+    process.env.NEXT_PUBLIC_VERCEL_URL?.trim() || process.env.VERCEL_URL?.trim();
   const vercelEnv = process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.VERCEL_ENV;
 
   if (vercelEnv === "production" && site) {
@@ -41,6 +42,10 @@ export function resolveRequestOrigin(request: Request): string {
   if (host) {
     const proto = host.startsWith("localhost") ? "http" : forwardedProto;
     return `${proto}://${host}`;
+  }
+  const vercelUrl = process.env.VERCEL_URL?.trim();
+  if (vercelUrl) {
+    return normalizeOrigin(vercelUrl);
   }
   return new URL(request.url).origin;
 }
