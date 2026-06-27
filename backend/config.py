@@ -51,6 +51,47 @@ class Config:
 # Vercel preview deploys (*.vercel.app) — allowed in production CORS alongside FRONTEND_URL.
 VERCEL_PREVIEW_ORIGIN = re.compile(r"^https://[\w-]+(?:-[\w-]+)*\.vercel\.app$")
 
+# Localhost origins are always trusted for redirects (local dev).
+_LOCALHOST_ORIGIN = re.compile(r"^http://(?:localhost|127\.0\.0\.1)(?::\d+)?$")
+
+
+def _trusted_redirect_origins() -> list[str]:
+    """Exact-match origins trusted for Stripe redirects (FRONTEND_URL + extras)."""
+    origins: list[str] = []
+    frontend = os.environ.get("FRONTEND_URL", "").strip().rstrip("/")
+    if frontend:
+        origins.append(frontend)
+    for part in os.environ.get("CORS_EXTRA_ORIGINS", "").split(","):
+        origin = part.strip().rstrip("/")
+        if origin and origin not in origins:
+            origins.append(origin)
+    return origins
+
+
+def resolve_frontend_origin(request_origin: str | None) -> str:
+    """Pick the redirect base URL for Stripe.
+
+    Prefer the caller's Origin when it is trusted (FRONTEND_URL, CORS_EXTRA_ORIGINS,
+    *.vercel.app preview deploys, or localhost). This lets every Vercel preview
+    deploy redirect back to itself without reconfiguring FRONTEND_URL each time.
+    Falls back to FRONTEND_URL when the Origin is missing or untrusted.
+    """
+    fallback = os.environ.get("FRONTEND_URL", "http://localhost:3000").strip().rstrip("/")
+    if not request_origin:
+        return fallback
+
+    candidate = request_origin.strip().rstrip("/")
+    if not candidate:
+        return fallback
+
+    if candidate in _trusted_redirect_origins():
+        return candidate
+    if _LOCALHOST_ORIGIN.match(candidate):
+        return candidate
+    if VERCEL_PREVIEW_ORIGIN.match(candidate):
+        return candidate
+    return fallback
+
 
 def cors_allowed_origins() -> list[str] | None:
     """Explicit browser origins for CORS, or None to allow all (local dev only)."""

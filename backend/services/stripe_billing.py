@@ -6,6 +6,7 @@ from typing import Any
 import stripe
 from flask import current_app
 
+from backend.config import resolve_frontend_origin
 from backend.models import db
 from backend.models.user_preferences import UserPreferences
 from backend.services.trade_limits import BASIC_PLAN, PREMIUM_PLAN
@@ -84,12 +85,14 @@ def get_or_create_stripe_customer(user_id: str, email: str | None) -> str:
     return customer.id
 
 
-def create_checkout_session(user_id: str, email: str | None) -> str:
+def create_checkout_session(
+    user_id: str, email: str | None, request_origin: str | None = None
+) -> str:
     price_id = (current_app.config.get("STRIPE_PRICE_PREMIUM_MONTHLY") or "").strip()
     if not price_id:
         raise ValueError("STRIPE_PRICE_PREMIUM_MONTHLY is not configured")
 
-    frontend = current_app.config.get("FRONTEND_URL", "http://localhost:3000")
+    frontend = resolve_frontend_origin(request_origin)
     customer_id = get_or_create_stripe_customer(user_id, email)
 
     _configure_stripe()
@@ -108,12 +111,12 @@ def create_checkout_session(user_id: str, email: str | None) -> str:
     return session.url
 
 
-def create_portal_session(user_id: str) -> str:
+def create_portal_session(user_id: str, request_origin: str | None = None) -> str:
     row = _ensure_preferences(user_id)
     if not row.stripe_customer_id:
         raise ValueError("No Stripe customer on file. Upgrade to Premium first.")
 
-    frontend = current_app.config.get("FRONTEND_URL", "http://localhost:3000")
+    frontend = resolve_frontend_origin(request_origin)
     _configure_stripe()
     session = stripe.billing_portal.Session.create(
         customer=row.stripe_customer_id,

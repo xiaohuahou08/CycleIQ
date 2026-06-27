@@ -3,9 +3,36 @@ from __future__ import annotations
 import stripe
 from flask import current_app, g, jsonify, request
 
+from urllib.parse import urlsplit
+
 from backend.auth.supabase import require_auth
 from backend.services import stripe_billing
 from backend.services.trade_limits import trade_limit_snapshot
+
+
+def _origin_of(url: str | None) -> str | None:
+    if not url:
+        return None
+    parts = urlsplit(url)
+    if parts.scheme and parts.netloc:
+        return f"{parts.scheme}://{parts.netloc}"
+    return None
+
+
+def _redirect_origin() -> str | None:
+    """Best-effort caller origin for Stripe redirects.
+
+    Tries an explicit body ``origin`` (sent by the web app), then the ``Origin``
+    header, then ``Referer``. The value is validated downstream against an
+    allowlist, so untrusted origins safely fall back to FRONTEND_URL.
+    """
+    body = request.get_json(silent=True) or {}
+    candidate = (
+        _origin_of(body.get("origin"))
+        or _origin_of(request.headers.get("Origin"))
+        or _origin_of(request.headers.get("Referer"))
+    )
+    return candidate
 
 
 def register_billing_routes(billing_bp):
@@ -13,8 +40,9 @@ def register_billing_routes(billing_bp):
     @require_auth
     def create_checkout_session(user_id: str):
         email = getattr(g, "user_email", None)
+        origin = _redirect_origin()
         try:
-            url = stripe_billing.create_checkout_session(user_id, email)
+            url = stripe_billing.create_checkout_session(user_id, email, origin)
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 503
         except stripe.StripeError as exc:
@@ -24,8 +52,9 @@ def register_billing_routes(billing_bp):
     @billing_bp.route("/portal-session", methods=["POST"])
     @require_auth
     def create_portal_session(user_id: str):
+        origin = _redirect_origin()
         try:
-            url = stripe_billing.create_portal_session(user_id)
+            url = stripe_billing.create_portal_session(user_id, origin)
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
         except stripe.StripeError as exc:

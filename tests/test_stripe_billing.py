@@ -80,6 +80,41 @@ def test_checkout_session_returns_url(mock_customer, mock_session, client):
     assert call_kwargs["cancel_url"] == "http://localhost:3000/pricing?billing=canceled"
 
 
+@patch("backend.services.stripe_billing.stripe.checkout.Session.create")
+@patch("backend.services.stripe_billing.stripe.Customer.create")
+def test_checkout_session_uses_trusted_preview_origin(mock_customer, mock_session, client):
+    mock_customer.return_value = MagicMock(id="cus_test")
+    mock_session.return_value = MagicMock(url="https://checkout.stripe.com/test")
+
+    preview = "https://cycle-iq-git-dev-acme.vercel.app"
+    r = client.post(
+        "/api/billing/checkout-session",
+        headers=auth_headers(),
+        json={"origin": preview},
+    )
+    assert r.status_code == 200
+    call_kwargs = mock_session.call_args.kwargs
+    assert call_kwargs["success_url"].startswith(f"{preview}/settings?billing=success")
+    assert call_kwargs["cancel_url"] == f"{preview}/pricing?billing=canceled"
+
+
+@patch("backend.services.stripe_billing.stripe.checkout.Session.create")
+@patch("backend.services.stripe_billing.stripe.Customer.create")
+def test_checkout_session_rejects_untrusted_origin(mock_customer, mock_session, client):
+    mock_customer.return_value = MagicMock(id="cus_test")
+    mock_session.return_value = MagicMock(url="https://checkout.stripe.com/test")
+
+    r = client.post(
+        "/api/billing/checkout-session",
+        headers=auth_headers(),
+        json={"origin": "https://evil.example.com"},
+    )
+    assert r.status_code == 200
+    call_kwargs = mock_session.call_args.kwargs
+    # Untrusted origin falls back to FRONTEND_URL.
+    assert call_kwargs["success_url"].startswith("http://localhost:3000/settings")
+
+
 @patch("backend.services.stripe_billing.stripe.Webhook.construct_event")
 def test_webhook_checkout_completed_sets_premium(mock_construct, client, app):
     user_id = "00000000-0000-0000-0000-000000000099"
