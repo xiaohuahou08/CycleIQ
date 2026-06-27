@@ -37,6 +37,11 @@ export function resolveRequestOrigin(request: Request): string {
     const host = forwardedHost.split(",")[0]?.trim();
     if (host) return `${forwardedProto}://${host}`;
   }
+  const host = request.headers.get("host");
+  if (host) {
+    const proto = host.startsWith("localhost") ? "http" : forwardedProto;
+    return `${proto}://${host}`;
+  }
   return new URL(request.url).origin;
 }
 

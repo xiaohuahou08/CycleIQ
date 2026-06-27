@@ -10,11 +10,18 @@ describe("resolveRequestOrigin", () => {
   it("prefers x-forwarded-host on Vercel preview", () => {
     const request = new Request("http://internal/auth/google", {
       headers: {
-        "x-forwarded-host": "cycle-iq-git-dev-acme.vercel.app",
+        "x-forwarded-host": "cycle-nijyt74bo-xiaohuahou-4977s-projects.vercel.app",
         "x-forwarded-proto": "https",
       },
     });
-    assert.equal(resolveRequestOrigin(request), "https://cycle-iq-git-dev-acme.vercel.app");
+    assert.equal(resolveRequestOrigin(request), "https://cycle-nijyt74bo-xiaohuahou-4977s-projects.vercel.app");
+  });
+
+  it("falls back to Host header", () => {
+    const request = new Request("http://127.0.0.1/auth/google", {
+      headers: { host: "cycle-nijyt74bo-xiaohuahou-4977s-projects.vercel.app" },
+    });
+    assert.equal(resolveRequestOrigin(request), "https://cycle-nijyt74bo-xiaohuahou-4977s-projects.vercel.app");
   });
 });
 
