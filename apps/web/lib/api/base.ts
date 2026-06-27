@@ -31,7 +31,9 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   } catch (err) {
     if (err instanceof TypeError) {
       const target = process.env.NEXT_PUBLIC_API_PROXY === "1" ? "same-origin /api proxy" : getApiBase();
-      throw new Error(`Cannot reach API (${target}). Check backend is running and env is configured.`);
+      throw new Error(
+        `Cannot reach API (${target}). On Vercel Preview set NEXT_PUBLIC_API_PROXY=1 and API_BACKEND_URL. Ensure Render is deployed from dev and awake.`,
+      );
     }
     throw err;
   }

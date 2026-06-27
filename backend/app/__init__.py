@@ -76,6 +76,12 @@ def create_app(config_object=None):
             }
         )
 
+    # CORS preflight must return 2xx even when a blueprint route is not deployed yet.
+    @app.route("/api/", defaults={"subpath": ""}, methods=["OPTIONS"])
+    @app.route("/api/<path:subpath>", methods=["OPTIONS"])
+    def api_cors_preflight(subpath: str):
+        return "", 204
+
     return app
 
 
