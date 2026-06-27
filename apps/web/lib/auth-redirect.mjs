@@ -24,6 +24,24 @@ const ALLOWED_POST_LOGIN_PREFIXES = [
 ];
 
 /**
+ * When Supabase rejects redirectTo it falls back to Site URL with `?code=` on `/`.
+ * Returns the callback path+query to relay, or null if no relay is needed.
+ *
+ * @param {string} pathname
+ * @param {URLSearchParams | { get: (key: string) => string | null }} searchParams
+ * @returns {string | null}
+ */
+export function oauthCallbackRelayTarget(pathname, searchParams) {
+  if (pathname === "/auth/callback") return null;
+  const code = searchParams.get("code");
+  if (!code) return null;
+  const q = new URLSearchParams();
+  searchParams.forEach((value, key) => q.set(key, value));
+  const qs = q.toString();
+  return qs ? `/auth/callback?${qs}` : "/auth/callback";
+}
+
+/**
  * @param {string | null | undefined} path
  * @returns {string | null}
  */

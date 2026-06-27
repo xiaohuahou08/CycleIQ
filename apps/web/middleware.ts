@@ -1,8 +1,18 @@
 ﻿import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { isProtectedRoute, resolveAuthRedirect } from "@/lib/auth-redirect.mjs";
+import { isProtectedRoute, oauthCallbackRelayTarget, resolveAuthRedirect } from "@/lib/auth-redirect.mjs";
+
+/** Supabase sometimes lands PKCE `code` on Site URL root instead of redirectTo. */
+function oauthCodeRelay(req: NextRequest): NextResponse | null {
+  const target = oauthCallbackRelayTarget(req.nextUrl.pathname, req.nextUrl.searchParams);
+  if (!target) return null;
+  return NextResponse.redirect(new URL(target, req.url));
+}
 
 export async function middleware(req: NextRequest) {
+  const relay = oauthCodeRelay(req);
+  if (relay) return relay;
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -54,6 +64,7 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
+    "/",
     "/dashboard/:path*",
     "/trades/:path*",
     "/cycles/:path*",

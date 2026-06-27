@@ -3,9 +3,18 @@ import assert from "node:assert/strict";
 import {
   isAuthRoute,
   isProtectedRoute,
+  oauthCallbackRelayTarget,
   resolveAuthRedirect,
   safeInternalRedirectPath,
 } from "./auth-redirect.mjs";
+
+test("oauthCallbackRelayTarget forwards PKCE code from Site URL root", () => {
+  const params = new URLSearchParams("code=abc&next=%2Fdashboard");
+  assert.equal(oauthCallbackRelayTarget("/", params), "/auth/callback?code=abc&next=%2Fdashboard");
+  assert.equal(oauthCallbackRelayTarget("/login", params), "/auth/callback?code=abc&next=%2Fdashboard");
+  assert.equal(oauthCallbackRelayTarget("/auth/callback", params), null);
+  assert.equal(oauthCallbackRelayTarget("/", new URLSearchParams()), null);
+});
 
 test("isProtectedRoute identifies protected app routes", () => {
   assert.equal(isProtectedRoute("/dashboard"), true);
