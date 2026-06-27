@@ -871,7 +871,7 @@ def test_premium_plan_has_unlimited_trades(client, app):
     assert body["plan_label"] == "Premium"
     assert body["trades_limit"] is None
     assert body["limit_reached"] is False
-    assert body["price_usd"] is None
+    assert body["price_usd"] == 1.0
 
     payload = {
         "ticker": "AAPL",

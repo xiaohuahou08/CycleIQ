@@ -121,7 +121,23 @@ function BillingSection() {
   };
 
   useEffect(() => {
-    void load();
+    if (!token) return;
+    let active = true;
+    void (async () => {
+      try {
+        const next = await fetchBillingStatus(token);
+        if (active) setStatus(next);
+      } catch (err) {
+        if (active) {
+          setError(err instanceof Error ? err.message : "Failed to load billing.");
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
   }, [token]);
 
   useEffect(() => {
