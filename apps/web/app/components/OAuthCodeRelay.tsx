@@ -21,6 +21,17 @@ export default function OAuthCodeRelay() {
     if (started.current) return;
     if (pathname === "/auth/callback") return;
 
+    const oauthError = searchParams.get("error_code") ?? searchParams.get("error");
+    if (
+      oauthError === "bad_oauth_callback" ||
+      oauthError === "bad_oauth_state" ||
+      searchParams.get("error") === "invalid_request"
+    ) {
+      started.current = true;
+      router.replace("/login?error=oauth");
+      return;
+    }
+
     const code = searchParams.get("code");
     if (!code) return;
 

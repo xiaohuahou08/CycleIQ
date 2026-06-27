@@ -3,7 +3,12 @@
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export function getSupabaseClient(rememberMe?: boolean) {
+/**
+ * Browser Supabase client. Uses the default @supabase/ssr cookie adapter so
+ * PKCE OAuth state/verifier cookies are set correctly (custom document.cookie
+ * handling caused bad_oauth_callback / state parameter missing).
+ */
+export function getSupabaseClient(rememberMe = true) {
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error(
       "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables."
@@ -11,29 +16,8 @@ export function getSupabaseClient(rememberMe?: boolean) {
   }
 
   return createBrowserClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return document.cookie.split(";").map((c) => {
-          const [name, ...rest] = c.trim().split("=");
-          return { name, value: rest.join("=") };
-        });
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          const parts = [`${name}=${value}`];
-          // "Remember me" off -> session cookie (no max-age, expires on close).
-          if (rememberMe !== false && options?.maxAge != null) {
-            parts.push(`max-age=${options.maxAge}`);
-          }
-          parts.push(`path=${options?.path ?? "/"}`);
-          if (options?.domain) parts.push(`domain=${options.domain}`);
-          if (options?.sameSite) parts.push(`samesite=${options.sameSite}`);
-          // Secure must follow the cookie's own `secure` option (https), not the
-          // presence of a domain — the previous check left cookies non-secure.
-          if (options?.secure) parts.push("secure");
-          document.cookie = parts.join("; ");
-        });
-      },
+    auth: {
+      persistSession: rememberMe,
     },
   });
 }
