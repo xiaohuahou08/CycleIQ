@@ -5,6 +5,7 @@ from typing import Any
 
 import stripe
 from flask import current_app
+from sqlalchemy.exc import SQLAlchemyError
 
 from backend.config import resolve_frontend_origin
 from backend.models import db
@@ -127,16 +128,28 @@ def create_portal_session(user_id: str, request_origin: str | None = None) -> st
     return session.url
 
 
+_EMPTY_BILLING_STATUS = {
+    "stripe_customer_id": None,
+    "stripe_subscription_id": None,
+    "subscription_status": None,
+    "current_period_end": None,
+    "can_manage_billing": False,
+}
+
+
 def billing_status_dict(user_id: str) -> dict[str, Any]:
-    row = UserPreferences.query.filter_by(user_id=user_id).first()
+    try:
+        row = UserPreferences.query.filter_by(user_id=user_id).first()
+    except SQLAlchemyError:
+        # e.g. Stripe columns missing because migration 0013 has not run on this DB.
+        # Degrade gracefully instead of 500 so the settings page still loads.
+        db.session.rollback()
+        current_app.logger.exception(
+            "billing_status_dict query failed (is migration 0013_stripe_billing applied?)"
+        )
+        return dict(_EMPTY_BILLING_STATUS)
     if not row:
-        return {
-            "stripe_customer_id": None,
-            "stripe_subscription_id": None,
-            "subscription_status": None,
-            "current_period_end": None,
-            "can_manage_billing": False,
-        }
+        return dict(_EMPTY_BILLING_STATUS)
     period_end = row.current_period_end.isoformat().replace("+00:00", "Z") if row.current_period_end else None
     return {
         "stripe_customer_id": row.stripe_customer_id,
