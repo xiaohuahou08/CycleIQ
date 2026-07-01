@@ -2,15 +2,16 @@
 
 import AdUnit from "@/app/components/AdUnit";
 
-const adsenseSlot = process.env.NEXT_PUBLIC_ADSENSE_SLOT;
+const adsenseClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
 
 type AdSlotProps = {
   pagePadClassName: string;
 };
 
-/** Homepage ad block; hidden unless NEXT_PUBLIC_ADSENSE_SLOT is set. */
+/** Homepage ad block; hidden unless AdSense client and slot env vars are set. */
 export default function AdSlot({ pagePadClassName }: AdSlotProps) {
-  if (!adsenseSlot) return null;
+  const adsenseSlot = process.env.NEXT_PUBLIC_ADSENSE_SLOT;
+  if (!adsenseClient || !adsenseSlot) return null;
 
   return (
     <section className="border-b border-slate-200/80 bg-slate-50">
