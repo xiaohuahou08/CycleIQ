@@ -334,11 +334,16 @@ export default function Home() {
               title="CC cost basis"
               description="Per-wheel initial vs current stock cost after realized CC premium — only for open assigned positions."
             />
+            {process.env.NEXT_PUBLIC_ADSENSE_CLIENT && process.env.NEXT_PUBLIC_ADSENSE_SLOT ? (
+              <div className="sm:col-span-2 flex justify-center">
+                <div className="w-full sm:w-[calc(50%-0.625rem)]">
+                  <AdSlot />
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </section>
-
-      <AdSlot pagePadClassName={MARKETING_PAGE_PAD} />
 
       {/* CTA */}
       <section className="bg-slate-900">
