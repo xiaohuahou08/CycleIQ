@@ -1,21 +1,33 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { safeInternalRedirectPath } from "@/lib/auth-redirect.mjs";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { resolveRequestOrigin } from "@/lib/auth-origin";
+import { AUTH_NEXT_COOKIE, readAuthNextFromCookieHeader } from "@/lib/auth-oauth-next";
+import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server";
 
-export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+export async function GET(request: NextRequest) {
+  const { searchParams } = request.nextUrl;
+  const origin = resolveRequestOrigin(request);
   const code = searchParams.get("code");
-  const next = safeInternalRedirectPath(searchParams.get("next")) ?? "/dashboard";
+  const cookieHeader = request.headers.get("cookie");
+  const nextFromCookie = readAuthNextFromCookieHeader(cookieHeader);
+  const next =
+    safeInternalRedirectPath(searchParams.get("next")) ??
+    safeInternalRedirectPath(nextFromCookie) ??
+    "/dashboard";
 
   if (code) {
-    const supabase = await createSupabaseServerClient();
+    const success = NextResponse.redirect(`${origin}${next}`);
+    const supabase = createSupabaseRouteHandlerClient(request, success);
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      success.cookies.delete(AUTH_NEXT_COOKIE);
+      return success;
     }
   }
 
   const login = new URL("/login", origin);
   login.searchParams.set("error", "oauth");
-  return NextResponse.redirect(login);
+  const response = NextResponse.redirect(login);
+  response.cookies.delete(AUTH_NEXT_COOKIE);
+  return response;
 }

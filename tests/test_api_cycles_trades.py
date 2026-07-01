@@ -27,6 +27,8 @@ def app():
     os.environ["SUPABASE_JWT_SECRET"] = "unit_test_jwt_secret"
     application = create_app(config_class=TestingConfig)
     application.config["SUPABASE_JWT_SECRET"] = os.environ["SUPABASE_JWT_SECRET"]
+    # Forged HS256 tokens omit `iss`; disable issuer enforcement for tests.
+    application.config["SUPABASE_URL"] = ""
     with application.app_context():
         db.create_all()
     yield application

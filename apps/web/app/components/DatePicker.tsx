@@ -198,7 +198,7 @@ export default function DatePicker({
                 onClick={() => pick(date)}
                 className={`h-8 rounded-lg text-[12px] font-medium transition ${
                   isSelected
-                    ? "bg-gray-900 text-white shadow-sm"
+                    ? "bg-slate-900 text-white shadow-sm"
                     : isToday
                       ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-100"
                       : "text-slate-700 hover:bg-slate-100"
@@ -253,7 +253,7 @@ export default function DatePicker({
         aria-expanded={open}
         className={`inline-flex min-w-[7.5rem] items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium transition ${
           emphasized || value
-            ? "bg-gray-900 text-white shadow-sm"
+            ? "bg-slate-900 text-white shadow-sm"
             : "text-slate-800 hover:bg-slate-100"
         } ${open ? "ring-2 ring-emerald-500/30 ring-offset-1" : ""}`}
       >

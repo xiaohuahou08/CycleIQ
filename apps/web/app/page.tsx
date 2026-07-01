@@ -11,6 +11,7 @@ import {
 import { CycleIQMark, iconMd, iconSm, iconStroke } from "@/app/components/icons";
 import MarketingFooter from "@/app/components/marketing/MarketingFooter";
 import MarketingHeader from "@/app/components/marketing/MarketingHeader";
+import AdSlot from "@/app/components/AdSlot";
 import { BTN_PRIMARY, BTN_SECONDARY, MARKETING_PAGE_PAD } from "@/app/components/marketing/styles";
 import { JsonLd } from "@/lib/seo/json-ld";
 import { createPageMetadata } from "@/lib/seo/metadata";
@@ -336,6 +337,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <AdSlot pagePadClassName={MARKETING_PAGE_PAD} />
 
       {/* CTA */}
       <section className="bg-slate-900">

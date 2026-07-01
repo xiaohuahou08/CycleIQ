@@ -45,20 +45,20 @@ export function AuthenticatedShell({
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gray-50">
-        <p className="text-gray-600">Loading…</p>
+      <main className="flex min-h-screen items-center justify-center bg-slate-50">
+        <p className="text-slate-600">Loading…</p>
       </main>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50">
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4">
+    <div className="flex min-h-screen flex-col bg-slate-50">
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4">
         <div className="flex min-w-0 items-center gap-3">
-          <Link href="/dashboard" className="shrink-0 text-base font-semibold text-gray-900">
+          <Link href="/dashboard" className="shrink-0 text-base font-semibold text-slate-900">
             CycleIQ
           </Link>
-          <span className="truncate text-sm text-gray-500">{title}</span>
+          <span className="truncate text-sm text-slate-500">{title}</span>
         </div>
         <UserMenu email={email} displayName={displayName} avatarUrl={avatarUrl} />
       </header>

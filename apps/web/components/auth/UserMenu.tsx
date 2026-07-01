@@ -50,7 +50,7 @@ export function UserMenu({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm shadow-sm hover:bg-gray-50"
+        className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm shadow-sm hover:bg-slate-50"
         aria-expanded={open}
         aria-haspopup="menu"
       >
@@ -60,10 +60,10 @@ export function UserMenu({
           email={email}
           size="sm"
         />
-        <span className="hidden max-w-[10rem] truncate text-left text-gray-700 sm:inline">
+        <span className="hidden max-w-[10rem] truncate text-left text-slate-700 sm:inline">
           {email ?? "Account"}
         </span>
-        <span className="text-gray-400" aria-hidden>
+        <span className="text-slate-400" aria-hidden>
           ▾
         </span>
       </button>
@@ -71,15 +71,15 @@ export function UserMenu({
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-2 w-52 rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+          className="absolute right-0 z-50 mt-2 w-52 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
         >
-          <div className="px-3 py-2 text-xs text-gray-400" role="presentation">
+          <div className="px-3 py-2 text-xs text-slate-400" role="presentation">
             Signed in as
-            <div className="truncate text-sm text-gray-800">{email ?? "—"}</div>
+            <div className="truncate text-sm text-slate-800">{email ?? "—"}</div>
           </div>
-          <div className="my-1 border-t border-gray-100" />
+          <div className="my-1 border-t border-slate-100" />
           <span
-            className="block cursor-not-allowed px-3 py-2 text-sm text-gray-400"
+            className="block cursor-not-allowed px-3 py-2 text-sm text-slate-400"
             role="menuitem"
           >
             Profile <span className="text-xs">(soon)</span>
@@ -87,7 +87,7 @@ export function UserMenu({
           <Link
             href="/settings"
             role="menuitem"
-            className="block px-3 py-2 text-sm text-gray-800 hover:bg-gray-50"
+            className="block px-3 py-2 text-sm text-slate-800 hover:bg-slate-50"
             onClick={() => setOpen(false)}
           >
             Settings
@@ -95,7 +95,7 @@ export function UserMenu({
           <button
             type="button"
             role="menuitem"
-            className="w-full px-3 py-2 text-left text-sm text-gray-800 hover:bg-gray-50"
+            className="w-full px-3 py-2 text-left text-sm text-slate-800 hover:bg-slate-50"
             onClick={() => {
               void onLogout();
             }}

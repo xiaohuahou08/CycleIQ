@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-from flask import request, jsonify
+from flask import current_app, request, jsonify
+from sqlalchemy.exc import SQLAlchemyError
 
 from backend.auth.supabase import require_auth
 from backend.models import db
@@ -101,6 +102,29 @@ def register_trades_routes(trades_bp):
             if data.get(field) is None or (isinstance(data.get(field), str) and not str(data.get(field)).strip()):
                 return jsonify({"error": f"Missing required field: {field}"}), 400
 
+        try:
+            strike_val = float(data["strike"])
+            premium_val = float(data["premium"])
+            contracts_val = int(data.get("contracts", 1))
+            commission_val = (
+                float(data["commission_fee"])
+                if data.get("commission_fee") is not None
+                else None
+            )
+        except (TypeError, ValueError):
+            return jsonify(
+                {"error": "strike, premium, contracts, and commission_fee must be numeric"}
+            ), 400
+
+        if strike_val <= 0:
+            return jsonify({"error": "strike must be greater than 0"}), 400
+        if premium_val < 0:
+            return jsonify({"error": "premium cannot be negative"}), 400
+        if contracts_val < 1:
+            return jsonify({"error": "contracts must be at least 1"}), 400
+        if commission_val is not None and commission_val < 0:
+            return jsonify({"error": "commission_fee cannot be negative"}), 400
+
         ticker = str(data["ticker"]).strip().upper()
         # If caller explicitly passes cycle_id=null (e.g. when creating a rolled leg that has no parent cycle),
         # honour it and skip auto-attach so all legs in a roll chain share the same cycle state.
@@ -166,14 +190,12 @@ def register_trades_routes(trades_bp):
             cycle_id=cycle_id,
             ticker=ticker,
             option_type=option_type,
-            strike=float(data["strike"]),
+            strike=strike_val,
             expiry=expiry,
             trade_date=trade_date,
-            premium=float(data["premium"]),
-            commission_fee=float(data["commission_fee"])
-            if data.get("commission_fee") is not None
-            else None,
-            contracts=int(data.get("contracts", 1)),
+            premium=premium_val,
+            commission_fee=commission_val,
+            contracts=contracts_val,
             status=status,
             notes=data.get("notes"),
             rolled_from_id=rolled_from_id or None,
@@ -225,7 +247,12 @@ def register_trades_routes(trades_bp):
                     except (InvalidTransitionError, ValueError, KeyError, TypeError):
                         pass
 
-        db.session.commit()
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            current_app.logger.exception("Failed to create trade")
+            return jsonify({"error": "Failed to save trade"}), 500
         return jsonify(trade.to_api_dict()), 201
 
     @trades_bp.route("/<trade_id>", methods=["GET"])

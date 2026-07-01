@@ -60,7 +60,7 @@ function TickerLogo({ ticker }: { ticker: string }) {
 
   if (!ticker) {
     return (
-      <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-gray-100 text-[10px] font-semibold text-gray-500">
+      <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-100 text-[10px] font-semibold text-slate-500">
         ?
       </span>
     );
@@ -307,14 +307,14 @@ export default function AddTradeModal({
             <div>
               <label
                 htmlFor="option_type"
-                className="mb-1 block text-sm font-medium text-gray-700"
+                className="mb-1 block text-sm font-medium text-slate-700"
               >
                 Strategy <span className="text-red-500">*</span>
               </label>
               <select
                 id="option_type"
                 {...register("option_type")}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-700 focus:outline-none"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-700 focus:outline-none"
               >
                 <option value="PUT">Cash Secured Put (CSP)</option>
                 <option value="CALL">Covered Call (CC)</option>
@@ -332,7 +332,7 @@ export default function AddTradeModal({
               )}
               {optionTypeValue === "PUT" && (initialValues?.status ?? "OPEN") === "OPEN" && (
                 <div className="mt-2 space-y-1.5">
-                  <p className="text-xs text-gray-600">
+                  <p className="text-xs text-slate-600">
                     Total capital: ${baseCapitalUsed.toLocaleString("en-US", { maximumFractionDigits: 0 })}
                     {draftCspNotional > 0 && (
                       <>
@@ -365,12 +365,12 @@ export default function AddTradeModal({
               <div>
                 <label
                   htmlFor="ticker"
-                  className="mb-1 block text-sm font-medium text-gray-700"
+                  className="mb-1 block text-sm font-medium text-slate-700"
                 >
                   Ticker <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <div className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 focus-within:border-gray-700">
+                  <div className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 focus-within:border-slate-700">
                     <TickerLogo key={tickerValue} ticker={tickerValue} />
                     <input
                       id="ticker"
@@ -389,17 +389,17 @@ export default function AddTradeModal({
                       onBlur={() => {
                         window.setTimeout(() => setIsTickerFocused(false), 120);
                       }}
-                      className="w-full bg-transparent text-sm uppercase text-gray-900 placeholder:normal-case focus:outline-none"
+                      className="w-full bg-transparent text-sm uppercase text-slate-900 placeholder:normal-case focus:outline-none"
                     />
                   </div>
                   {isTickerFocused && filteredTickerSuggestions.length > 0 && (
-                    <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
+                    <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
                       <ul className="max-h-52 overflow-y-auto py-1">
                         {filteredTickerSuggestions.map((ticker) => (
                           <li key={ticker}>
                             <button
                               type="button"
-                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-800 hover:bg-gray-50"
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-800 hover:bg-slate-50"
                               onMouseDown={(event) => {
                                 event.preventDefault();
                                 setValue("ticker", ticker, {
@@ -426,12 +426,12 @@ export default function AddTradeModal({
               <div>
                 <label
                   htmlFor="strike"
-                  className="mb-1 block text-sm font-medium text-gray-700"
+                  className="mb-1 block text-sm font-medium text-slate-700"
                 >
                   Strike Price <span className="text-red-500">*</span>
                 </label>
-                <div className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 focus-within:border-gray-700">
-                  <span className="text-sm font-medium text-gray-500">$</span>
+                <div className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 focus-within:border-slate-700">
+                  <span className="text-sm font-medium text-slate-500">$</span>
                   <input
                     id="strike"
                     type="number"
@@ -439,7 +439,7 @@ export default function AddTradeModal({
                     min="0"
                     placeholder="e.g. 350.00"
                     {...register("strike")}
-                    className="w-full bg-transparent text-sm text-gray-900 placeholder:normal-case focus:outline-none"
+                    className="w-full bg-transparent text-sm text-slate-900 placeholder:normal-case focus:outline-none"
                   />
                 </div>
                 {errors.strike && (
@@ -452,12 +452,12 @@ export default function AddTradeModal({
               <div>
                 <label
                   htmlFor="premium"
-                  className="mb-1 block text-sm font-medium text-gray-700"
+                  className="mb-1 block text-sm font-medium text-slate-700"
                 >
                   Premium per Share <span className="text-red-500">*</span>
                 </label>
-                <div className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 focus-within:border-gray-700">
-                  <span className="text-sm font-medium text-gray-500">$</span>
+                <div className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 focus-within:border-slate-700">
+                  <span className="text-sm font-medium text-slate-500">$</span>
                   <input
                     id="premium"
                     type="number"
@@ -465,13 +465,13 @@ export default function AddTradeModal({
                     min="0"
                     placeholder="e.g. 2.11"
                     {...register("premium")}
-                    className="w-full bg-transparent text-sm text-gray-900 placeholder:normal-case focus:outline-none"
+                    className="w-full bg-transparent text-sm text-slate-900 placeholder:normal-case focus:outline-none"
                   />
                 </div>
                 {errors.premium && (
                   <p className="mt-1 text-xs text-red-600">{errors.premium.message}</p>
                 )}
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-slate-500">
                   Total received: ${totalReceived.toFixed(2)}
                 </p>
               </div>
@@ -479,19 +479,19 @@ export default function AddTradeModal({
               <div>
                 <label
                   htmlFor="contracts"
-                  className="mb-1 block text-sm font-medium text-gray-700"
+                  className="mb-1 block text-sm font-medium text-slate-700"
                 >
                   Contracts <span className="text-red-500">*</span>
                 </label>
-                <div className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 focus-within:border-gray-700">
-                  <span className="text-sm font-medium text-gray-500">#</span>
+                <div className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 focus-within:border-slate-700">
+                  <span className="text-sm font-medium text-slate-500">#</span>
                   <input
                     id="contracts"
                     type="number"
                     step="1"
                     min="1"
                     {...register("contracts")}
-                    className="w-full bg-transparent text-sm text-gray-900 placeholder:normal-case focus:outline-none"
+                    className="w-full bg-transparent text-sm text-slate-900 placeholder:normal-case focus:outline-none"
                   />
                 </div>
                 {errors.contracts && (
@@ -504,7 +504,7 @@ export default function AddTradeModal({
               <div>
                 <label
                   htmlFor="trade_date"
-                  className="mb-1 block text-sm font-medium text-gray-700"
+                  className="mb-1 block text-sm font-medium text-slate-700"
                 >
                   Open Date <span className="text-red-500">*</span>
                 </label>
@@ -512,7 +512,7 @@ export default function AddTradeModal({
                   id="trade_date"
                   type="date"
                   {...register("trade_date")}
-                  className="date-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  className="date-input w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                 />
                 {errors.trade_date && (
                   <p className="mt-1 text-xs text-red-600">{errors.trade_date.message}</p>
@@ -522,7 +522,7 @@ export default function AddTradeModal({
               <div>
                 <label
                   htmlFor="expiry"
-                  className="mb-1 block text-sm font-medium text-gray-700"
+                  className="mb-1 block text-sm font-medium text-slate-700"
                 >
                   Expiration Date <span className="text-red-500">*</span>
                 </label>
@@ -530,7 +530,7 @@ export default function AddTradeModal({
                   id="expiry"
                   type="date"
                   {...register("expiry")}
-                  className="date-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  className="date-input w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                 />
                 {errors.expiry && (
                   <p className="mt-1 text-xs text-red-600">{errors.expiry.message}</p>
@@ -554,12 +554,12 @@ export default function AddTradeModal({
                 <div>
                   <label
                     htmlFor="commissionFees"
-                    className="mb-1 block text-sm font-medium text-gray-700"
+                    className="mb-1 block text-sm font-medium text-slate-700"
                   >
                     Commission Fees (total)
                   </label>
                   <div className="flex items-center gap-2 rounded-lg border border-purple-200 bg-white px-3 py-2 focus-within:border-purple-400">
-                    <span className="text-sm font-medium text-gray-500">$</span>
+                    <span className="text-sm font-medium text-slate-500">$</span>
                     <input
                       id="commissionFees"
                       type="number"
@@ -575,7 +575,7 @@ export default function AddTradeModal({
                           ? `e.g. ${commissionFeeTotal(defaults.commissionPerContract, contractsValue || 1)}`
                           : "e.g. 1.30"
                       }
-                      className="w-full bg-transparent text-sm text-gray-900 placeholder:normal-case focus:outline-none"
+                      className="w-full bg-transparent text-sm text-slate-900 placeholder:normal-case focus:outline-none"
                     />
                   </div>
                 </div>
@@ -583,7 +583,7 @@ export default function AddTradeModal({
                 <div className="mt-4">
                   <label
                     htmlFor="notes"
-                    className="mb-1 block text-sm font-medium text-gray-700"
+                    className="mb-1 block text-sm font-medium text-slate-700"
                   >
                     Notes
                   </label>
@@ -593,7 +593,7 @@ export default function AddTradeModal({
                     maxLength={500}
                     placeholder="Any notes about this position..."
                     {...register("notes")}
-                    className="w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-purple-400 focus:outline-none"
+                    className="w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-purple-400 focus:outline-none"
                   />
                   {errors.notes && (
                     <p className="mt-1 text-xs text-red-600">{errors.notes.message}</p>

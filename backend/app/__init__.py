@@ -6,7 +6,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_migrate import Migrate
 
-from backend.config import cors_allowed_origins, get_config
+from backend.config import ProductionConfig, cors_allowed_origins, get_config
 from backend.models import db
 from backend.routes import (
     account_bp,
@@ -33,6 +33,9 @@ def create_app(config_object=None):
     """Create and configure the Flask application."""
     if config_object is None:
         config_object = get_config()
+
+    if config_object is ProductionConfig:
+        ProductionConfig.validate()
 
     app = Flask(__name__)
     app.config.from_object(config_object)

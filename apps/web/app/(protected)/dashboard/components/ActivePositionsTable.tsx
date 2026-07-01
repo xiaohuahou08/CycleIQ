@@ -1,14 +1,18 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { ClipboardList } from "lucide-react";
+import { iconStroke } from "@/app/components/icons";
+import { CARD_BASE, STATUS_COLORS } from "@/app/components/ui/styles";
+import { Badge } from "@/components/ui/badge";
 import type { Trade, TradeStatus } from "@/lib/api/trades";
 
 const statusStyles: Record<TradeStatus, string> = {
-  OPEN: "bg-amber-100 text-amber-800",
-  CLOSED: "bg-green-100 text-green-800",
-  EXPIRED: "bg-gray-100 text-gray-600",
-  ASSIGNED: "bg-orange-100 text-orange-800",
-  CALLED_AWAY: "bg-red-100 text-red-800",
-  ROLLED: "bg-blue-100 text-blue-800",
+  OPEN: STATUS_COLORS.OPEN,
+  CLOSED: STATUS_COLORS.CLOSED,
+  EXPIRED: STATUS_COLORS.EXPIRED,
+  ASSIGNED: STATUS_COLORS.ASSIGNED,
+  CALLED_AWAY: STATUS_COLORS.CALLED_AWAY,
+  ROLLED: STATUS_COLORS.ROLLED,
 };
 
 function fmtDate(iso: string): string {
@@ -82,7 +86,7 @@ export default function ActivePositionsTable({
             href="/trades"
             className="text-xs font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
           >
-            View all trades →
+            View all trades ??
           </Link>
         </div>
       )}
@@ -90,12 +94,14 @@ export default function ActivePositionsTable({
       {loading ? (
         <div className="space-y-3 p-5">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-8 animate-pulse rounded bg-slate-100" />
+            <div key={i} className="skeleton h-8 rounded" />
           ))}
         </div>
       ) : trades.length === 0 ? (
         <div className="flex flex-col items-center px-6 py-12 text-center">
-          <div className="text-4xl">📋</div>
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+            <ClipboardList className="h-6 w-6" strokeWidth={iconStroke} aria-hidden />
+          </span>
           <p className="mt-3 text-sm font-medium text-slate-900">No trades yet</p>
           <p className="mt-1 text-xs text-slate-500">No active positions at the moment.</p>
         </div>
@@ -129,7 +135,7 @@ export default function ActivePositionsTable({
             </thead>
             <tbody className="divide-y divide-slate-100">
               {displayed.map((trade) => (
-                <tr key={trade.id} className="hover:bg-slate-50 transition-colors">
+                <tr key={trade.id} className="transition-colors hover:bg-emerald-50/40">
                   <td className="px-5 py-3 font-medium text-slate-900">
                     <div className="flex items-center gap-2">
                       <TickerLogo key={trade.ticker} ticker={trade.ticker} />
@@ -152,11 +158,9 @@ export default function ActivePositionsTable({
                     +${(trade.premium * trade.contracts * 100).toFixed(2)}
                   </td>
                   <td className="px-5 py-3">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusStyles[trade.status]}`}
-                    >
+                    <Badge variant="secondary" className={statusStyles[trade.status]}>
                       {trade.status}
-                    </span>
+                    </Badge>
                   </td>
                 </tr>
               ))}

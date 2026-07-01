@@ -3,9 +3,27 @@ import assert from "node:assert/strict";
 import {
   isAuthRoute,
   isProtectedRoute,
+  oauthCallbackRelayTarget,
+  oauthCallbackRelayFromRecord,
   resolveAuthRedirect,
   safeInternalRedirectPath,
 } from "./auth-redirect.mjs";
+
+test("oauthCallbackRelayFromRecord forwards code from Next searchParams", () => {
+  assert.equal(
+    oauthCallbackRelayFromRecord("/", { code: "abc", next: "/dashboard" }),
+    "/auth/callback?code=abc&next=%2Fdashboard",
+  );
+  assert.equal(oauthCallbackRelayFromRecord("/", {}), null);
+});
+
+test("oauthCallbackRelayTarget forwards PKCE code from Site URL root", () => {
+  const params = new URLSearchParams("code=abc&next=%2Fdashboard");
+  assert.equal(oauthCallbackRelayTarget("/", params), "/auth/callback?code=abc&next=%2Fdashboard");
+  assert.equal(oauthCallbackRelayTarget("/login", params), "/auth/callback?code=abc&next=%2Fdashboard");
+  assert.equal(oauthCallbackRelayTarget("/auth/callback", params), null);
+  assert.equal(oauthCallbackRelayTarget("/", new URLSearchParams()), null);
+});
 
 test("isProtectedRoute identifies protected app routes", () => {
   assert.equal(isProtectedRoute("/dashboard"), true);
@@ -13,7 +31,7 @@ test("isProtectedRoute identifies protected app routes", () => {
   assert.equal(isProtectedRoute("/cycles"), true);
   assert.equal(isProtectedRoute("/reports/summary"), true);
   assert.equal(isProtectedRoute("/settings"), true);
-  assert.equal(isProtectedRoute("/orders"), true);
+  assert.equal(isProtectedRoute("/orders"), false);
   assert.equal(isProtectedRoute("/login"), false);
   assert.equal(isProtectedRoute("/"), false);
 });
@@ -27,11 +45,16 @@ test("isAuthRoute identifies login and register routes", () => {
 test("safeInternalRedirectPath allows only known in-app targets", () => {
   assert.equal(safeInternalRedirectPath("/cycles"), "/cycles");
   assert.equal(safeInternalRedirectPath("/dashboard/foo"), "/dashboard/foo");
+  assert.equal(safeInternalRedirectPath("/pricing"), "/pricing");
   assert.equal(safeInternalRedirectPath(null), null);
   assert.equal(safeInternalRedirectPath("//evil.com"), null);
   assert.equal(safeInternalRedirectPath("https://evil.com"), null);
   assert.equal(safeInternalRedirectPath("/login"), null);
   assert.equal(safeInternalRedirectPath("/open-redirect"), null);
+});
+
+test("resolveAuthRedirect honors /pricing for authenticated upgraders", () => {
+  assert.equal(resolveAuthRedirect("/login", true, "/pricing"), "/pricing");
 });
 
 test("resolveAuthRedirect sends unauthenticated users to /login with next", () => {

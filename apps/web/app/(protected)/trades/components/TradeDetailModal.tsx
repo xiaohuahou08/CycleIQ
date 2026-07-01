@@ -35,7 +35,7 @@ interface TradeDetailModalProps {
 const STATUS_STYLES: Record<TradeStatus, string> = {
   OPEN: "bg-amber-50 text-amber-800 ring-1 ring-amber-200",
   CLOSED: "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200",
-  EXPIRED: "bg-gray-100 text-gray-600 ring-1 ring-gray-200",
+  EXPIRED: "bg-slate-100 text-slate-600 ring-1 ring-slate-200",
   ASSIGNED: "bg-orange-50 text-orange-800 ring-1 ring-orange-200",
   CALLED_AWAY: "bg-red-50 text-red-800 ring-1 ring-red-200",
   ROLLED: "bg-blue-50 text-blue-800 ring-1 ring-blue-200",
@@ -142,7 +142,7 @@ function TickerLogo({ ticker }: { ticker: string }) {
     <img
       src={LOGO_URL_BUILDERS[idx](ticker)}
       alt=""
-      className="h-14 w-14 rounded-xl object-cover ring-1 ring-gray-100"
+      className="h-14 w-14 rounded-xl object-cover ring-1 ring-slate-100"
       onError={() => setIdx((p) => p + 1)}
       loading="lazy"
     />
@@ -169,18 +169,18 @@ function RollItem({
           className={`mt-1 h-3 w-3 rounded-full border-2 ${
             isLast
               ? "border-violet-500 bg-violet-500"
-              : "border-gray-300 bg-white"
+              : "border-slate-300 bg-white"
           }`}
         />
-        {!isLast && <div className="mt-1 w-px flex-1 bg-gray-200" />}
+        {!isLast && <div className="mt-1 w-px flex-1 bg-slate-200" />}
       </div>
       <div
         className={`mb-3 flex-1 rounded-xl px-4 py-3 ${
-          isLast ? "bg-violet-50 ring-1 ring-violet-100" : "bg-gray-50"
+          isLast ? "bg-violet-50 ring-1 ring-violet-100" : "bg-slate-50"
         }`}
       >
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[14px] font-bold text-gray-900">
+          <span className="text-[14px] font-bold text-slate-900">
             ${trade.strike.toFixed(2)}
           </span>
           <span className="text-[13px] font-semibold text-emerald-600">
@@ -191,9 +191,9 @@ function RollItem({
           >
             {trade.status.replaceAll("_", " ")}
           </span>
-          <span className="text-[11px] text-gray-400">{label}</span>
+          <span className="text-[11px] text-slate-400">{label}</span>
         </div>
-        <p className="mt-1 text-[11px] text-gray-500">
+        <p className="mt-1 text-[11px] text-slate-500">
           {trade.trade_date} → {trade.expiry}
         </p>
       </div>
@@ -270,7 +270,7 @@ export default function TradeDetailModal({
             <TickerLogo ticker={trade.ticker} />
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[20px] font-bold text-gray-900">
+                <span className="text-[20px] font-bold text-slate-900">
                   {trade.ticker}
                 </span>
                 <span className="rounded-md bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
@@ -282,12 +282,12 @@ export default function TradeDetailModal({
                   {trade.status.replaceAll("_", " ")}
                 </span>
               </div>
-              <p className="mt-0.5 text-[13px] text-gray-500">{description}</p>
+              <p className="mt-0.5 text-[13px] text-slate-500">{description}</p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
             >
               <X className={iconSm} strokeWidth={iconStroke} aria-hidden />
             </button>
@@ -318,8 +318,8 @@ export default function TradeDetailModal({
                   green: false,
                 },
               ].map(({ label, value, green }) => (
-                <div key={label} className="rounded-xl bg-gray-50 px-4 py-3">
-                  <p className="flex items-center gap-1 text-[11px] font-medium text-gray-400">
+                <div key={label} className="rounded-xl bg-slate-50 px-4 py-3">
+                  <p className="flex items-center gap-1 text-[11px] font-medium text-slate-400">
                     {green ? (
                       <LineChart className={iconXs} strokeWidth={iconStroke} aria-hidden />
                     ) : (
@@ -329,7 +329,7 @@ export default function TradeDetailModal({
                   </p>
                   <p
                     className={`mt-1 text-[20px] font-bold tabular-nums ${
-                      green ? "text-emerald-600" : "text-gray-900"
+                      green ? "text-emerald-600" : "text-slate-900"
                     }`}
                   >
                     {value}
@@ -355,15 +355,15 @@ export default function TradeDetailModal({
                   className={`rounded-xl px-3 py-3 text-center ${
                     highlight
                       ? "bg-blue-50 ring-1 ring-blue-200"
-                      : "bg-gray-50"
+                      : "bg-slate-50"
                   }`}
                 >
-                  <p className="text-[10px] font-medium leading-tight text-gray-400">
+                  <p className="text-[10px] font-medium leading-tight text-slate-400">
                     {label}
                   </p>
                   <p
                     className={`mt-1 text-[14px] font-bold tabular-nums ${
-                      highlight ? "text-blue-700" : "text-gray-900"
+                      highlight ? "text-blue-700" : "text-slate-900"
                     }`}
                   >
                     {value}
@@ -373,7 +373,7 @@ export default function TradeDetailModal({
             </div>
 
             {/* ── timeline ── */}
-            <div className="space-y-2 rounded-xl bg-gray-50 px-4 py-3">
+            <div className="space-y-2 rounded-xl bg-slate-50 px-4 py-3">
               {[
                 {
                   Icon: Calendar,
@@ -397,17 +397,17 @@ export default function TradeDetailModal({
                 },
               ].map(({ Icon, label, value }) => (
                 <div key={label} className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-[13px] text-gray-500">
+                  <span className="flex items-center gap-2 text-[13px] text-slate-500">
                     <Icon className={iconSm} strokeWidth={iconStroke} aria-hidden />
                     {label}
                   </span>
-                  <span className="text-[13px] font-medium tabular-nums text-gray-900">
+                  <span className="text-[13px] font-medium tabular-nums text-slate-900">
                     {value}
                   </span>
                 </div>
               ))}
               {trade.notes?.trim() && (
-                <p className="border-t border-gray-200 pt-2 text-[12px] text-gray-500">
+                <p className="border-t border-slate-200 pt-2 text-[12px] text-slate-500">
                   {trade.notes.trim()}
                 </p>
               )}
@@ -416,7 +416,7 @@ export default function TradeDetailModal({
             {/* ── roll history ── */}
             {showRollHistory && (
               <div>
-                <div className="mb-3 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-gray-500">
+                <div className="mb-3 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-500">
                   <RotateCw className={iconSm} strokeWidth={iconStroke} aria-hidden />
                   Roll History
                 </div>
@@ -455,7 +455,7 @@ export default function TradeDetailModal({
                   key={label}
                   type="button"
                   onClick={onClick}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[12px] font-medium text-slate-700 shadow-sm hover:bg-slate-50"
                 >
                   <Icon className={iconSm} strokeWidth={iconStroke} aria-hidden />
                   {label}
@@ -464,12 +464,12 @@ export default function TradeDetailModal({
             </div>
 
             {/* ── secondary actions ── */}
-            <div className="flex flex-wrap justify-center gap-2 border-t border-gray-100 pt-3">
+            <div className="flex flex-wrap justify-center gap-2 border-t border-slate-100 pt-3">
               <a
                 href={`https://finance.yahoo.com/quote/${trade.ticker}`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[12px] font-medium text-slate-700 shadow-sm hover:bg-slate-50"
               >
                 <ExternalLink className={iconSm} strokeWidth={iconStroke} aria-hidden />
                 Explore {trade.ticker}

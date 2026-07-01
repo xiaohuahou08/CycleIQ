@@ -5,14 +5,20 @@ from typing import Any
 
 import stripe
 from flask import current_app
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from backend.config import resolve_frontend_origin
 from backend.models import db
+from backend.models.stripe_event import StripeWebhookEvent
 from backend.models.user_preferences import UserPreferences
-from backend.services.trade_limits import BASIC_PLAN, PREMIUM_PLAN
+from backend.services.trade_limits import (
+    BASIC_PLAN,
+    PREMIUM_PLAN,
+    PREMIUM_SUBSCRIPTION_STATUSES,
+)
 
-PREMIUM_SUBSCRIPTION_STATUSES = frozenset({"active", "trialing"})
+# Checkout payment states that represent a completed, payable subscription.
+PAID_CHECKOUT_STATUSES = frozenset({"paid", "no_payment_required"})
 
 
 def _configure_stripe() -> None:
@@ -79,10 +85,24 @@ def get_or_create_stripe_customer(user_id: str, email: str | None) -> str:
     params: dict[str, Any] = {"metadata": {"user_id": user_id}}
     if email:
         params["email"] = email
-    customer = stripe.Customer.create(**params)
+    # Idempotency key keyed by user prevents creating duplicate Stripe customers
+    # if two checkout requests race for the same user.
+    customer = stripe.Customer.create(
+        idempotency_key=f"customer-create-{user_id}",
+        **params,
+    )
     row.stripe_customer_id = customer.id
     row.updated_at = datetime.now(timezone.utc)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        # Another concurrent request already linked a customer (unique index on
+        # stripe_customer_id). Roll back and use the persisted value.
+        db.session.rollback()
+        row = _ensure_preferences(user_id)
+        if row.stripe_customer_id:
+            return row.stripe_customer_id
+        raise
     return customer.id
 
 
@@ -206,9 +226,35 @@ def sync_subscription_for_user(user_id: str) -> UserPreferences:
     return row
 
 
+def _event_already_processed(event_id: str) -> bool:
+    return (
+        db.session.query(StripeWebhookEvent.event_id)
+        .filter_by(event_id=event_id)
+        .first()
+        is not None
+    )
+
+
+def _mark_event_processed(event_id: str, event_type: str | None) -> None:
+    db.session.add(StripeWebhookEvent(event_id=event_id, event_type=event_type))
+    try:
+        db.session.commit()
+    except IntegrityError:
+        # Concurrent delivery already recorded this event id; safe to ignore.
+        db.session.rollback()
+
+
 def handle_stripe_event(event: Any) -> None:
     event_dict = _as_dict(event)
+    event_id = event_dict.get("id")
     event_type = event_dict.get("type")
+
+    if event_id and _event_already_processed(str(event_id)):
+        current_app.logger.info(
+            "Skipping duplicate Stripe event %s (%s)", event_id, event_type
+        )
+        return
+
     data_object = _as_dict((event_dict.get("data") or {}).get("object"))
 
     if event_type == "checkout.session.completed":
@@ -219,6 +265,9 @@ def handle_stripe_event(event: Any) -> None:
         "customer.subscription.deleted",
     ):
         _handle_subscription_event(data_object)
+
+    if event_id:
+        _mark_event_processed(str(event_id), event_type)
 
 
 def _resolve_user_id(session_or_sub: dict[str, Any]) -> str | None:
@@ -236,6 +285,21 @@ def _resolve_user_id(session_or_sub: dict[str, Any]) -> str | None:
 def _handle_checkout_completed(session: dict[str, Any]) -> None:
     user_id = _resolve_user_id(session)
     if not user_id:
+        current_app.logger.error(
+            "Stripe checkout.session.completed could not resolve a user "
+            "(session=%s, customer=%s); billing state not updated",
+            session.get("id"),
+            session.get("customer"),
+        )
+        return
+
+    payment_status = session.get("payment_status")
+    if payment_status is not None and payment_status not in PAID_CHECKOUT_STATUSES:
+        current_app.logger.warning(
+            "Ignoring checkout.session.completed for user %s with payment_status=%s",
+            user_id,
+            payment_status,
+        )
         return
 
     row = _ensure_preferences(user_id)
@@ -255,5 +319,11 @@ def _handle_checkout_completed(session: dict[str, Any]) -> None:
 def _handle_subscription_event(subscription: dict[str, Any]) -> None:
     user_id = _resolve_user_id(subscription)
     if not user_id:
+        current_app.logger.error(
+            "Stripe subscription event could not resolve a user "
+            "(subscription=%s, customer=%s); billing state not updated",
+            subscription.get("id"),
+            subscription.get("customer"),
+        )
         return
     sync_user_from_subscription(user_id, subscription)

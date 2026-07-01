@@ -1,4 +1,4 @@
-import { getApiBase } from "@/lib/api/base";
+import { apiFetch } from "@/lib/api/base";
 
 export interface PlanUsage {
   plan: string;
@@ -13,7 +13,7 @@ export interface PlanUsage {
 }
 
 export async function fetchPlanUsage(token: string): Promise<PlanUsage> {
-  const res = await fetch(`${getApiBase()}/api/me/plan`, {
+  const res = await apiFetch(`/api/me/plan`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });

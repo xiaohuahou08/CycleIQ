@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import MarketingShell, {
   BTN_PRIMARY,
@@ -171,7 +172,15 @@ export default function PricingPage() {
                 tradeLimit="Unlimited new trades per month."
                 accentClass="bg-emerald-400"
                 featured
-                cta={<PremiumUpgradeButton />}
+                cta={
+                  <Suspense
+                    fallback={
+                      <div className={`${BTN_SECONDARY} w-full opacity-60`}>Loading…</div>
+                    }
+                  >
+                    <PremiumUpgradeButton />
+                  </Suspense>
+                }
               />
             </div>
 

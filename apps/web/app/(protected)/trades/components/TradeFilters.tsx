@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import DatePicker from "@/app/components/DatePicker";
 import { iconSm, iconStroke } from "@/app/components/icons";
+import { PILL_ACTIVE, PILL_IDLE } from "@/app/components/ui/styles";
+import { Button } from "@/components/ui/button";
 
 export interface FilterState {
   type: string;
@@ -24,6 +26,13 @@ export interface FilterState {
   startDate?: string;
   endDate?: string;
 }
+
+const DEFAULT_FILTERS: FilterState = {
+  type: "PUT",
+  status: "OPEN",
+  search: "",
+  dateRangeType: "1M",
+};
 
 const STATUS_ROW: ReadonlyArray<{
   key: string;
@@ -37,6 +46,15 @@ const STATUS_ROW: ReadonlyArray<{
   { key: "CALLED_AWAY", label: "Away", Icon: TrendingUp },
   { key: "ROLLED", label: "Rolled", Icon: RotateCw },
 ];
+
+function countActiveFilters(filters: FilterState): number {
+  let count = 0;
+  if (filters.type !== DEFAULT_FILTERS.type) count++;
+  if (filters.status !== DEFAULT_FILTERS.status) count++;
+  if (filters.search.trim()) count++;
+  if (filters.dateRangeType === "CUSTOM" || filters.startDate || filters.endDate) count++;
+  return count;
+}
 
 interface TradeFiltersProps {
   filters: FilterState;
@@ -62,6 +80,7 @@ export default function TradeFilters({
 }: TradeFiltersProps) {
   const [suggestOpen, setSuggestOpen] = useState(false);
   const searchWrapRef = useRef<HTMLDivElement>(null);
+  const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
 
   const matchingTickers = useMemo(() => {
     const raw = filters.search.trim();
@@ -95,6 +114,10 @@ export default function TradeFilters({
     onFilterChange((prev) => ({ ...prev, ...patch }));
   };
 
+  const clearFilters = () => {
+    onFilterChange(DEFAULT_FILTERS);
+  };
+
   const applySinceLastMonth = () => {
     apply({ dateRangeType: "1M", startDate: undefined, endDate: undefined });
   };
@@ -118,12 +141,7 @@ export default function TradeFilters({
 
   const shell = embedded
     ? "shrink-0 border-b border-slate-200/80 bg-white"
-    : "rounded-xl border border-slate-200 bg-white shadow-sm";
-
-  const pillActive =
-    "bg-slate-900 text-white shadow-sm";
-  const pillIdle =
-    "border border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:text-slate-950";
+    : "rounded-xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-900/[0.04]";
 
   return (
     <div className={shell}>
@@ -143,7 +161,7 @@ export default function TradeFilters({
                 setSuggestOpen(true);
               }}
               onFocus={() => setSuggestOpen(true)}
-              className="h-9 w-full rounded-lg border border-slate-300 bg-white py-0 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/25"
+              className="h-9 w-full rounded-lg border border-slate-300 bg-white py-0 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25"
             />
             {suggestOpen && matchingTickers.length > 0 && (
               <ul
@@ -174,7 +192,7 @@ export default function TradeFilters({
               type="button"
               onClick={toggleCsp}
               className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-3.5 text-xs font-semibold uppercase tracking-wide transition ${
-                filters.type === "PUT" ? pillActive : pillIdle
+                filters.type === "PUT" ? PILL_ACTIVE : PILL_IDLE
               }`}
             >
               <CircleDot className={iconSm} strokeWidth={iconStroke} aria-hidden />
@@ -184,13 +202,26 @@ export default function TradeFilters({
               type="button"
               onClick={toggleCc}
               className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-3.5 text-xs font-semibold uppercase tracking-wide transition ${
-                filters.type === "CALL" ? pillActive : pillIdle
+                filters.type === "CALL" ? PILL_ACTIVE : PILL_IDLE
               }`}
             >
               <LineChart className={iconSm} strokeWidth={iconStroke} aria-hidden />
               CC
             </button>
           </div>
+
+          {activeFilterCount > 0 && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700"
+            >
+              Clear filters
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-100 px-1.5 text-[10px] font-semibold text-emerald-700">
+                {activeFilterCount}
+              </span>
+            </button>
+          )}
 
           {onAddTrade && (
             <div className="ml-auto flex shrink-0 items-center gap-3">
@@ -199,15 +230,15 @@ export default function TradeFilters({
                   {tradesUsageLabel}
                 </span>
               )}
-              <button
+              <Button
                 type="button"
                 onClick={onAddTrade}
                 disabled={addTradeDisabled}
                 title={addTradeDisabled ? addTradeDisabledReason : undefined}
-                className="inline-flex h-9 shrink-0 items-center rounded-lg bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400 disabled:hover:bg-slate-400"
+                className="h-9 shrink-0 bg-emerald-600 text-white hover:bg-emerald-700"
               >
                 + Add trade
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -235,7 +266,7 @@ export default function TradeFilters({
                   }
                   className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition ${
                     active
-                      ? "bg-white text-slate-950 shadow-sm ring-1 ring-slate-300/80"
+                      ? "animate-pill-pop bg-white text-slate-950 shadow-sm ring-1 ring-slate-300/80 scale-[1.02]"
                       : "text-slate-700 hover:text-slate-950"
                   }`}
                 >
@@ -253,8 +284,8 @@ export default function TradeFilters({
               onClick={applySinceLastMonth}
               className={`inline-flex h-8 items-center rounded-lg px-3 text-xs font-medium transition ${
                 filters.dateRangeType === "1M"
-                  ? "bg-slate-900 text-white shadow-sm"
-                  : "border border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:text-slate-950"
+                  ? PILL_ACTIVE
+                  : PILL_IDLE
               }`}
             >
               Since last month
