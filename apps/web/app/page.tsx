@@ -345,6 +345,8 @@ export default function Home() {
         </div>
       </section>
 
+      <AdSlot pagePadClassName={MARKETING_PAGE_PAD} />
+
       {/* CTA */}
       <section className="bg-slate-900">
         <div className={`${MARKETING_PAGE_PAD} py-12 text-center sm:py-14`}>
