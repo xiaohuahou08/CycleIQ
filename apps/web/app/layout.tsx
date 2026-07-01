@@ -10,6 +10,8 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 
 const adsenseClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
+/** Always emitted for AdSense site verification; ad script loads only when env is set. */
+const ADSENSE_PUBLISHER_ID = "ca-pub-8772060670873398";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -60,10 +62,9 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  // Only advertise the AdSense account when ads are actually enabled.
-  ...(adsenseClient
-    ? { other: { "google-adsense-account": adsenseClient } }
-    : {}),
+  other: {
+    "google-adsense-account": ADSENSE_PUBLISHER_ID,
+  },
 };
 
 export const viewport: Viewport = {
