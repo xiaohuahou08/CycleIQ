@@ -26,6 +26,7 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 import { authCallbackUrl } from "@/lib/auth-url";
 import { getUserDisplayName } from "@/lib/auth/user-profile";
 import PageHeader from "@/app/components/PageHeader";
+import DataSyncBanner from "@/app/components/DataSyncBanner";
 import { useToast } from "@/app/components/Toast";
 import { CARD_BASE } from "@/app/components/ui/styles";
 import { Button } from "@/components/ui/button";
@@ -182,7 +183,7 @@ function BillingSection() {
         description="Manage your CycleIQ plan. Premium is $1/month via Stripe."
       >
         {loading ? (
-          <p className="text-sm text-slate-500">Loading plan…</p>
+          <DataSyncBanner active compact />
         ) : (
           <>
             <FieldRow label="Current plan">
@@ -469,7 +470,7 @@ function TradingDefaultsSection({ hasCapitalFlows }: { hasCapitalFlows: boolean 
         >
           {saving ? "Saving…" : "Save defaults"}
         </button>
-        {loading && <span className="text-sm text-slate-500">Loading…</span>}
+        {loading ? <DataSyncBanner active compact /> : null}
         {saved && !saveError && (
           <span className="text-sm text-emerald-600">Saved.</span>
         )}
@@ -780,8 +781,10 @@ function CapitalManagementSection({
             <tbody className="divide-y divide-slate-100 bg-white">
               {loadingFlows ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
-                    Loading…
+                  <td colSpan={4} className="px-4 py-6">
+                    <div className="flex justify-center">
+                      <DataSyncBanner active compact />
+                    </div>
                   </td>
                 </tr>
               ) : flows.length === 0 ? (

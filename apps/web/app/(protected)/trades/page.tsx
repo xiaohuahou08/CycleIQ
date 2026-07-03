@@ -23,6 +23,7 @@ import RollTradeModal from "./components/RollTradeModal";
 import { Clock } from "lucide-react";
 import { iconXs, iconStroke } from "@/app/components/icons";
 import PageHeader from "@/app/components/PageHeader";
+import DataSyncBanner from "@/app/components/DataSyncBanner";
 import { useToast } from "@/app/components/Toast";
 import { applyFilters, getClosedCycleIds } from "@/lib/trades/filters";
 import TradeFilters, { type FilterState } from "./components/TradeFilters";
@@ -269,6 +270,9 @@ export default function TradesPage() {
             title="Trades"
             description="Manage CSP and covered call positions"
           />
+          <div className={tradesLoading ? "pb-4" : undefined}>
+            <DataSyncBanner active={tradesLoading} />
+          </div>
         </div>
 
         <TradeFilters

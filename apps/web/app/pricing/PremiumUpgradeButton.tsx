@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { BTN_PRIMARY, BTN_SECONDARY } from "@/app/components/marketing/MarketingShell";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { BTN_PRIMARY } from "@/app/components/marketing/MarketingShell";
 import { createCheckoutSession } from "@/lib/api/billing";
 import { getSupabaseClient } from "@/lib/supabase/client";
+
+/** Post-login target that auto-starts Stripe checkout on the pricing page. */
+export const PRICING_CHECKOUT_PATH = "/pricing?checkout=1";
 
 export default function PremiumUpgradeButton({ className = "" }: { className?: string }) {
   const router = useRouter();
@@ -14,46 +17,77 @@ export default function PremiumUpgradeButton({ className = "" }: { className?: s
   const [error, setError] = useState<string | null>(null);
   const [hasSession, setHasSession] = useState<boolean | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const autoCheckoutStarted = useRef(false);
   const canceled = !dismissed && searchParams.get("billing") === "canceled";
+  const shouldAutoCheckout = searchParams.get("checkout") === "1";
+
+  const refreshSession = useCallback(async () => {
+    try {
+      const supabase = getSupabaseClient();
+      const { data, error: userError } = await supabase.auth.getUser();
+      if (userError || !data.user) {
+        setHasSession(false);
+        return null;
+      }
+      setHasSession(true);
+      const { data: sessionData } = await supabase.auth.getSession();
+      return sessionData.session?.access_token ?? null;
+    } catch {
+      setHasSession(false);
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      try {
-        const supabase = getSupabaseClient();
-        const { data } = await supabase.auth.getSession();
-        if (!cancelled) setHasSession(Boolean(data.session));
-      } catch {
-        if (!cancelled) setHasSession(false);
-      }
-    })();
+    void refreshSession().then(() => {
+      if (cancelled) return;
+    });
+
+    const supabase = getSupabaseClient();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return;
+      setHasSession(Boolean(session));
+    });
+
     return () => {
       cancelled = true;
+      subscription.unsubscribe();
     };
-  }, []);
+  }, [refreshSession]);
 
-  const onUpgrade = async () => {
+  const startCheckout = useCallback(async () => {
     setError(null);
     setLoading(true);
     try {
-      const supabase = getSupabaseClient();
-      const { data, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !data.session?.access_token) {
-        router.push("/login?next=/pricing");
+      const token = await refreshSession();
+      if (!token) {
+        setLoading(false);
+        router.push(`/login?next=${encodeURIComponent(PRICING_CHECKOUT_PATH)}`);
         return;
       }
-      const { url } = await createCheckoutSession(data.session.access_token);
-      window.location.href = url;
+      const { url } = await createCheckoutSession(token);
+      window.location.assign(url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start checkout.");
-    } finally {
       setLoading(false);
     }
-  };
+  }, [refreshSession, router]);
+
+  useEffect(() => {
+    if (!shouldAutoCheckout || hasSession !== true || autoCheckoutStarted.current) return;
+    autoCheckoutStarted.current = true;
+    void startCheckout();
+  }, [shouldAutoCheckout, hasSession, startCheckout]);
 
   if (hasSession === false) {
     return (
-      <Link href="/login?next=/pricing" className={`${BTN_PRIMARY} w-full ${className}`}>
+      <Link
+        href={`/login?next=${encodeURIComponent(PRICING_CHECKOUT_PATH)}`}
+        className={`${BTN_PRIMARY} w-full ${className}`}
+      >
         Sign in to upgrade
       </Link>
     );
@@ -79,9 +113,9 @@ export default function PremiumUpgradeButton({ className = "" }: { className?: s
       ) : null}
       <button
         type="button"
-        onClick={onUpgrade}
+        onClick={() => void startCheckout()}
         disabled={loading || hasSession === null}
-        className={`${BTN_SECONDARY} w-full disabled:cursor-not-allowed disabled:opacity-60`}
+        className={`${BTN_PRIMARY} w-full disabled:cursor-not-allowed disabled:opacity-60`}
       >
         {loading ? "Redirecting…" : hasSession === null ? "Loading…" : "Upgrade to Premium — $1/mo"}
       </button>

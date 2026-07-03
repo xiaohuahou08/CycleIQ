@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { LayoutDashboard, RefreshCw, TrendingUp } from "lucide-react";
+import AppLoadingScreen from "@/app/components/AppLoadingScreen";
 import { CycleIQMark, iconMd, iconStroke } from "@/app/components/icons";
+import { AUTH_LOADING_PHASES } from "@/lib/hooks/useSlowLoadingMessage";
 
 const FEATURES = [
   {
@@ -106,10 +108,5 @@ export default function AuthShell({ title, subtitle, children, footer }: AuthShe
 }
 
 export function AuthLoadingShell() {
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50/80 px-4">
-      <div className="loading-spinner" aria-hidden />
-      <p className="animate-fade-in text-sm font-medium text-slate-600">Loading…</p>
-    </main>
-  );
+  return <AppLoadingScreen phases={AUTH_LOADING_PHASES} />;
 }
