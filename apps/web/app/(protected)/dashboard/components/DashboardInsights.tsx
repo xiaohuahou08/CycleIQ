@@ -6,7 +6,6 @@ import { Info } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
 import { CARD_BASE, KPI_ACCENT, profitLossClass } from "@/app/components/ui/styles";
 import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import type {
   CapitalTrendCharts,
   DashboardInsights as DashboardInsightsData,
@@ -632,10 +631,8 @@ function StatCard({
 
 export default function DashboardInsights({
   insights,
-  loading,
 }: {
   insights: DashboardInsightsData | null;
-  loading: boolean;
 }) {
   const kpis = insights?.kpis;
   const charts = insights?.charts;
@@ -645,24 +642,6 @@ export default function DashboardInsights({
   const capitalBudget = kpis?.capital_budget ?? 0;
   const capitalUtilPct = kpis?.capital_utilization_pct ?? 0;
   const overBudget = totalCapital > 0 && capitalInvested > totalCapital;
-
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-          {Array.from({ length: 9 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 rounded-2xl" />
-          ))}
-        </div>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-56 rounded-2xl" />
-          ))}
-        </div>
-        <Skeleton className="h-56 rounded-2xl" />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-4">

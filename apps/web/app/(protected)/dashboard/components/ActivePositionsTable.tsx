@@ -66,12 +66,10 @@ function TickerLogo({ ticker }: { ticker: string }) {
 
 interface ActivePositionsTableProps {
   trades: Trade[];
-  loading: boolean;
 }
 
 export default function ActivePositionsTable({
   trades,
-  loading,
 }: ActivePositionsTableProps) {
   const displayed = trades.slice(0, 5);
 
@@ -91,13 +89,7 @@ export default function ActivePositionsTable({
         </div>
       )}
 
-      {loading ? (
-        <div className="space-y-3 p-5">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="skeleton h-8 rounded" />
-          ))}
-        </div>
-      ) : trades.length === 0 ? (
+      {trades.length === 0 ? (
         <div className="flex flex-col items-center px-6 py-12 text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
             <ClipboardList className="h-6 w-6" strokeWidth={iconStroke} aria-hidden />

@@ -31,7 +31,6 @@ interface TradeRowProps {
 
 interface TradeListProps {
   trades: Trade[];
-  loading: boolean;
   prices: Record<string, number>;
   onDeleteTrade: (id: string) => void;
   onEditTrade: (trade: Trade) => void;
@@ -620,7 +619,6 @@ const theadBtn =
 
 export default function TradeList({
   trades,
-  loading,
   prices,
   onDeleteTrade,
   onEditTrade,
@@ -703,15 +701,6 @@ export default function TradeList({
       {label}
     </th>
   );
-
-  if (loading) {
-    return (
-      <div className="space-y-3 px-5 py-8">
-        <div className="skeleton h-9 w-full max-w-md rounded-lg" />
-        <div className="skeleton h-48 w-full rounded-xl ring-1 ring-slate-100" />
-      </div>
-    );
-  }
 
   if (trades.length === 0) {
     return (

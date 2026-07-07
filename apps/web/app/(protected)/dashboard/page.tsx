@@ -8,8 +8,8 @@ import {
   type Trade,
 } from "@/lib/api/trades";
 import PageHeader from "@/app/components/PageHeader";
-import DataSyncBanner from "@/app/components/DataSyncBanner";
 import RefreshButton from "@/app/components/RefreshButton";
+import RefreshingSpinner from "@/app/components/RefreshingSpinner";
 import { useProtectedAuth } from "../auth-context";
 import ActivePositionsTable from "./components/ActivePositionsTable";
 import DashboardInsights from "./components/DashboardInsights";
@@ -68,26 +68,31 @@ export default function DashboardPage() {
               ) : null
             }
           />
-          <DataSyncBanner active={tradesLoading} />
-          {loadError ? (
-            <div
-              role="alert"
-              className="flex items-center justify-between gap-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-            >
-              <span>{loadError}</span>
-              {token ? (
-                <button
-                  type="button"
-                  onClick={() => void loadData(token)}
-                  className="shrink-0 font-semibold underline-offset-2 hover:underline"
+          {tradesLoading ? (
+            <RefreshingSpinner className="flex min-h-[40vh] w-full items-center justify-center" />
+          ) : (
+            <>
+              {loadError ? (
+                <div
+                  role="alert"
+                  className="flex items-center justify-between gap-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
                 >
-                  Retry
-                </button>
+                  <span>{loadError}</span>
+                  {token ? (
+                    <button
+                      type="button"
+                      onClick={() => void loadData(token)}
+                      className="shrink-0 font-semibold underline-offset-2 hover:underline"
+                    >
+                      Retry
+                    </button>
+                  ) : null}
+                </div>
               ) : null}
-            </div>
-          ) : null}
-          <DashboardInsights insights={insights} loading={tradesLoading} />
-          <ActivePositionsTable trades={activeTrades} loading={tradesLoading} />
+              <DashboardInsights insights={insights} />
+              <ActivePositionsTable trades={activeTrades} />
+            </>
+          )}
         </div>
       </main>
     </>

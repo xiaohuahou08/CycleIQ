@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CircleDollarSign, Search } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
 import PageHeader from "@/app/components/PageHeader";
-import DataSyncBanner from "@/app/components/DataSyncBanner";
+import RefreshingSpinner from "@/app/components/RefreshingSpinner";
 import { BTN_ACCENT, PILL_ACTIVE, PILL_IDLE } from "@/app/components/ui/styles";
 import { listCycles, listTrades, type CycleSummary, type Trade } from "@/lib/api/trades";
 import {
@@ -281,9 +281,6 @@ export default function CyclesPage() {
           title="Cycles"
           description="Track wheel cycles and covered call cost basis"
         />
-        <div className={loading ? "pb-4" : undefined}>
-          <DataSyncBanner active={loading} />
-        </div>
       </div>
       <div className="shrink-0 border-b border-slate-200/80 bg-white">
         <div className="flex flex-col gap-3 px-4 py-3.5 sm:px-6">
@@ -312,6 +309,9 @@ export default function CyclesPage() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-white">
+        {loading ? (
+          <RefreshingSpinner className="flex min-h-full w-full items-center justify-center" />
+        ) : (
         <div className="px-4 py-4 sm:px-6 sm:py-5">
           {viewTab === "CC_COST_BASIS" && (
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
@@ -332,13 +332,7 @@ export default function CyclesPage() {
             </div>
           )}
 
-        {loading ? (
-          <div className="mt-5 space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="skeleton h-24 rounded-xl ring-1 ring-slate-100" />
-            ))}
-          </div>
-        ) : cycles.length === 0 ? (
+        {cycles.length === 0 ? (
           <div className="animate-fade-in mt-5 flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-300 bg-white py-16 text-center ring-1 ring-slate-900/[0.04]">
             <p className="text-base font-semibold text-slate-900">No cycles yet</p>
             <p className="max-w-sm text-sm text-slate-600">
@@ -799,6 +793,7 @@ export default function CyclesPage() {
           </>
         )}
         </div>
+        )}
       </div>
     </main>
   );

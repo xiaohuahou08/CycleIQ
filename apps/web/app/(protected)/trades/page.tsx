@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   createTrade,
@@ -23,7 +23,7 @@ import RollTradeModal from "./components/RollTradeModal";
 import { Clock } from "lucide-react";
 import { iconXs, iconStroke } from "@/app/components/icons";
 import PageHeader from "@/app/components/PageHeader";
-import DataSyncBanner from "@/app/components/DataSyncBanner";
+import RefreshingSpinner from "@/app/components/RefreshingSpinner";
 import { useToast } from "@/app/components/Toast";
 import { applyFilters, getClosedCycleIds } from "@/lib/trades/filters";
 import TradeFilters, { type FilterState } from "./components/TradeFilters";
@@ -57,13 +57,24 @@ export default function TradesPage() {
     dateRangeType: "1M",
   });
 
+  const reloadTrades = useCallback(async () => {
+    if (!token) return;
+    setTradesLoading(true);
+    try {
+      const trades = await listTrades(token);
+      setAllTrades(trades);
+    } catch {
+      setAllTrades([]);
+    } finally {
+      setTradesLoading(false);
+    }
+  }, [token]);
+
   useEffect(() => {
     if (!token) return;
-    listTrades(token)
-      .then((trades) => setAllTrades(trades))
-      .catch(() => setAllTrades([]))
-      .finally(() => setTradesLoading(false));
-  }, [token]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void reloadTrades();
+  }, [token, reloadTrades]);
 
   const refreshPlanUsage = async () => {
     if (!token) return;
@@ -145,9 +156,7 @@ export default function TradesPage() {
     try {
       const created = await createTrade(token, input);
       setModalOpen(false);
-      setTradesLoading(true);
-      const trades = await listTrades(token);
-      setAllTrades(trades);
+      await reloadTrades();
       // Match list filters to the new trade so it is visible (default view is PUT + OPEN).
       setFilters((prev) => ({
         ...prev,
@@ -158,8 +167,6 @@ export default function TradesPage() {
       await refreshPlanUsage();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to save trade.", "error");
-    } finally {
-      setTradesLoading(false);
     }
   };
 
@@ -167,8 +174,7 @@ export default function TradesPage() {
     if (!token || !editingTrade) return;
     try {
       await updateTrade(token, editingTrade.id, input);
-      const trades = await listTrades(token);
-      setAllTrades(trades);
+      await reloadTrades();
       setModalOpen(false);
       setEditingTrade(null);
       showToast("Trade updated successfully.", "success");
@@ -270,52 +276,56 @@ export default function TradesPage() {
             title="Trades"
             description="Manage CSP and covered call positions"
           />
-          <div className={tradesLoading ? "pb-4" : undefined}>
-            <DataSyncBanner active={tradesLoading} />
-          </div>
         </div>
 
-        <TradeFilters
-          embedded
-          filters={filters}
-          onFilterChange={setFilters}
-          tickerSuggestions={tickerSuggestions}
-          tradesUsageLabel={tradesUsageLabel}
-          addTradeDisabled={addTradeDisabled}
-          addTradeDisabledReason={addTradeDisabledReason}
-          onAddTrade={() => {
-            if (addTradeDisabled) return;
-            setEditingTrade(null);
-            setModalOpen(true);
-          }}
-        />
-
-        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-white">
-          <TradeList
-            trades={filtered}
-            loading={tradesLoading}
-            prices={prices}
-            onDeleteTrade={onDeleteTrade}
-            onEditTrade={onEditTrade}
-            onAction={onAction}
-            statusFilter={filters.status}
-            onAddTrade={
-              addTradeDisabled
-                ? undefined
-                : () => {
-                    setEditingTrade(null);
-                    setModalOpen(true);
-                  }
-            }
-          />
-        </div>
-
-        {pricesUpdatedAt && (
-          <div className="flex shrink-0 items-center gap-1.5 border-t border-slate-200 bg-white px-5 py-2 text-xs font-medium text-slate-600">
-            <Clock className={iconXs} strokeWidth={iconStroke} aria-hidden />
-            Prices update once per hour. Last updated at{" "}
-            {pricesUpdatedAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}.
+        {tradesLoading ? (
+          <div className="min-h-0 flex-1 overflow-hidden bg-white">
+            <RefreshingSpinner className="flex min-h-full w-full items-center justify-center" />
           </div>
+        ) : (
+          <>
+            <TradeFilters
+              embedded
+              filters={filters}
+              onFilterChange={setFilters}
+              tickerSuggestions={tickerSuggestions}
+              tradesUsageLabel={tradesUsageLabel}
+              addTradeDisabled={addTradeDisabled}
+              addTradeDisabledReason={addTradeDisabledReason}
+              onAddTrade={() => {
+                if (addTradeDisabled) return;
+                setEditingTrade(null);
+                setModalOpen(true);
+              }}
+            />
+
+            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-white">
+              <TradeList
+                trades={filtered}
+                prices={prices}
+                onDeleteTrade={onDeleteTrade}
+                onEditTrade={onEditTrade}
+                onAction={onAction}
+                statusFilter={filters.status}
+                onAddTrade={
+                  addTradeDisabled
+                    ? undefined
+                    : () => {
+                        setEditingTrade(null);
+                        setModalOpen(true);
+                      }
+                }
+              />
+            </div>
+
+            {pricesUpdatedAt && (
+              <div className="flex shrink-0 items-center gap-1.5 border-t border-slate-200 bg-white px-5 py-2 text-xs font-medium text-slate-600">
+                <Clock className={iconXs} strokeWidth={iconStroke} aria-hidden />
+                Prices update once per hour. Last updated at{" "}
+                {pricesUpdatedAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}.
+              </div>
+            )}
+          </>
         )}
       </main>
 
