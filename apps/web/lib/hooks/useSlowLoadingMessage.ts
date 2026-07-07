@@ -12,32 +12,28 @@ export function useSlowLoadingMessage(
   active: boolean,
   phases: readonly { afterMs: number; message: string }[] = DEFAULT_PHASES
 ): string {
-  const [message, setMessage] = useState(phases[0]?.message ?? "Loading…");
+  const idleMessage = phases[0]?.message ?? "Loading…";
+  const [activeMessage, setActiveMessage] = useState(idleMessage);
 
   useEffect(() => {
-    if (!active) {
-      setMessage(phases[0]?.message ?? "Loading…");
-      return;
-    }
+    if (!active) return;
 
     const startedAt = Date.now();
-    setMessage(phases[0]?.message ?? "Loading…");
-
     const tick = () => {
       const elapsed = Date.now() - startedAt;
-      let next = phases[0]?.message ?? "Loading…";
+      let next = idleMessage;
       for (const phase of phases) {
         if (elapsed >= phase.afterMs) next = phase.message;
       }
-      setMessage(next);
+      setActiveMessage(next);
     };
 
     tick();
     const id = window.setInterval(tick, 500);
     return () => window.clearInterval(id);
-  }, [active, phases]);
+  }, [active, phases, idleMessage]);
 
-  return message;
+  return active ? activeMessage : idleMessage;
 }
 
 export const APP_LOADING_PHASES = [

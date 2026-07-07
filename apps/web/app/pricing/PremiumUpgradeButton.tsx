@@ -21,27 +21,27 @@ export default function PremiumUpgradeButton({ className = "" }: { className?: s
   const canceled = !dismissed && searchParams.get("billing") === "canceled";
   const shouldAutoCheckout = searchParams.get("checkout") === "1";
 
-  const refreshSession = useCallback(async () => {
+  const readAuth = useCallback(async () => {
     try {
       const supabase = getSupabaseClient();
       const { data, error: userError } = await supabase.auth.getUser();
       if (userError || !data.user) {
-        setHasSession(false);
-        return null;
+        return { hasSession: false, token: null as string | null };
       }
-      setHasSession(true);
       const { data: sessionData } = await supabase.auth.getSession();
-      return sessionData.session?.access_token ?? null;
+      return {
+        hasSession: true,
+        token: sessionData.session?.access_token ?? null,
+      };
     } catch {
-      setHasSession(false);
-      return null;
+      return { hasSession: false, token: null as string | null };
     }
   }, []);
 
   useEffect(() => {
     let cancelled = false;
-    void refreshSession().then(() => {
-      if (cancelled) return;
+    void readAuth().then(({ hasSession: signedIn }) => {
+      if (!cancelled) setHasSession(signedIn);
     });
 
     const supabase = getSupabaseClient();
@@ -56,7 +56,13 @@ export default function PremiumUpgradeButton({ className = "" }: { className?: s
       cancelled = true;
       subscription.unsubscribe();
     };
-  }, [refreshSession]);
+  }, [readAuth]);
+
+  const refreshSession = useCallback(async () => {
+    const { hasSession: signedIn, token } = await readAuth();
+    setHasSession(signedIn);
+    return token;
+  }, [readAuth]);
 
   const startCheckout = useCallback(async () => {
     setError(null);
