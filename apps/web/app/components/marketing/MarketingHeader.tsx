@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { CycleIQMark } from "@/app/components/icons";
+import LanguageSwitcher from "@/app/components/LanguageSwitcher";
+import { useTranslations } from "@/lib/i18n/locale-context";
 import { SITE_NAME } from "@/lib/seo/site";
 import { Button } from "@/components/ui/button";
 import { marketingNavLinkClass, type MarketingPage } from "./styles";
@@ -9,6 +13,8 @@ interface MarketingHeaderProps {
 }
 
 export default function MarketingHeader({ activePage }: MarketingHeaderProps) {
+  const { t } = useTranslations("nav");
+
   return (
     <header className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/95 backdrop-blur-sm">
       <div className="mx-auto grid h-14 max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 sm:px-6">
@@ -24,21 +30,24 @@ export default function MarketingHeader({ activePage }: MarketingHeaderProps) {
         <nav className="justify-self-center" aria-label="Primary">
           <div className="flex items-center gap-0.5 rounded-lg bg-slate-100/90 p-1">
             <Link href="/" className={marketingNavLinkClass(activePage === "home")}>
-              Home
+              {t("home")}
             </Link>
             <Link href="/pricing" className={marketingNavLinkClass(activePage === "pricing")}>
-              Pricing
+              {t("pricing")}
             </Link>
             <Link href="/contact" className={marketingNavLinkClass(activePage === "contact")}>
-              Contact Us
+              {t("contact")}
             </Link>
           </div>
         </nav>
 
-        <Button render={<Link href="/login" />} className="justify-self-end" size="lg">
-          <span className="hidden sm:inline">Sign in / Register</span>
-          <span className="sm:hidden">Sign in</span>
-        </Button>
+        <div className="flex items-center justify-end gap-3 justify-self-end">
+          <LanguageSwitcher />
+          <Button render={<Link href="/login" />} size="lg">
+            <span className="hidden sm:inline">{t("signInRegister")}</span>
+            <span className="sm:hidden">{t("signIn")}</span>
+          </Button>
+        </div>
       </div>
     </header>
   );

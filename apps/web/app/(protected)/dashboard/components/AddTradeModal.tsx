@@ -6,11 +6,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { CreateTradeInput, Trade } from "@/lib/api/trades";
 import {
-  capitalBudgetError,
   capitalUtilizationPct,
   computeTotalCapitalInvested,
   cspNotional,
+  effectiveCapitalPool,
 } from "@/lib/trades/cspCapital";
+import { todayIso } from "@/lib/trades/cspCapital";
 import {
   ModalActionButtons,
   OptionalFieldsCard,
@@ -18,29 +19,18 @@ import {
   TradeModalShell,
 } from "../../components/TradeModalShared";
 import { commissionFeeTotal, useTradeDefaults } from "@/lib/hooks/useTradeDefaults";
+import { useLocale, useTranslations } from "@/lib/i18n/locale-context";
 
-const tradeSchema = z.object({
-  ticker: z
-    .string()
-    .min(1, "Ticker is required")
-    .max(10, "Ticker is too long"),
-  option_type: z.enum(["PUT", "CALL"]),
-  strike: z.coerce
-    .number({ invalid_type_error: "Strike is required" })
-    .positive("Must be positive"),
-  expiry: z.string().min(1, "Expiry date is required"),
-  trade_date: z.string().min(1, "Trade date is required"),
-  premium: z.coerce
-    .number({ invalid_type_error: "Premium is required" })
-    .positive("Must be positive"),
-  contracts: z.coerce
-    .number({ invalid_type_error: "Contracts is required" })
-    .int("Must be a whole number")
-    .min(1, "Minimum 1 contract"),
-  notes: z.string().max(500, "Max 500 characters").optional(),
-});
-
-type TradeFormValues = z.infer<typeof tradeSchema>;
+type TradeFormValues = {
+  ticker: string;
+  option_type: "PUT" | "CALL";
+  strike: number;
+  expiry: string;
+  trade_date: string;
+  premium: number;
+  contracts: number;
+  notes?: string;
+};
 
 const LOGO_URL_BUILDERS = [
   (ticker: string) =>
@@ -51,7 +41,53 @@ const LOGO_URL_BUILDERS = [
   (ticker: string) => `https://eodhd.com/img/logos/US/${ticker}.png`,
 ];
 
-function TickerLogo({ ticker }: { ticker: string }) {
+function fmtMoneyCompact(value: number, intlLocale: string): string {
+  return value.toLocaleString(intlLocale, { maximumFractionDigits: 0 });
+}
+
+function getCapitalBudgetErrorMessage(
+  trades: Trade[],
+  budget: number,
+  leg: {
+    optionType: "PUT" | "CALL";
+    status: string;
+    strike: number;
+    contracts: number;
+    expiry: string;
+  },
+  excludeTradeId: string | undefined,
+  t: (key: string, params?: Record<string, string | number>) => string,
+  intlLocale: string
+): string | null {
+  if (leg.optionType !== "PUT" || leg.status !== "OPEN") return null;
+  const today = todayIso();
+  if (leg.expiry < today) return null;
+
+  const before = computeTotalCapitalInvested(trades, { excludeTradeId });
+  const baseWithoutLeg = computeTotalCapitalInvested(trades, { excludeTradeId });
+  const after = baseWithoutLeg + cspNotional(leg.strike, leg.contracts);
+  const pool = effectiveCapitalPool(budget, trades);
+
+  if (after <= pool + 1e-6) return null;
+  if (after <= before + 1e-6) return null;
+
+  const over = after - pool;
+  const pct = capitalUtilizationPct(after, pool);
+  return t("capital.overBudget", {
+    after: `$${fmtMoneyCompact(after, intlLocale)}`,
+    pct: pct.toFixed(0),
+    pool: `$${fmtMoneyCompact(pool, intlLocale)}`,
+    over: `$${fmtMoneyCompact(over, intlLocale)}`,
+  });
+}
+
+function TickerLogo({
+  ticker,
+  logoAlt,
+}: {
+  ticker: string;
+  logoAlt: string;
+}) {
   const urls = useMemo(
     () => LOGO_URL_BUILDERS.map((build) => build(ticker)),
     [ticker]
@@ -77,7 +113,7 @@ function TickerLogo({ ticker }: { ticker: string }) {
   return (
     <img
       src={urls[urlIndex]}
-      alt={`${ticker} logo`}
+      alt={logoAlt}
       className="h-5 w-5 rounded object-cover"
       onError={() => setUrlIndex((prev) => prev + 1)}
       loading="lazy"
@@ -100,14 +136,11 @@ interface AddTradeModalProps {
   onClose: () => void;
   onSave: (input: CreateTradeInput) => Promise<void>;
   tickerSuggestions?: string[];
-  /** Tickers that have an assigned (stock-held) position — used to warn when opening a CC. */
   assignedTickers?: string[];
-  /** Ticker → cycle_id map for ASSIGNED positions — used to auto-link new CC trades. */
   assignedCycleByTicker?: Record<string, string>;
   initialValues?: Partial<CreateTradeInput>;
   title?: string;
   submitLabel?: string;
-  /** Used to enforce CSP capital budget before submit. */
   existingTrades?: Trade[];
   editingTradeId?: string;
 }
@@ -120,16 +153,45 @@ export default function AddTradeModal({
   assignedTickers = [],
   assignedCycleByTicker = {},
   initialValues,
-  title = "Add Trade",
-  submitLabel = "Save Trade",
+  title,
+  submitLabel,
   existingTrades = [],
   editingTradeId,
 }: AddTradeModalProps) {
+  const { t } = useTranslations("trades");
+  const { t: tCommon } = useTranslations("common");
+  const { intlLocale } = useLocale();
   const { defaults } = useTradeDefaults();
   const [showOptionalFields, setShowOptionalFields] = useState(true);
   const [commissionFees, setCommissionFees] = useState<string>("");
   const [cspError, setCspError] = useState<string | null>(null);
   const commissionEditedRef = useRef(false);
+
+  const tradeSchema = useMemo(
+    () =>
+      z.object({
+        ticker: z
+          .string()
+          .min(1, t("validation.tickerRequired"))
+          .max(10, t("validation.tickerTooLong")),
+        option_type: z.enum(["PUT", "CALL"]),
+        strike: z.coerce
+          .number({ invalid_type_error: t("validation.strikeRequired") })
+          .positive(t("validation.mustBePositive")),
+        expiry: z.string().min(1, t("validation.expiryRequired")),
+        trade_date: z.string().min(1, t("validation.tradeDateRequired")),
+        premium: z.coerce
+          .number({ invalid_type_error: t("validation.premiumRequired") })
+          .positive(t("validation.mustBePositive")),
+        contracts: z.coerce
+          .number({ invalid_type_error: t("validation.contractsRequired") })
+          .int(t("validation.wholeNumber"))
+          .min(1, t("validation.minContracts")),
+        notes: z.string().max(500, t("validation.notesMax")).optional(),
+      }),
+    [t]
+  );
+
   const {
     register,
     handleSubmit,
@@ -148,6 +210,9 @@ export default function AddTradeModal({
     },
   });
   const [isTickerFocused, setIsTickerFocused] = useState(false);
+
+  const resolvedTitle = title ?? t("modal.addTitle");
+  const resolvedSubmitLabel = submitLabel ?? t("modal.save");
 
   const tickerValue = (watch("ticker") ?? "").toUpperCase().trim();
   const optionTypeValue = watch("option_type");
@@ -200,13 +265,20 @@ export default function AddTradeModal({
       return;
     }
     setCspError(
-      capitalBudgetError(existingTrades, defaults.totalCapitalBudget, {
-        optionType: "PUT",
-        status,
-        strike,
-        contracts,
-        expiry: expiryValue,
-      }, editingTradeId)
+      getCapitalBudgetErrorMessage(
+        existingTrades,
+        defaults.totalCapitalBudget,
+        {
+          optionType: "PUT",
+          status,
+          strike,
+          contracts,
+          expiry: expiryValue,
+        },
+        editingTradeId,
+        tCommon,
+        intlLocale
+      )
     );
   }, [
     open,
@@ -218,6 +290,8 @@ export default function AddTradeModal({
     strikeValue,
     contractsValue,
     expiryValue,
+    tCommon,
+    intlLocale,
   ]);
 
   useEffect(() => {
@@ -245,7 +319,6 @@ export default function AddTradeModal({
     });
   }, [open, reset, initialValues, defaults]);
 
-  // New trades: keep total commission in sync when contracts change (per-contract × contracts).
   useEffect(() => {
     if (!open || isEdit || commissionEditedRef.current) return;
     const total = commissionFeeTotal(
@@ -258,13 +331,20 @@ export default function AddTradeModal({
 
   const onSubmit = async (values: TradeFormValues) => {
     const status = initialValues?.status ?? "OPEN";
-    const budgetErr = capitalBudgetError(existingTrades, defaults.totalCapitalBudget, {
-      optionType: values.option_type,
-      status,
-      strike: values.strike,
-      contracts: values.contracts,
-      expiry: values.expiry,
-    }, editingTradeId);
+    const budgetErr = getCapitalBudgetErrorMessage(
+      existingTrades,
+      defaults.totalCapitalBudget,
+      {
+        optionType: values.option_type,
+        status,
+        strike: values.strike,
+        contracts: values.contracts,
+        expiry: values.expiry,
+      },
+      editingTradeId,
+      tCommon,
+      intlLocale
+    );
     if (budgetErr) {
       setCspError(budgetErr);
       return;
@@ -272,7 +352,6 @@ export default function AddTradeModal({
 
     const commissionNumber = commissionFees.trim() ? Number(commissionFees) : undefined;
     const ticker = values.ticker.toUpperCase().trim();
-    // For CC trades, explicitly link to the existing assigned wheel cycle if one exists.
     const linkedCycleId =
       values.option_type === "CALL" ? (assignedCycleByTicker[ticker] ?? undefined) : undefined;
     const input: CreateTradeInput = {
@@ -296,8 +375,10 @@ export default function AddTradeModal({
 
   if (!open) return null;
 
+  const requiredMark = tCommon("actions.required");
+
   return (
-    <TradeModalShell open={open} title={title} onClose={onClose} draggable labelledById="add-trade-title">
+    <TradeModalShell open={open} title={resolvedTitle} onClose={onClose} draggable labelledById="add-trade-title">
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="max-h-[70vh] overflow-y-auto px-6 py-5"
@@ -309,48 +390,55 @@ export default function AddTradeModal({
                 htmlFor="option_type"
                 className="mb-1 block text-sm font-medium text-slate-700"
               >
-                Strategy <span className="text-red-500">*</span>
+                {t("form.strategy")} <span className="text-red-500">{requiredMark}</span>
               </label>
               <select
                 id="option_type"
                 {...register("option_type")}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-700 focus:outline-none"
               >
-                <option value="PUT">Cash Secured Put (CSP)</option>
-                <option value="CALL">Covered Call (CC)</option>
+                <option value="PUT">{tCommon("strategy.cspOption")}</option>
+                <option value="CALL">{tCommon("strategy.ccOption")}</option>
               </select>
               {optionTypeValue === "CALL" && tickerValue && (
                 assignedCycleByTicker[tickerValue] ? (
                   <p className="mt-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] text-emerald-800">
-                    Will link to the existing wheel cycle for <strong>{tickerValue}</strong> (assigned position found).
+                    {t("form.ccLinkFound", { ticker: tickerValue })}
                   </p>
                 ) : assignedTickers.includes(tickerValue) ? null : (
                   <p className="mt-1.5 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
-                    No assigned position found for <strong>{tickerValue}</strong>. A covered call requires owning the underlying shares (from a prior CSP assignment).
+                    {t("form.ccNoAssignment", { ticker: tickerValue })}
                   </p>
                 )
               )}
               {optionTypeValue === "PUT" && (initialValues?.status ?? "OPEN") === "OPEN" && (
                 <div className="mt-2 space-y-1.5">
                   <p className="text-xs text-slate-600">
-                    Total capital: ${baseCapitalUsed.toLocaleString("en-US", { maximumFractionDigits: 0 })}
-                    {draftCspNotional > 0 && (
-                      <>
-                        {" "}
-                        + ${draftCspNotional.toLocaleString("en-US", { maximumFractionDigits: 0 })} (this CSP)
-                        {" "}
-                        = ${(baseCapitalUsed + draftCspNotional).toLocaleString("en-US", { maximumFractionDigits: 0 })}
-                      </>
-                    )}
-                    {" "}
-                    / ${defaults.totalCapitalBudget.toLocaleString("en-US", { maximumFractionDigits: 0 })} budget
-                    {(() => {
-                      const total =
+                    {t("form.capitalSummary", {
+                      base: `$${fmtMoneyCompact(baseCapitalUsed, intlLocale)}`,
+                      csp:
+                        draftCspNotional > 0
+                          ? ` + $${fmtMoneyCompact(draftCspNotional, intlLocale)} (this CSP) = $${fmtMoneyCompact(
+                              baseCapitalUsed + draftCspNotional,
+                              intlLocale
+                            )}`
+                          : "",
+                      total: `$${fmtMoneyCompact(
                         draftCspNotional > 0
                           ? baseCapitalUsed + draftCspNotional
-                          : baseCapitalUsed;
-                      return ` (${capitalUtilizationPct(total, defaults.totalCapitalBudget).toFixed(0)}%)`;
-                    })()}
+                          : baseCapitalUsed,
+                        intlLocale
+                      )}`,
+                      budget: `$${fmtMoneyCompact(defaults.totalCapitalBudget, intlLocale)}`,
+                      pct: String(
+                        capitalUtilizationPct(
+                          draftCspNotional > 0
+                            ? baseCapitalUsed + draftCspNotional
+                            : baseCapitalUsed,
+                          defaults.totalCapitalBudget
+                        ).toFixed(0)
+                      ),
+                    })}
                   </p>
                   {cspError && (
                     <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-800">
@@ -367,15 +455,19 @@ export default function AddTradeModal({
                   htmlFor="ticker"
                   className="mb-1 block text-sm font-medium text-slate-700"
                 >
-                  Ticker <span className="text-red-500">*</span>
+                  {t("form.ticker")} <span className="text-red-500">{requiredMark}</span>
                 </label>
                 <div className="relative">
                   <div className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 focus-within:border-slate-700">
-                    <TickerLogo key={tickerValue} ticker={tickerValue} />
+                    <TickerLogo
+                      key={tickerValue}
+                      ticker={tickerValue}
+                      logoAlt={t("form.ticker")}
+                    />
                     <input
                       id="ticker"
                       type="text"
-                      placeholder="e.g. AAPL"
+                      placeholder={t("form.tickerPlaceholder")}
                       autoComplete="off"
                       {...register("ticker", {
                         onChange: (event) => {
@@ -409,7 +501,7 @@ export default function AddTradeModal({
                                 setIsTickerFocused(false);
                               }}
                             >
-                              <TickerLogo key={ticker} ticker={ticker} />
+                              <TickerLogo key={ticker} ticker={ticker} logoAlt={ticker} />
                               <span className="font-medium">{ticker}</span>
                             </button>
                           </li>
@@ -428,7 +520,7 @@ export default function AddTradeModal({
                   htmlFor="strike"
                   className="mb-1 block text-sm font-medium text-slate-700"
                 >
-                  Strike Price <span className="text-red-500">*</span>
+                  {t("form.strike")} <span className="text-red-500">{requiredMark}</span>
                 </label>
                 <div className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 focus-within:border-slate-700">
                   <span className="text-sm font-medium text-slate-500">$</span>
@@ -437,7 +529,7 @@ export default function AddTradeModal({
                     type="number"
                     step="0.01"
                     min="0"
-                    placeholder="e.g. 350.00"
+                    placeholder={t("form.strikePlaceholder")}
                     {...register("strike")}
                     className="w-full bg-transparent text-sm text-slate-900 placeholder:normal-case focus:outline-none"
                   />
@@ -454,7 +546,7 @@ export default function AddTradeModal({
                   htmlFor="premium"
                   className="mb-1 block text-sm font-medium text-slate-700"
                 >
-                  Premium per Share <span className="text-red-500">*</span>
+                  {t("form.premium")} <span className="text-red-500">{requiredMark}</span>
                 </label>
                 <div className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 focus-within:border-slate-700">
                   <span className="text-sm font-medium text-slate-500">$</span>
@@ -463,7 +555,7 @@ export default function AddTradeModal({
                     type="number"
                     step="0.01"
                     min="0"
-                    placeholder="e.g. 2.11"
+                    placeholder={t("form.premiumPlaceholder")}
                     {...register("premium")}
                     className="w-full bg-transparent text-sm text-slate-900 placeholder:normal-case focus:outline-none"
                   />
@@ -472,7 +564,7 @@ export default function AddTradeModal({
                   <p className="mt-1 text-xs text-red-600">{errors.premium.message}</p>
                 )}
                 <p className="mt-1 text-xs text-slate-500">
-                  Total received: ${totalReceived.toFixed(2)}
+                  {t("form.totalReceived", { amount: `$${totalReceived.toFixed(2)}` })}
                 </p>
               </div>
 
@@ -481,7 +573,7 @@ export default function AddTradeModal({
                   htmlFor="contracts"
                   className="mb-1 block text-sm font-medium text-slate-700"
                 >
-                  Contracts <span className="text-red-500">*</span>
+                  {t("form.contracts")} <span className="text-red-500">{requiredMark}</span>
                 </label>
                 <div className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 focus-within:border-slate-700">
                   <span className="text-sm font-medium text-slate-500">#</span>
@@ -506,7 +598,7 @@ export default function AddTradeModal({
                   htmlFor="trade_date"
                   className="mb-1 block text-sm font-medium text-slate-700"
                 >
-                  Open Date <span className="text-red-500">*</span>
+                  {t("form.openDate")} <span className="text-red-500">{requiredMark}</span>
                 </label>
                 <input
                   id="trade_date"
@@ -524,7 +616,7 @@ export default function AddTradeModal({
                   htmlFor="expiry"
                   className="mb-1 block text-sm font-medium text-slate-700"
                 >
-                  Expiration Date <span className="text-red-500">*</span>
+                  {t("form.expiration")} <span className="text-red-500">{requiredMark}</span>
                 </label>
                 <input
                   id="expiry"
@@ -542,13 +634,15 @@ export default function AddTradeModal({
               <OptionalFieldsToggle
                 open={showOptionalFields}
                 onToggle={() => setShowOptionalFields((v) => !v)}
+                showLabel={t("optional.show")}
+                hideLabel={t("optional.hide")}
               />
             </div>
 
             {showOptionalFields && (
               <OptionalFieldsCard>
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-purple-800">
-                  Optional Details
+                  {t("optional.title")}
                 </p>
 
                 <div>
@@ -556,7 +650,7 @@ export default function AddTradeModal({
                     htmlFor="commissionFees"
                     className="mb-1 block text-sm font-medium text-slate-700"
                   >
-                    Commission Fees (total)
+                    {t("optional.commission")}
                   </label>
                   <div className="flex items-center gap-2 rounded-lg border border-purple-200 bg-white px-3 py-2 focus-within:border-purple-400">
                     <span className="text-sm font-medium text-slate-500">$</span>
@@ -573,7 +667,7 @@ export default function AddTradeModal({
                       placeholder={
                         defaults.commissionPerContract !== undefined
                           ? `e.g. ${commissionFeeTotal(defaults.commissionPerContract, contractsValue || 1)}`
-                          : "e.g. 1.30"
+                          : t("optional.commissionPlaceholder")
                       }
                       className="w-full bg-transparent text-sm text-slate-900 placeholder:normal-case focus:outline-none"
                     />
@@ -585,13 +679,13 @@ export default function AddTradeModal({
                     htmlFor="notes"
                     className="mb-1 block text-sm font-medium text-slate-700"
                   >
-                    Notes
+                    {t("optional.notes")}
                   </label>
                   <textarea
                     id="notes"
                     rows={3}
                     maxLength={500}
-                    placeholder="Any notes about this position..."
+                    placeholder={t("optional.notesPlaceholder")}
                     {...register("notes")}
                     className="w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-purple-400 focus:outline-none"
                   />
@@ -605,8 +699,9 @@ export default function AddTradeModal({
 
           <ModalActionButtons
             onCancel={onClose}
-            submitLabel={submitLabel}
-            submittingLabel="Saving…"
+            submitLabel={resolvedSubmitLabel}
+            submittingLabel={tCommon("actions.saving")}
+            cancelLabel={tCommon("actions.cancel")}
             isSubmitting={isSubmitting}
             submitDisabled={Boolean(cspError)}
           />

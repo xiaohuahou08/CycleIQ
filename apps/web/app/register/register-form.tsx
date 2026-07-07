@@ -9,6 +9,8 @@ import AuthShell, {
   AUTH_PRIMARY_BTN_CLS,
 } from "@/app/components/AuthShell";
 import GoogleSignInButton from "@/app/components/GoogleSignInButton";
+import LanguageSwitcher from "@/app/components/LanguageSwitcher";
+import { useTranslations } from "@/lib/i18n/locale-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { authCallbackUrl } from "@/lib/auth-url";
 import { safeInternalRedirectPath } from "@/lib/auth-redirect.mjs";
@@ -16,6 +18,7 @@ import { safeInternalRedirectPath } from "@/lib/auth-redirect.mjs";
 export function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useTranslations("auth");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -30,17 +33,17 @@ export function RegisterForm() {
     setError(null);
 
     if (!isValidEmail) {
-      setError("Please enter a valid email address.");
+      setError(t("login.error.invalidEmail"));
       return;
     }
 
     if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError(t("register.error.passwordLength"));
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError(t("register.error.passwordMismatch"));
       return;
     }
 
@@ -48,8 +51,6 @@ export function RegisterForm() {
 
     try {
       const supabase = getSupabaseClient();
-      // Email-confirmation links carry a PKCE `code` that must be exchanged by
-      // /auth/callback; sending users straight to /dashboard would skip that.
       const confirmTarget = safeInternalRedirectPath(nextPath) ?? "/dashboard";
       const {
         data: { session },
@@ -87,9 +88,7 @@ export function RegisterForm() {
       router.replace(`${login.pathname}?${login.searchParams.toString()}`);
     } catch (submitError) {
       setError(
-        submitError instanceof Error
-          ? submitError.message
-          : "Unexpected error while registering.",
+        submitError instanceof Error ? submitError.message : t("register.error.unexpected"),
       );
     } finally {
       setIsSubmitting(false);
@@ -98,45 +97,44 @@ export function RegisterForm() {
 
   return (
     <AuthShell
-      title="Create your account"
-      subtitle="If your project requires email confirmation, you will receive a link before you can sign in."
+      title={t("register.title")}
+      subtitle={t("register.subtitle")}
       footer={
         <p className="text-sm text-slate-600">
-          Already have an account?{" "}
+          {t("register.footer")}{" "}
           <Link
             href={nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : "/login"}
             className="font-medium text-slate-900 underline decoration-slate-300 underline-offset-2 transition hover:decoration-slate-500"
           >
-            Sign in
+            {t("register.signIn")}
           </Link>
         </p>
       }
     >
+      <div className="mb-4 flex justify-end">
+        <LanguageSwitcher />
+      </div>
       <form className="space-y-4" onSubmit={onSubmit}>
-        <GoogleSignInButton
-          label="Sign up with Google"
-          nextPath={nextPath}
-          onError={setError}
-        />
+        <GoogleSignInButton variant="signUp" nextPath={nextPath} onError={setError} />
 
         <div className="relative py-1">
           <div className="absolute inset-0 flex items-center" aria-hidden>
             <div className="w-full border-t border-slate-200" />
           </div>
           <p className="relative mx-auto w-fit bg-white px-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-            Or with email
+            {t("login.divider")}
           </p>
         </div>
 
         <div>
           <label htmlFor="email" className={AUTH_LABEL_CLS}>
-            Email
+            {t("login.email")}
           </label>
           <input
             id="email"
             type="email"
             autoComplete="email"
-            placeholder="you@example.com"
+            placeholder={t("login.emailPlaceholder")}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             className={AUTH_INPUT_CLS}
@@ -146,13 +144,13 @@ export function RegisterForm() {
 
         <div>
           <label htmlFor="password" className={AUTH_LABEL_CLS}>
-            Password
+            {t("login.password")}
           </label>
           <input
             id="password"
             type="password"
             autoComplete="new-password"
-            placeholder="At least 8 characters"
+            placeholder={t("register.passwordPlaceholder")}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             className={AUTH_INPUT_CLS}
@@ -163,13 +161,13 @@ export function RegisterForm() {
 
         <div>
           <label htmlFor="confirm-password" className={AUTH_LABEL_CLS}>
-            Confirm password
+            {t("register.confirmPassword")}
           </label>
           <input
             id="confirm-password"
             type="password"
             autoComplete="new-password"
-            placeholder="Repeat password"
+            placeholder={t("register.confirmPlaceholder")}
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
             className={AUTH_INPUT_CLS}
@@ -179,25 +177,28 @@ export function RegisterForm() {
         </div>
 
         {error ? (
-          <p role="alert" className="rounded-lg border border-red-200/80 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+          <p
+            role="alert"
+            className="rounded-lg border border-red-200/80 bg-red-50 px-3 py-2.5 text-sm text-red-700"
+          >
             {error}
           </p>
         ) : null}
 
         <p className="text-xs leading-relaxed text-slate-500">
-          By creating an account, you agree to our{" "}
+          {t("register.terms")}{" "}
           <Link href="/terms" className="font-medium text-slate-700 underline-offset-2 hover:underline">
-            Terms of Service
+            {t("register.termsLink")}
           </Link>{" "}
-          and{" "}
+          {t("register.and")}{" "}
           <Link href="/privacy" className="font-medium text-slate-700 underline-offset-2 hover:underline">
-            Privacy Policy
+            {t("register.privacyLink")}
           </Link>
           .
         </p>
 
         <button type="submit" disabled={isSubmitting} className={AUTH_PRIMARY_BTN_CLS}>
-          {isSubmitting ? "Creating account…" : "Create account"}
+          {isSubmitting ? t("register.submitting") : t("register.submit")}
         </button>
       </form>
     </AuthShell>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Trade } from "@/lib/api/trades";
+import { useTranslations } from "@/lib/i18n/locale-context";
 import {
   ModalActionButtons,
   OptionalFieldsCard,
@@ -31,6 +32,8 @@ export default function ExpireTradeModal({
   onClose,
   onConfirm,
 }: ExpireTradeModalProps) {
+  const { t } = useTranslations("trades");
+  const { t: tCommon } = useTranslations("common");
   const [actionDate, setActionDate] = useState(todayIso());
   const [showOptionalFields, setShowOptionalFields] = useState(true);
   const [fees, setFees] = useState("");
@@ -48,8 +51,10 @@ export default function ExpireTradeModal({
 
   const strategyLabel = useMemo(() => {
     if (!trade) return "";
-    return trade.option_type === "PUT" ? "Cash Secured Put" : "Covered Call";
-  }, [trade]);
+    return trade.option_type === "PUT"
+      ? tCommon("strategy.cspFull")
+      : tCommon("strategy.ccFull");
+  }, [trade, tCommon]);
 
   if (!open || !trade) return null;
 
@@ -73,18 +78,16 @@ export default function ExpireTradeModal({
   return (
     <TradeModalShell
       open={open}
-      title="Mark as Expired"
+      title={t("expire.title")}
       onClose={onClose}
       labelledById="expire-trade-title"
     >
-      <p className="px-6 pt-4 text-sm text-slate-500">
-        Record that this option expired worthless and premium was kept.
-      </p>
-      
+      <p className="px-6 pt-4 text-sm text-slate-500">{t("expire.intro")}</p>
+
         <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
           <div className="rounded-xl border border-slate-200 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Position
+              {t("assign.position")}
             </p>
             <div className="mt-2 flex items-center gap-3">
               <span className="text-2xl font-semibold text-slate-900">{trade.ticker}</span>
@@ -95,7 +98,7 @@ export default function ExpireTradeModal({
             <div className="mt-4 grid grid-cols-3 gap-3">
               <div className="rounded-xl border border-slate-200 p-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Strike
+                  {tCommon("columns.strike")}
                 </p>
                 <p className="mt-1 text-lg font-semibold text-slate-900">
                   ${trade.strike.toFixed(2)}
@@ -103,13 +106,13 @@ export default function ExpireTradeModal({
               </div>
               <div className="rounded-xl border border-slate-200 p-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Contracts
+                  {t("form.contracts")}
                 </p>
                 <p className="mt-1 text-lg font-semibold text-slate-900">{trade.contracts}</p>
               </div>
               <div className="rounded-xl border border-slate-200 p-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Shares
+                  {t("assign.shares")}
                 </p>
                 <p className="mt-1 text-lg font-semibold text-slate-900">{shares}</p>
               </div>
@@ -121,7 +124,7 @@ export default function ExpireTradeModal({
               htmlFor="expire_action_date"
               className="mb-1 block text-sm font-medium text-slate-700"
             >
-              Action Date
+              {t("assign.actionDate")}
             </label>
             <input
               id="expire_action_date"
@@ -136,6 +139,8 @@ export default function ExpireTradeModal({
             <OptionalFieldsToggle
               open={showOptionalFields}
               onToggle={() => setShowOptionalFields((v) => !v)}
+              showLabel={t("optional.show")}
+              hideLabel={t("optional.hide")}
             />
           </div>
 
@@ -143,15 +148,15 @@ export default function ExpireTradeModal({
             <div className="mt-4">
               <OptionalFieldsCard>
                 <p className="text-xs font-semibold uppercase tracking-wide text-purple-800">
-                  Optional Details
+                  {t("optional.title")}
                 </p>
 
                 <div className="mt-3">
                   <div className="flex items-center justify-between">
                     <label htmlFor="expire_fees" className="text-sm font-medium text-slate-700">
-                      Fees
+                      {t("roll.fees")}
                     </label>
-                    <span className="text-sm text-slate-500">optional</span>
+                    <span className="text-sm text-slate-500">{tCommon("actions.optional")}</span>
                   </div>
                   <input
                     id="expire_fees"
@@ -168,16 +173,16 @@ export default function ExpireTradeModal({
                 <div className="mt-4">
                   <div className="flex items-center justify-between">
                     <label htmlFor="expire_notes" className="text-sm font-medium text-slate-700">
-                      Notes
+                      {t("optional.notes")}
                     </label>
-                    <span className="text-sm text-slate-500">optional</span>
+                    <span className="text-sm text-slate-500">{tCommon("actions.optional")}</span>
                   </div>
                   <textarea
                     id="expire_notes"
                     rows={3}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Add optional notes about this lifecycle event..."
+                    placeholder={t("assign.notesPlaceholder")}
                     className="mt-2 w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-purple-400 focus:outline-none"
                   />
                 </div>
@@ -188,7 +193,8 @@ export default function ExpireTradeModal({
           <ModalActionButtons
             onCancel={onClose}
             onSubmit={handleSubmit}
-            submitLabel="Mark Expired"
+            submitLabel={t("expire.submit")}
+            cancelLabel={tCommon("actions.cancel")}
             isSubmitting={isSubmitting}
           />
         </div>

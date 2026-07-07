@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { RotateCw } from "lucide-react";
 import { iconMd, iconStroke } from "@/app/components/icons";
 import type { Trade } from "@/lib/api/trades";
+import { useTranslations } from "@/lib/i18n/locale-context";
 import {
   ModalActionButtons,
   OptionalFieldsCard,
@@ -40,6 +41,8 @@ export default function RollTradeModal({
   onClose,
   onConfirm,
 }: RollTradeModalProps) {
+  const { t } = useTranslations("trades");
+  const { t: tCommon } = useTranslations("common");
   const [rollDate, setRollDate] = useState(todayIso());
   const [newExpiry, setNewExpiry] = useState("");
   const [newStrike, setNewStrike] = useState("");
@@ -74,14 +77,21 @@ export default function RollTradeModal({
     return premiumNum - buybackNum;
   }, [premiumNum, buybackNum]);
 
+  const strategyName =
+    trade?.option_type === "PUT"
+      ? tCommon("strategy.cspFull")
+      : tCommon("strategy.ccFull");
+
   const rollTypeText = useMemo(() => {
-    if (!trade) return "Fill in the strike & expiration above to auto-detect";
+    if (!trade) return t("roll.rollTypeDetect");
     const parts: string[] = [];
-    if (newExpiry && newExpiry !== trade.expiry) parts.push("to new expiry");
-    if (Number.isFinite(strikeNum) && strikeNum !== trade.strike) parts.push("to new strike");
-    if (parts.length === 0) return "No change detected";
-    return `Roll ${parts.join(" and ")}`;
-  }, [newExpiry, strikeNum, trade]);
+    if (newExpiry && newExpiry !== trade.expiry) parts.push(t("roll.rollTypeNewExpiry"));
+    if (Number.isFinite(strikeNum) && strikeNum !== trade.strike) {
+      parts.push(t("roll.rollTypeNewStrike"));
+    }
+    if (parts.length === 0) return t("roll.rollTypeNoChange");
+    return t("roll.rollTypeTemplate", { parts: parts.join(" and ") });
+  }, [newExpiry, strikeNum, trade, t]);
 
   if (!open || !trade) return null;
 
@@ -115,34 +125,42 @@ export default function RollTradeModal({
   return (
     <TradeModalShell
       open={open}
-      title="Roll Position"
-      subtitle={`Roll your ${trade.ticker} ${trade.option_type === "PUT" ? "Cash Secured Put" : "Covered Call"} to a new strike or expiration.`}
+      title={t("roll.title")}
+      subtitle={t("roll.subtitle", { ticker: trade.ticker, strategy: strategyName })}
       headerIcon={<RollIcon />}
       onClose={onClose}
       labelledById="roll-trade-title"
     >
       <div className="max-h-[78vh] overflow-y-auto px-6 py-5">
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Current Position</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            {t("roll.currentPosition")}
+          </p>
           <div className="mt-2 flex items-center gap-3">
             <span className="text-3xl font-semibold text-slate-900">{trade.ticker}</span>
             <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
-              {trade.option_type === "PUT" ? "Cash Secured Put" : "Covered Call"}
+              {strategyName}
             </span>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-3">
             <div className="rounded-xl border border-slate-200 bg-white p-3 min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Strike</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {tCommon("columns.strike")}
+              </p>
               <p className="mt-1 text-lg font-semibold text-slate-900 truncate">${trade.strike.toFixed(2)}</p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-white p-3 min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Premium</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {tCommon("columns.premium")}
+              </p>
               <p className="mt-1 text-lg font-semibold text-emerald-600 truncate">
                 +${(trade.premium * trade.contracts * 100).toFixed(2)}
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-white p-3 min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Expires</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {t("roll.expires")}
+              </p>
               <p className="mt-1 text-sm font-semibold text-slate-900 truncate">{trade.expiry}</p>
             </div>
           </div>
@@ -151,7 +169,7 @@ export default function RollTradeModal({
         <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label htmlFor="roll_date" className="mb-1 block text-sm font-medium text-slate-700">
-              Roll Date
+              {t("roll.rollDate")}
             </label>
             <input
               id="roll_date"
@@ -163,7 +181,7 @@ export default function RollTradeModal({
           </div>
           <div>
             <label htmlFor="roll_expiry" className="mb-1 block text-sm font-medium text-slate-700">
-              New Expiration
+              {t("roll.newExpiration")}
             </label>
             <input
               id="roll_expiry"
@@ -175,7 +193,7 @@ export default function RollTradeModal({
           </div>
           <div>
             <label htmlFor="roll_strike" className="mb-1 block text-sm font-medium text-slate-700">
-              New Strike Price
+              {t("roll.newStrike")}
             </label>
             <input
               id="roll_strike"
@@ -189,7 +207,7 @@ export default function RollTradeModal({
           </div>
           <div>
             <label htmlFor="roll_premium" className="mb-1 block text-sm font-medium text-slate-700">
-              New Premium / Share
+              {t("roll.newPremium")}
             </label>
             <input
               id="roll_premium"
@@ -200,13 +218,13 @@ export default function RollTradeModal({
               onChange={(e) => setNewPremium(e.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
             />
-            <p className="mt-1 text-xs text-slate-500">Per share - auto-multiplied by contracts × 100</p>
+            <p className="mt-1 text-xs text-slate-500">{t("roll.newPremiumHint")}</p>
           </div>
         </div>
 
         <div className="mt-4">
           <label htmlFor="roll_buyback" className="mb-1 block text-sm font-medium text-slate-700">
-            Buyback Cost / Share
+            {t("roll.buybackCost")}
           </label>
           <input
             id="roll_buyback"
@@ -217,14 +235,14 @@ export default function RollTradeModal({
             onChange={(e) => setBuybackCost(e.target.value)}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
           />
-          <p className="mt-1 text-xs text-slate-500">Per share - cost to close original</p>
+          <p className="mt-1 text-xs text-slate-500">{t("roll.buybackHint")}</p>
         </div>
 
         <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-          <p className="text-sm font-medium text-slate-700">Roll Type</p>
+          <p className="text-sm font-medium text-slate-700">{t("roll.rollType")}</p>
           <p className="mt-1 text-sm text-slate-500">{rollTypeText}</p>
           <p className="mt-1 text-xs text-emerald-700">
-            Net premium / share:{" "}
+            {t("roll.netPremiumPerShare")}{" "}
             {netPremiumPerShare != null
               ? `$${netPremiumPerShare.toLocaleString(undefined, {
                   minimumFractionDigits: 2,
@@ -233,7 +251,7 @@ export default function RollTradeModal({
               : "-"}
           </p>
           <p className="text-xs text-slate-500">
-            Net premium total:{" "}
+            {t("roll.netPremiumTotal")}{" "}
             {netPremiumPerShare != null
               ? `$${(netPremiumPerShare * shares).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
@@ -247,6 +265,8 @@ export default function RollTradeModal({
           <OptionalFieldsToggle
             open={showOptionalFields}
             onToggle={() => setShowOptionalFields((v) => !v)}
+            showLabel={t("optional.show")}
+            hideLabel={t("optional.hide")}
           />
         </div>
 
@@ -254,14 +274,14 @@ export default function RollTradeModal({
           <div className="mt-4">
             <OptionalFieldsCard>
               <p className="text-xs font-semibold uppercase tracking-wide text-purple-800">
-                Optional Details
+                {t("optional.title")}
               </p>
               <div className="mt-3">
                 <div className="flex items-center justify-between">
                   <label htmlFor="roll_fees" className="text-sm font-medium text-slate-700">
-                    Fees
+                    {t("roll.fees")}
                   </label>
-                  <span className="text-sm text-slate-500">optional</span>
+                  <span className="text-sm text-slate-500">{tCommon("actions.optional")}</span>
                 </div>
                 <input
                   id="roll_fees"
@@ -277,16 +297,16 @@ export default function RollTradeModal({
               <div className="mt-4">
                 <div className="flex items-center justify-between">
                   <label htmlFor="roll_notes" className="text-sm font-medium text-slate-700">
-                    Notes
+                    {t("optional.notes")}
                   </label>
-                  <span className="text-sm text-slate-500">optional</span>
+                  <span className="text-sm text-slate-500">{tCommon("actions.optional")}</span>
                 </div>
                 <textarea
                   id="roll_notes"
                   rows={3}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Reason for rolling..."
+                  placeholder={t("roll.notesPlaceholder")}
                   className="mt-2 w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-purple-400 focus:outline-none"
                 />
               </div>
@@ -297,8 +317,9 @@ export default function RollTradeModal({
         <ModalActionButtons
           onCancel={onClose}
           onSubmit={handleSubmit}
-          submitLabel="Roll Position"
-          submittingLabel="Rolling..."
+          submitLabel={t("roll.submit")}
+          submittingLabel={tCommon("actions.rolling")}
+          cancelLabel={tCommon("actions.cancel")}
           isSubmitting={isSubmitting}
           submitTone="blue"
           submitDisabled={!canSubmit}

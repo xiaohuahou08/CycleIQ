@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CircleDollarSign, Search } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
 import PageHeader from "@/app/components/PageHeader";
-import DataSyncBanner from "@/app/components/DataSyncBanner";
+import RefreshingSpinner from "@/app/components/RefreshingSpinner";
 import { BTN_ACCENT, PILL_ACTIVE, PILL_IDLE } from "@/app/components/ui/styles";
 import { listCycles, listTrades, type CycleSummary, type Trade } from "@/lib/api/trades";
 import {
@@ -14,29 +14,34 @@ import {
   netLegCashflow,
   wheelTotalNetPnl,
 } from "@/lib/cycles/ccCostBasis";
+import { useLocale, useTranslations } from "@/lib/i18n/locale-context";
 import { useProtectedAuth } from "../auth-context";
 
-function fmtDate(iso: string): string {
+function fmtDate(iso: string, intlLocale: string): string {
   const [y, m, d] = iso.split("-").map(Number);
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat(intlLocale, {
     month: "short",
     day: "2-digit",
     year: "numeric",
   }).format(new Date(y, (m ?? 1) - 1, d ?? 1));
 }
 
-function fmtMoney(value: number): string {
-  return value.toLocaleString("en-US", {
+function fmtMoney(value: number, intlLocale: string): string {
+  return value.toLocaleString(intlLocale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
 }
 
-function fmtStatusLabel(status: string): string {
-  return status
-    .replaceAll("_", " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+function labelForStatus(
+  status: string,
+  tCommon: (key: string) => string
+): string {
+  const asTradeStatus = tCommon(`status.${status}`);
+  if (asTradeStatus !== `status.${status}`) return asTradeStatus;
+  const asCycleState = tCommon(`cycleState.${status}`);
+  if (asCycleState !== `cycleState.${status}`) return asCycleState;
+  return status;
 }
 
 function stateBadgeStyle(state: string): string {
@@ -173,6 +178,9 @@ function splitCycleIntoWheels(cycle: CycleSummary, linkedTrades: Trade[]): Cycle
 
 export default function CyclesPage() {
   const { token, isAuthLoading } = useProtectedAuth();
+  const { t } = useTranslations("cycles");
+  const { t: tCommon } = useTranslations("common");
+  const { intlLocale } = useLocale();
   const [cycles, setCycles] = useState<CycleSummary[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
@@ -277,13 +285,7 @@ export default function CyclesPage() {
   return (
     <main className="animate-page-enter flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="shrink-0 border-b border-slate-200/80 bg-white px-4 pt-4 sm:px-6">
-        <PageHeader
-          title="Cycles"
-          description="Track wheel cycles and covered call cost basis"
-        />
-        <div className={loading ? "pb-4" : undefined}>
-          <DataSyncBanner active={loading} />
-        </div>
+        <PageHeader title={t("title")} description={t("description")} />
       </div>
       <div className="shrink-0 border-b border-slate-200/80 bg-white">
         <div className="flex flex-col gap-3 px-4 py-3.5 sm:px-6">
@@ -291,8 +293,8 @@ export default function CyclesPage() {
             <div className="inline-flex items-center gap-1.5">
               {(
                 [
-                  ["WHEELS", "Wheels"],
-                  ["CC_COST_BASIS", "CC Cost Basis"],
+                  ["WHEELS", t("tab.wheels")],
+                  ["CC_COST_BASIS", t("tab.ccCostBasis")],
                 ] as const
               ).map(([key, label]) => (
                 <button
@@ -312,40 +314,35 @@ export default function CyclesPage() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-white">
+        {loading ? (
+          <RefreshingSpinner className="flex min-h-full w-full items-center justify-center" />
+        ) : (
         <div className="px-4 py-4 sm:px-6 sm:py-5">
           {viewTab === "CC_COST_BASIS" && (
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
               <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
-                <p className={STAT_LABEL}>Open Positions</p>
+                <p className={STAT_LABEL}>{t("cc.openPositions")}</p>
                 <p className={STAT_VALUE}>{ccHeadline.positionsTracked}</p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
-                <p className={STAT_LABEL}>Total CC Premium</p>
+                <p className={STAT_LABEL}>{t("cc.totalPremium")}</p>
                 <p className={STAT_VALUE}>
                   ${ccHeadline.totalCcPremium.toFixed(0)}
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
-                <p className={STAT_LABEL}>Avg Reduction</p>
+                <p className={STAT_LABEL}>{t("cc.avgReduction")}</p>
                 <p className={STAT_VALUE}>{ccHeadline.avgReduction.toFixed(1)}%</p>
               </div>
             </div>
           )}
 
-        {loading ? (
-          <div className="mt-5 space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="skeleton h-24 rounded-xl ring-1 ring-slate-100" />
-            ))}
-          </div>
-        ) : cycles.length === 0 ? (
+        {cycles.length === 0 ? (
           <div className="animate-fade-in mt-5 flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-300 bg-white py-16 text-center ring-1 ring-slate-900/[0.04]">
-            <p className="text-base font-semibold text-slate-900">No cycles yet</p>
-            <p className="max-w-sm text-sm text-slate-600">
-              Add trades to automatically link wheel cycles.
-            </p>
+            <p className="text-base font-semibold text-slate-900">{t("empty.title")}</p>
+            <p className="max-w-sm text-sm text-slate-600">{t("empty.body")}</p>
             <Link href="/trades" className={BTN_ACCENT}>
-              Go to Trades
+              {t("empty.cta")}
             </Link>
           </div>
         ) : viewTab === "CC_COST_BASIS" ? (
@@ -359,18 +356,15 @@ export default function CyclesPage() {
                   type="text"
                   value={searchTicker}
                   onChange={(e) => setSearchTicker(e.target.value.toUpperCase())}
-                  placeholder="Search ticker…"
+                  placeholder={t("searchPlaceholder")}
                   className={SEARCH_INPUT_CLS}
                 />
               </div>
             </div>
             {ccCostBasisRows.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-14 text-center">
-                <p className="text-base font-semibold text-slate-900">No open stock positions</p>
-                <p className="max-w-md text-sm text-slate-600">
-                  Assigned CSP holdings appear here. Wheels that exited (called away or closed) are
-                  not shown.
-                </p>
+                <p className="text-base font-semibold text-slate-900">{t("cc.empty.title")}</p>
+                <p className="max-w-md text-sm text-slate-600">{t("cc.empty.body")}</p>
               </div>
             ) : (
               ccCostBasisRows.map((row) => (
@@ -384,34 +378,34 @@ export default function CyclesPage() {
                       </div>
                     </div>
                     <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
-                      {row.reductionPct.toFixed(1)}% reduced
+                      {t("reduced", { pct: row.reductionPct.toFixed(1) })}
                     </span>
                   </div>
                   <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-slate-600">Initial Cost</p>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-slate-600">{t("cc.initialCost")}</p>
                       <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">${row.initialCost.toFixed(2)}</p>
-                      <p className="text-xs text-slate-600">per share</p>
+                      <p className="text-xs text-slate-600">{t("perShare")}</p>
                     </div>
                     <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5">
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-emerald-700">Current Cost</p>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-emerald-700">{t("cc.currentCost")}</p>
                       <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-700">${row.currentCost.toFixed(2)}</p>
-                      <p className="text-xs text-emerald-700">per share</p>
+                      <p className="text-xs text-emerald-700">{t("perShare")}</p>
                     </div>
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-slate-600">CC Premium (Realized)</p>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-slate-600">{t("cc.premiumRealized")}</p>
                       <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">${row.ccPremiumTotal.toFixed(0)}</p>
-                      <p className="text-xs text-slate-600">total</p>
+                      <p className="text-xs text-slate-600">{t("total")}</p>
                     </div>
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-slate-600">CC Positions</p>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-slate-600">{t("cc.positions")}</p>
                       <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">{row.ccPositions}</p>
-                      <p className="text-xs text-slate-600">{row.assignedShares} shares</p>
+                      <p className="text-xs text-slate-600">{t("shares", { count: row.assignedShares })}</p>
                     </div>
                   </div>
                   <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
                     <p className="text-center text-[11px] font-medium uppercase tracking-wider text-slate-600">
-                      Cost Basis Over Time
+                      {t("cc.costOverTime")}
                     </p>
                     <div className="mt-3 flex items-end justify-center gap-28">
                       <div className="w-8 rounded-t-md bg-slate-300" style={{ height: "140px" }} />
@@ -426,8 +420,8 @@ export default function CyclesPage() {
                       />
                     </div>
                     <div className="mt-2 flex items-center justify-center gap-20 text-xs text-slate-600">
-                      <span>Purchase</span>
-                      <span>{fmtDate(new Date(row.recentTradeDate).toISOString().slice(0, 10))}</span>
+                      <span>{t("purchase")}</span>
+                      <span>{fmtDate(new Date(row.recentTradeDate).toISOString().slice(0, 10), intlLocale)}</span>
                     </div>
                   </div>
                 </div>
@@ -455,18 +449,20 @@ export default function CyclesPage() {
                   type="button"
                   onClick={() => setSelectedWheelId(null)}
                   className="rounded-full p-1 text-slate-600 hover:bg-white hover:text-slate-900"
-                  title="Back"
+                  title={tCommon("actions.back")}
                 >
                   ←
                 </button>
                 <TickerLogo ticker={selectedWheel.ticker} size="lg" />
                 <div>
                   <p className="text-xl font-semibold leading-none text-slate-900">
-                    {selectedWheel.ticker} Wheel
+                    {t("wheelTitle", { ticker: selectedWheel.ticker })}
                   </p>
                   <p className="mt-0.5 text-sm font-medium text-slate-600">
-                    {selectedWheel.trades.length} legs ·{" "}
-                    {selectedWheel.trades.filter((t) => t.option_type === "PUT").length} CSP
+                    {t("legsCsp", {
+                      count: selectedWheel.trades.length,
+                      cspCount: selectedWheel.trades.filter((t) => t.option_type === "PUT").length,
+                    })}
                     {" · "}
                     {Math.max(
                       0,
@@ -486,7 +482,9 @@ export default function CyclesPage() {
                 <span
                   className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${stateBadgeStyle(selectedWheel.state)}`}
                 >
-                  {isCompletedWheel(selectedWheel.state) ? "Completed" : "Active"}
+                  {isCompletedWheel(selectedWheel.state)
+                    ? tCommon("cycleState.completed")
+                    : tCommon("cycleState.active")}
                 </span>
               </div>
             </div>
@@ -588,7 +586,7 @@ export default function CyclesPage() {
                     >
                       {completed && (
                         <span className="absolute -top-1 rounded-full bg-amber-600 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-sm">
-                          Done
+                          {tCommon("cycleState.done")}
                         </span>
                       )}
                       <TickerLogo ticker={selectedWheel.ticker} size="sm" />
@@ -604,7 +602,7 @@ export default function CyclesPage() {
                       </div>
                       {completed && (
                         <span className="mt-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700/90">
-                          Net P&L
+                          {tCommon("cycleState.netPnl")}
                         </span>
                       )}
                     </div>
@@ -624,7 +622,7 @@ export default function CyclesPage() {
                                 {idx + 1}
                               </span>
                               <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">
-                                {trade.option_type === "PUT" ? "Cash Secured Put" : "Covered Call"}
+                                {trade.option_type === "PUT" ? t("leg.csp") : t("leg.cc")}
                               </p>
                             </div>
                             <p className="text-[28px] font-bold leading-none tabular-nums text-slate-900">
@@ -633,9 +631,9 @@ export default function CyclesPage() {
                             <p className={`text-sm font-semibold tabular-nums ${isDebit ? "text-red-600" : "text-emerald-700"}`}>
                               {isDebit ? "−" : "+"}${Math.abs(net).toFixed(2)}
                             </p>
-                            <p className="text-xs text-slate-600">{fmtDate(trade.expiry)}</p>
+                            <p className="text-xs text-slate-600">{fmtDate(trade.expiry, intlLocale)}</p>
                             <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-800 ring-1 ring-slate-200/80">
-                              {fmtStatusLabel(trade.status)}
+                              {labelForStatus(trade.status, tCommon)}
                             </span>
                           </div>
                         </div>
@@ -675,7 +673,7 @@ export default function CyclesPage() {
                   type="text"
                   value={searchTicker}
                   onChange={(e) => setSearchTicker(e.target.value.toUpperCase())}
-                  placeholder="Search ticker…"
+                  placeholder={t("searchPlaceholder")}
                   className={SEARCH_INPUT_CLS}
                 />
               </div>
@@ -692,10 +690,10 @@ export default function CyclesPage() {
                     }`}
                   >
                     {item === "ALL"
-                      ? `All (${sortedCycles.length})`
+                      ? t("tab.all", { count: sortedCycles.length })
                       : item === "ACTIVE"
-                        ? `Active (${activeCycles.length})`
-                        : `Completed (${completedCycles.length})`}
+                        ? t("tab.active", { count: activeCycles.length })
+                        : t("tab.completed", { count: completedCycles.length })}
                   </button>
                 ))}
               </div>
@@ -704,8 +702,8 @@ export default function CyclesPage() {
             <div className="mt-4 space-y-4">
               {visibleCycles.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-14 text-center">
-                  <p className="text-base font-semibold text-slate-900">No cycles in this tab</p>
-                  <p className="text-sm text-slate-600">Try another tab or search term.</p>
+                  <p className="text-base font-semibold text-slate-900">{t("emptyTab.title")}</p>
+                  <p className="text-sm text-slate-600">{t("emptyTab.body")}</p>
                 </div>
               ) : (
                 visibleCycles.map((cycle) => {
@@ -736,24 +734,33 @@ export default function CyclesPage() {
                             <div className="flex items-center gap-2">
                               <span className="text-base font-semibold text-slate-900">{cycle.ticker}</span>
                               <span className="text-sm text-slate-600">
-                                {linkedTrades.length} legs · {openCount} open
+                                {t("legsOpen", { count: linkedTrades.length, open: openCount })}
                               </span>
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-4 text-sm text-slate-600">
-                          <span className="tabular-nums">{fmtDate(cycle.updated_at?.slice(0, 10) ?? cycle.created_at?.slice(0, 10) ?? "1970-01-01")}</span>
+                          <span className="tabular-nums">
+                            {fmtDate(
+                              cycle.updated_at?.slice(0, 10) ??
+                                cycle.created_at?.slice(0, 10) ??
+                                "1970-01-01",
+                              intlLocale
+                            )}
+                          </span>
                           <span
                             className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${stateBadgeStyle(cycle.state)}`}
                           >
-                            {tab === "COMPLETED" ? "Completed" : "Active"}
+                            {tab === "COMPLETED"
+                              ? tCommon("cycleState.completed")
+                              : tCommon("cycleState.active")}
                           </span>
                           <button
                             type="button"
                             onClick={() => setSelectedWheelId(cycle.id)}
                             className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-800 hover:border-slate-400 hover:bg-slate-50"
                           >
-                            View Wheel
+                            {t("viewWheel")}
                           </button>
                         </div>
                       </div>
@@ -770,7 +777,7 @@ export default function CyclesPage() {
                                 }`}
                               >
                                 <p className="text-[11px] font-medium uppercase tracking-wider text-slate-600">
-                                  {trade.option_type === "PUT" ? "Cash Secured Put" : "Covered Call"}
+                                  {trade.option_type === "PUT" ? t("leg.csp") : t("leg.cc")}
                                 </p>
                                 <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
                                   ${trade.strike.toFixed(2)}
@@ -778,9 +785,9 @@ export default function CyclesPage() {
                                 <p className="text-sm font-semibold tabular-nums text-emerald-700">
                                   +${(trade.premium * trade.contracts * 100).toFixed(0)}
                                 </p>
-                                <p className="mt-1 text-xs text-slate-600">{fmtDate(trade.expiry)}</p>
+                                <p className="mt-1 text-xs text-slate-600">{fmtDate(trade.expiry, intlLocale)}</p>
                                 <span className="mt-1.5 inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-800 ring-1 ring-slate-200/80">
-                                  {fmtStatusLabel(trade.status)}
+                                  {labelForStatus(trade.status, tCommon)}
                                 </span>
                               </div>
                               {index < sortedLegs.length - 1 && (
@@ -799,6 +806,7 @@ export default function CyclesPage() {
           </>
         )}
         </div>
+        )}
       </div>
     </main>
   );

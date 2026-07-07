@@ -8,10 +8,12 @@ import {
   MARKETING_LABEL_CLS,
   MARKETING_TEXTAREA_CLS,
 } from "@/app/components/marketing/styles";
+import { useTranslations } from "@/lib/i18n/locale-context";
 
 type FormState = "idle" | "submitting" | "success" | "error";
 
 export default function ContactForm() {
+  const { t } = useTranslations("contact");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
@@ -42,7 +44,7 @@ export default function ContactForm() {
 
       if (!res.ok) {
         setFormState("error");
-        setErrorMessage(json.error ?? "Unable to send your message. Please try again later.");
+        setErrorMessage(json.error ?? t("form.error.generic"));
         return;
       }
 
@@ -53,7 +55,7 @@ export default function ContactForm() {
       setMessage("");
     } catch {
       setFormState("error");
-      setErrorMessage("Unable to send your message. Please try again later.");
+      setErrorMessage(t("form.error.generic"));
     }
   };
 
@@ -61,16 +63,16 @@ export default function ContactForm() {
     return (
       <div className="mx-auto mt-10 max-w-xl">
         <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/40 px-6 py-8 text-center">
-          <p className="text-base font-semibold text-emerald-800">Message sent</p>
+          <p className="text-base font-semibold text-emerald-800">{t("form.success.title")}</p>
           <p className="mt-2 text-sm leading-relaxed text-emerald-700/90">
-            Thanks for reaching out. We&apos;ll get back to you as soon as we can.
+            {t("form.success.body")}
           </p>
           <button
             type="button"
             onClick={() => setFormState("idle")}
             className="mt-6 text-sm font-medium text-emerald-800 underline-offset-2 hover:underline"
           >
-            Send another message
+            {t("form.success.again")}
           </button>
         </div>
       </div>
@@ -82,7 +84,7 @@ export default function ContactForm() {
       <div className="space-y-5">
         <div>
           <label htmlFor="contact-name" className={MARKETING_LABEL_CLS}>
-            Name
+            {t("form.name")}
           </label>
           <input
             id="contact-name"
@@ -98,7 +100,7 @@ export default function ContactForm() {
 
         <div>
           <label htmlFor="contact-email" className={MARKETING_LABEL_CLS}>
-            Email
+            {t("form.email")}
           </label>
           <input
             id="contact-email"
@@ -115,9 +117,9 @@ export default function ContactForm() {
         <div>
           <div className="flex items-center justify-between">
             <label htmlFor="contact-subject" className={MARKETING_LABEL_CLS}>
-              Subject
+              {t("form.subject")}
             </label>
-            <span className="text-sm text-slate-500">optional</span>
+            <span className="text-sm text-slate-500">{t("form.optional")}</span>
           </div>
           <input
             id="contact-subject"
@@ -131,7 +133,7 @@ export default function ContactForm() {
 
         <div>
           <label htmlFor="contact-message" className={MARKETING_LABEL_CLS}>
-            Message
+            {t("form.message")}
           </label>
           <textarea
             id="contact-message"
@@ -145,7 +147,7 @@ export default function ContactForm() {
         </div>
 
         <div className="sr-only" aria-hidden="true">
-          <label htmlFor="contact-gotcha">Leave blank</label>
+          <label htmlFor="contact-gotcha">{t("gotcha")}</label>
           <input
             id="contact-gotcha"
             type="text"
@@ -171,7 +173,7 @@ export default function ContactForm() {
         disabled={formState === "submitting"}
         className={`${BTN_PRIMARY} mt-6 w-full`}
       >
-        {formState === "submitting" ? "Sending…" : "Send message"}
+        {formState === "submitting" ? t("form.submitting") : t("form.submit")}
       </button>
     </form>
   );

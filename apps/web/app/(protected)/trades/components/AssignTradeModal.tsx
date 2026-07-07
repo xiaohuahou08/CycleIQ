@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Calendar, Layers, Package } from "lucide-react";
 import { iconMd, iconSm, iconStroke } from "@/app/components/icons";
 import type { Trade } from "@/lib/api/trades";
+import { useTranslations } from "@/lib/i18n/locale-context";
 import {
   ModalActionButtons,
   OptionalFieldsCard,
@@ -26,9 +27,7 @@ interface AssignTradeModalProps {
   onConfirm: (input: {
     trade_date: string;
     assignment_price: number;
-    /** Total USD for assignment-related fees (optional). */
     fees_on_assignment?: number;
-    /** Net premium/share earned from prior rolls (e.g. rolling 375→390). */
     prior_roll_premium_per_share?: number;
     notes?: string;
   }) => Promise<void>;
@@ -40,6 +39,8 @@ export default function AssignTradeModal({
   onClose,
   onConfirm,
 }: AssignTradeModalProps) {
+  const { t } = useTranslations("trades");
+  const { t: tCommon } = useTranslations("common");
   const [actionDate, setActionDate] = useState(todayIso());
   const [assignmentPrice, setAssignmentPrice] = useState("");
   const [showOptionalFields, setShowOptionalFields] = useState(true);
@@ -64,15 +65,15 @@ export default function AssignTradeModal({
 
   const strategyLabel = useMemo(() => {
     if (!trade) return "";
-    return trade.option_type === "PUT" ? "Cash Secured Put" : "Covered Call";
-  }, [trade]);
+    return trade.option_type === "PUT"
+      ? tCommon("strategy.cspFull")
+      : tCommon("strategy.ccFull");
+  }, [trade, tCommon]);
 
   const subtitle = useMemo(() => {
     if (!trade) return "";
-    return trade.option_type === "PUT"
-      ? "Record that this short put was assigned into shares."
-      : "Record that this covered call was assigned (shares called away).";
-  }, [trade]);
+    return trade.option_type === "PUT" ? t("assign.subtitlePut") : t("assign.subtitleCall");
+  }, [trade, t]);
 
   const shares = trade ? trade.contracts * 100 : 0;
   const priceNum = Number.parseFloat(assignmentPrice.replace(",", "."));
@@ -80,25 +81,21 @@ export default function AssignTradeModal({
     trade && Number.isFinite(priceNum) ? priceNum * shares : 0;
 
   const parsedAssignmentFeesUsd = useMemo(() => {
-    const t = fees.trim();
-    if (!t) return undefined;
-    const x = Number(t);
+    const feeText = fees.trim();
+    if (!feeText) return undefined;
+    const x = Number(feeText);
     if (!Number.isFinite(x) || x < 0) return undefined;
     return x;
   }, [fees]);
 
   const parsedPriorRollPremium = useMemo(() => {
-    const t = priorRollPremium.trim();
-    if (!t) return undefined;
-    const x = Number(t);
+    const rollText = priorRollPremium.trim();
+    if (!rollText) return undefined;
+    const x = Number(rollText);
     if (!Number.isFinite(x) || x < 0) return undefined;
     return x;
   }, [priorRollPremium]);
 
-  /**
-   * CSP cost basis (mirrors backend `apply_stock_cost_basis`):
-   *   strike − premium_this_leg − prior_roll_premium + (opening_fees + assign_fees) / shares
-   */
   const estimatedStockCostPerShare = useMemo(() => {
     if (!trade || trade.option_type !== "PUT") return null;
     if (!Number.isFinite(priceNum) || priceNum <= 0 || shares <= 0) return null;
@@ -112,10 +109,10 @@ export default function AssignTradeModal({
 
   const handleSubmit = async () => {
     if (!Number.isFinite(priceNum) || priceNum <= 0) return;
-    const t = fees.trim();
+    const feeText = fees.trim();
     let feesAssignmentOut: number | undefined;
-    if (t) {
-      const x = Number(t);
+    if (feeText) {
+      const x = Number(feeText);
       if (!Number.isFinite(x) || x < 0) return;
       feesAssignmentOut = x;
     }
@@ -133,7 +130,12 @@ export default function AssignTradeModal({
     }
   };
 
-  const modalTitle = trade?.option_type === "CALL" ? "Call Away" : "Mark as Assigned";
+  const modalTitle =
+    trade?.option_type === "CALL" ? t("assign.titleCallAway") : t("assign.titleAssign");
+
+  const rollPartFormula = parsedPriorRollPremium
+    ? ` − roll premium ($${parsedPriorRollPremium.toFixed(2)}/sh)`
+    : "";
 
   return (
     <TradeModalShell
@@ -146,7 +148,9 @@ export default function AssignTradeModal({
     >
       <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
         <div className="rounded-xl bg-slate-50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Position</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            {t("assign.position")}
+          </p>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <span className="text-2xl font-semibold text-slate-900">{trade.ticker}</span>
             <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
@@ -155,17 +159,23 @@ export default function AssignTradeModal({
           </div>
           <div className="mt-4 grid grid-cols-3 gap-3">
             <div className="rounded-xl border border-slate-200 bg-white p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Strike</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {tCommon("columns.strike")}
+              </p>
               <p className="mt-1 text-lg font-semibold text-slate-900">
                 ${trade.strike.toFixed(2)}
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-white p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Contracts</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {t("form.contracts")}
+              </p>
               <p className="mt-1 text-lg font-semibold text-slate-900">{trade.contracts}</p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-white p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Shares</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {t("assign.shares")}
+              </p>
               <p className="mt-1 text-lg font-semibold text-slate-900">{shares}</p>
             </div>
           </div>
@@ -177,7 +187,7 @@ export default function AssignTradeModal({
             className="mb-1 flex items-center gap-1.5 text-sm font-medium text-slate-700"
           >
             <Calendar className={`${iconSm} text-slate-500`} strokeWidth={iconStroke} aria-hidden />
-            Action Date
+            {t("assign.actionDate")}
           </label>
           <input
             id="assign_action_date"
@@ -193,7 +203,7 @@ export default function AssignTradeModal({
             htmlFor="assign_price"
             className="mb-1 block text-sm font-medium text-slate-700"
           >
-            {trade.option_type === "CALL" ? "Call Away Price" : "Assignment Price"}
+            {trade.option_type === "CALL" ? t("assign.callAwayPrice") : t("assign.assignmentPrice")}
           </label>
           <div className="relative">
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">
@@ -211,7 +221,7 @@ export default function AssignTradeModal({
             />
           </div>
           <p className="mt-2 text-sm text-slate-500">
-            Total value:{" "}
+            {t("assign.totalValue")}{" "}
             <span className="font-semibold text-slate-700">
               $
               {totalValue.toLocaleString(undefined, {
@@ -223,7 +233,7 @@ export default function AssignTradeModal({
           {trade.option_type === "PUT" && estimatedStockCostPerShare != null ? (
             <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
-                Est. stock cost per share (CSP)
+                {t("assign.estCostLabel")}
               </p>
               <p className="mt-1 text-lg font-semibold text-emerald-900">
                 $
@@ -233,9 +243,7 @@ export default function AssignTradeModal({
                 })}
               </p>
               <p className="mt-2 text-xs text-emerald-800">
-                Strike − premium/share
-                {parsedPriorRollPremium ? ` − roll premium ($${parsedPriorRollPremium.toFixed(2)}/sh)` : ""}
-                {" "}+ (opening commission + assignment fees) ÷ shares.
+                {t("assign.estCostFormula", { rollPart: rollPartFormula })}
               </p>
             </div>
           ) : null}
@@ -245,6 +253,8 @@ export default function AssignTradeModal({
           <OptionalFieldsToggle
             open={showOptionalFields}
             onToggle={() => setShowOptionalFields((v) => !v)}
+            showLabel={t("optional.show")}
+            hideLabel={t("optional.hide")}
           />
         </div>
 
@@ -253,17 +263,17 @@ export default function AssignTradeModal({
             <OptionalFieldsCard>
               <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-purple-800">
                 <Layers className={iconSm} strokeWidth={iconStroke} aria-hidden />
-                Optional Details
+                {t("optional.title")}
               </p>
 
               <div className="mt-3">
                 <div className="flex items-center justify-between">
                   <label htmlFor="assign_fees" className="text-sm font-medium text-slate-700">
-                    Assignment fees
+                    {t("assign.assignmentFees")}
                   </label>
-                  <span className="text-sm text-slate-500">optional</span>
+                  <span className="text-sm text-slate-500">{tCommon("actions.optional")}</span>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">Total USD for this assignment (not spread per share).</p>
+                <p className="mt-1 text-xs text-slate-500">{t("assign.assignmentFeesHint")}</p>
                 <input
                   id="assign_fees"
                   type="number"
@@ -278,22 +288,19 @@ export default function AssignTradeModal({
 
               {trade.option_type === "PUT" && trade.rolled_from_id && (
                 <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-[12px] text-blue-800">
-                  <span className="font-semibold">Roll chain detected.</span>{" "}
-                  Prior roll premiums will be automatically added to cost basis from the linked chain.
-                  Use the override below only if you need to adjust.
+                  <span className="font-semibold">{t("assign.rollDetected")}</span>{" "}
+                  {t("assign.rollDetectedBody")}
                 </div>
               )}
               {trade.option_type === "PUT" && (
                 <div className="mt-4">
                   <div className="flex items-center justify-between">
                     <label htmlFor="assign_prior_roll" className="text-sm font-medium text-slate-700">
-                      Prior roll premium / share override
+                      {t("assign.priorRollOverride")}
                     </label>
-                    <span className="text-sm text-slate-500">optional</span>
+                    <span className="text-sm text-slate-500">{tCommon("actions.optional")}</span>
                   </div>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Leave blank to auto-sum from the roll chain. Fill in only to override (e.g. for manually linked trades).
-                  </p>
+                  <p className="mt-1 text-xs text-slate-500">{t("assign.priorRollHint")}</p>
                   <div className="relative mt-2">
                     <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">$</span>
                     <input
@@ -303,7 +310,7 @@ export default function AssignTradeModal({
                       min="0"
                       value={priorRollPremium}
                       onChange={(e) => setPriorRollPremium(e.target.value)}
-                      placeholder="auto from chain"
+                      placeholder={t("assign.priorRollPlaceholder")}
                       className="w-full rounded-lg border border-purple-200 bg-white py-2 pl-7 pr-3 text-sm text-slate-900 focus:border-purple-400 focus:outline-none"
                     />
                   </div>
@@ -313,16 +320,16 @@ export default function AssignTradeModal({
               <div className="mt-4">
                 <div className="flex items-center justify-between">
                   <label htmlFor="assign_notes" className="text-sm font-medium text-slate-700">
-                    Notes
+                    {t("optional.notes")}
                   </label>
-                  <span className="text-sm text-slate-500">optional</span>
+                  <span className="text-sm text-slate-500">{tCommon("actions.optional")}</span>
                 </div>
                 <textarea
                   id="assign_notes"
                   rows={3}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add optional notes about this lifecycle event..."
+                  placeholder={t("assign.notesPlaceholder")}
                   className="mt-2 w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-purple-400 focus:outline-none"
                 />
               </div>
@@ -333,8 +340,11 @@ export default function AssignTradeModal({
         <ModalActionButtons
           onCancel={onClose}
           onSubmit={handleSubmit}
-          submitLabel={trade.option_type === "CALL" ? "Mark Called Away" : "Mark Assigned"}
-          submittingLabel="Saving..."
+          submitLabel={
+            trade.option_type === "CALL" ? t("assign.submitCallAway") : t("assign.submitAssign")
+          }
+          submittingLabel={tCommon("actions.savingEllipsis")}
+          cancelLabel={tCommon("actions.cancel")}
           isSubmitting={isSubmitting}
           submitTone="blue"
           submitDisabled={!Number.isFinite(priceNum) || priceNum <= 0}

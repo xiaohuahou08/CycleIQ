@@ -1,14 +1,18 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { AuthLoadingShell } from "@/app/components/AuthShell";
+import { getServerTranslations } from "@/lib/i18n/server";
 import { createAuthPageMetadata } from "@/lib/seo/metadata";
 import { LoginForm } from "./login-form";
 
-export const metadata: Metadata = createAuthPageMetadata({
-  title: "Sign in",
-  description: "Sign in to CycleIQ to track your options wheel cycles, CSPs, covered calls, and premium P&L.",
-  path: "/login",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerTranslations("auth");
+  return createAuthPageMetadata({
+    title: t("login.metaTitle"),
+    description: t("login.metaDescription"),
+    path: "/login",
+  });
+}
 
 export default function LoginPage() {
   return (

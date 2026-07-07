@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AUTH_OAUTH_BTN_CLS } from "@/app/components/AuthShell";
+import { useTranslations } from "@/lib/i18n/locale-context";
 
 function GoogleMark() {
   return (
@@ -27,18 +28,21 @@ function GoogleMark() {
 }
 
 interface GoogleSignInButtonProps {
-  label?: string;
+  variant?: "continue" | "signUp";
   nextPath?: string | null;
   rememberMe?: boolean;
   onError?: (message: string) => void;
 }
 
 export default function GoogleSignInButton({
-  label = "Continue with Google",
+  variant = "continue",
   nextPath,
   onError,
 }: GoogleSignInButtonProps) {
+  const { t } = useTranslations("auth");
   const [isLoading, setIsLoading] = useState(false);
+
+  const label = variant === "signUp" ? t("google.signUp") : t("google.continue");
 
   const onClick = () => {
     setIsLoading(true);
@@ -48,7 +52,7 @@ export default function GoogleSignInButton({
       const qs = params.toString();
       window.location.assign(qs ? `/auth/google?${qs}` : "/auth/google");
     } catch (err) {
-      onError?.(err instanceof Error ? err.message : "Failed to start Google sign-in.");
+      onError?.(err instanceof Error ? err.message : t("google.error"));
       setIsLoading(false);
     }
   };
@@ -61,7 +65,7 @@ export default function GoogleSignInButton({
       className={AUTH_OAUTH_BTN_CLS}
     >
       <GoogleMark />
-      {isLoading ? "Redirecting…" : label}
+      {isLoading ? t("google.redirecting") : label}
     </button>
   );
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import UserAvatar from "@/app/components/UserAvatar";
+import { useTranslations } from "@/lib/i18n/locale-context";
 
 export function UserMenu({
   email,
@@ -16,6 +17,7 @@ export function UserMenu({
   avatarUrl?: string | null;
 }) {
   const router = useRouter();
+  const { t } = useTranslations("auth");
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -61,7 +63,7 @@ export function UserMenu({
           size="sm"
         />
         <span className="hidden max-w-[10rem] truncate text-left text-slate-700 sm:inline">
-          {email ?? "Account"}
+          {email ?? t("userMenu.account")}
         </span>
         <span className="text-slate-400" aria-hidden>
           ▾
@@ -74,7 +76,7 @@ export function UserMenu({
           className="absolute right-0 z-50 mt-2 w-52 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
         >
           <div className="px-3 py-2 text-xs text-slate-400" role="presentation">
-            Signed in as
+            {t("userMenu.signedInAs")}
             <div className="truncate text-sm text-slate-800">{email ?? "—"}</div>
           </div>
           <div className="my-1 border-t border-slate-100" />
@@ -82,7 +84,8 @@ export function UserMenu({
             className="block cursor-not-allowed px-3 py-2 text-sm text-slate-400"
             role="menuitem"
           >
-            Profile <span className="text-xs">(soon)</span>
+            {t("userMenu.profile")}{" "}
+            <span className="text-xs">({t("userMenu.profileSoon")})</span>
           </span>
           <Link
             href="/settings"
@@ -90,7 +93,7 @@ export function UserMenu({
             className="block px-3 py-2 text-sm text-slate-800 hover:bg-slate-50"
             onClick={() => setOpen(false)}
           >
-            Settings
+            {t("userMenu.settings")}
           </Link>
           <button
             type="button"
@@ -100,7 +103,7 @@ export function UserMenu({
               void onLogout();
             }}
           >
-            Log out
+            {t("userMenu.signOut")}
           </button>
         </div>
       ) : null}

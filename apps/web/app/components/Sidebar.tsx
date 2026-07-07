@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useMemo } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -12,8 +13,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { CycleIQMark, iconSm, iconStroke } from "@/app/components/icons";
+import LanguageSwitcher from "@/app/components/LanguageSwitcher";
 import UserAvatar from "@/app/components/UserAvatar";
 import { useProtectedAuth } from "@/app/(protected)/auth-context";
+import { useTranslations } from "@/lib/i18n/locale-context";
 
 /** Icon / type scale follows sidebar mode (expanded vs collapsed). */
 const sb = {
@@ -25,11 +28,12 @@ const sb = {
   navLabel: "text-sm leading-tight",
 } as const;
 
-const navItems: { label: string; href: string; icon: LucideIcon }[] = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Trades", href: "/trades", icon: TrendingUp },
-  { label: "Cycles", href: "/cycles", icon: RefreshCw },
-];
+const navItemDefs: { key: "dashboard" | "trades" | "cycles"; href: string; icon: LucideIcon }[] =
+  [
+    { key: "dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { key: "trades", href: "/trades", icon: TrendingUp },
+    { key: "cycles", href: "/cycles", icon: RefreshCw },
+  ];
 
 interface SidebarProps {
   collapsed?: boolean;
@@ -48,6 +52,12 @@ function SidebarNav({
   pathname: string;
   onNavigate?: () => void;
 }) {
+  const { t } = useTranslations("nav");
+  const navItems = useMemo(
+    () => navItemDefs.map((item) => ({ ...item, label: t(item.key) })),
+    [t]
+  );
+
   return (
     <nav
       className={`flex w-full flex-1 flex-col items-center gap-0.5 overflow-y-auto py-3 ${
@@ -104,6 +114,11 @@ function SidebarInner({
   onMobileClose?: () => void;
   showCollapseToggle: boolean;
 }) {
+  const { t: tc } = useTranslations("common");
+  const closeMenuLabel = tc("a11y.closeMenu");
+  const expandLabel = tc("a11y.expandSidebar");
+  const collapseLabel = tc("a11y.collapseSidebar");
+
   return (
     <>
       <div className="flex h-[3.75rem] w-full shrink-0 items-center justify-center border-b border-slate-800/80 px-2">
@@ -127,7 +142,7 @@ function SidebarInner({
             type="button"
             onClick={onMobileClose}
             className="mr-1 rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white md:hidden"
-            aria-label="Close menu"
+            aria-label={closeMenuLabel}
           >
             <X className={iconSm} strokeWidth={iconStroke} aria-hidden />
           </button>
@@ -137,6 +152,9 @@ function SidebarInner({
       <SidebarNav narrow={narrow} pathname={pathname} onNavigate={onMobileClose} />
 
       <div className="w-full shrink-0 border-t border-slate-800 px-2 py-2">
+        <div className={`mb-2 flex justify-center ${narrow ? "px-0" : ""}`}>
+          <LanguageSwitcher compact={narrow} />
+        </div>
         <Link
           href="/settings"
           title={profileLabel}
@@ -171,8 +189,8 @@ function SidebarInner({
             type="button"
             onClick={onToggleCollapsed}
             className="flex w-full items-center justify-center rounded-lg py-2.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
-            aria-label={narrow ? "Expand sidebar" : "Collapse sidebar"}
-            title={narrow ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={narrow ? expandLabel : collapseLabel}
+            title={narrow ? expandLabel : collapseLabel}
           >
             {narrow ? (
               <ChevronRight
@@ -198,8 +216,11 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const { email, displayName, avatarUrl } = useProtectedAuth();
+  const { t } = useTranslations("nav");
+  const { t: tc } = useTranslations("common");
+  const closeMenuLabel = tc("a11y.closeMenu");
   const narrow = collapsed && !mobileOpen;
-  const profileLabel = displayName ?? email ?? "Account";
+  const profileLabel = displayName ?? email ?? t("account");
 
   const sidebarContent = (
     <aside
@@ -232,7 +253,7 @@ export default function Sidebar({
           <button
             type="button"
             className="absolute inset-0 bg-black/40 animate-fade-in"
-            aria-label="Close menu"
+            aria-label={closeMenuLabel}
             onClick={onMobileClose}
           />
           <div className="absolute inset-y-0 left-0 animate-slide-in-right shadow-2xl">

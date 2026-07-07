@@ -31,6 +31,7 @@ import { useToast } from "@/app/components/Toast";
 import { CARD_BASE } from "@/app/components/ui/styles";
 import { Button } from "@/components/ui/button";
 import { useTradeDefaults, TRADE_DEFAULTS_UPDATED_EVENT } from "@/lib/hooks/useTradeDefaults";
+import { useLocale, useTranslations } from "@/lib/i18n/locale-context";
 
 // ─── Section shell ────────────────────────────────────────────────────────────
 function Section({
@@ -87,6 +88,10 @@ function BillingSection() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { showToast } = useToast();
+  const { t } = useTranslations("settings");
+  const { t: tToast } = useTranslations("toast");
+  const { t: tCommon } = useTranslations("common");
+  const { intlLocale } = useLocale();
 
   const load = async () => {
     if (!token) return;
@@ -95,7 +100,7 @@ function BillingSection() {
     try {
       setStatus(await fetchBillingStatus(token));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load billing.");
+      setError(err instanceof Error ? err.message : t("billing.error.load"));
     } finally {
       setLoading(false);
     }
@@ -108,7 +113,7 @@ function BillingSection() {
     void (async () => {
       if (!token) {
         if (active) {
-          setError("You need to be signed in to view billing.");
+          setError(t("billing.error.signIn"));
           setLoading(false);
         }
         return;
@@ -118,7 +123,7 @@ function BillingSection() {
         if (active) setStatus(next);
       } catch (err) {
         if (active) {
-          setError(err instanceof Error ? err.message : "Failed to load billing.");
+          setError(err instanceof Error ? err.message : t("billing.error.load"));
         }
       } finally {
         if (active) setLoading(false);
@@ -138,9 +143,9 @@ function BillingSection() {
     void (async () => {
       try {
         setStatus(await syncBillingAfterCheckout(token, sessionId));
-        showToast("Premium activated — thank you!", "success");
+        showToast(tToast("billing.premiumActivated"), "success");
       } catch {
-        showToast("Payment received — syncing plan…", "warning");
+        showToast(tToast("billing.syncing"), "warning");
         await load();
       } finally {
         // Strip billing/session_id from the URL so a refresh won't re-sync.
@@ -157,7 +162,7 @@ function BillingSection() {
       const { url } = await createCheckoutSession(token);
       window.location.href = url;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Checkout failed.");
+      setError(err instanceof Error ? err.message : t("billing.error.checkout"));
       setBusy(false);
     }
   };
@@ -170,7 +175,7 @@ function BillingSection() {
       const { url } = await createPortalSession(token);
       window.location.href = url;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not open billing portal.");
+      setError(err instanceof Error ? err.message : t("billing.error.portal"));
       setBusy(false);
     }
   };
@@ -178,37 +183,39 @@ function BillingSection() {
   const isPremium = status?.plan === "premium";
 
   return (
-    <Section
-        title="Billing"
-        description="Manage your CycleIQ plan. Premium is $1/month via Stripe."
-      >
+    <Section title={t("billing.title")} description={t("billing.description")}>
         {loading ? (
           <DataSyncBanner active compact />
         ) : (
           <>
-            <FieldRow label="Current plan">
+            <FieldRow label={t("billing.currentPlan")}>
               <span className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-800">
-                {status?.plan_label ?? "Basic"}
+                {status?.plan_label ?? t("billing.planBasic")}
                 {status?.price_usd != null ? ` · $${status.price_usd}/mo` : ""}
               </span>
             </FieldRow>
             {status?.subscription_status ? (
-              <FieldRow label="Subscription" hint="Synced from Stripe webhooks.">
+              <FieldRow label={t("billing.subscription")} hint={t("billing.subscriptionHint")}>
                 <span className="text-sm text-slate-700 capitalize">
                   {status.subscription_status.replace(/_/g, " ")}
                   {status.current_period_end
-                    ? ` · renews ${new Date(status.current_period_end).toLocaleDateString()}`
+                    ? ` ${t("billing.renews", {
+                        date: new Date(status.current_period_end).toLocaleDateString(intlLocale),
+                      })}`
                     : ""}
                 </span>
               </FieldRow>
             ) : null}
             {status?.trades_limit != null ? (
               <FieldRow
-                label="Trade usage"
-                hint={`${status.trades_this_month} of ${status.trades_limit} new trades this month (UTC).`}
+                label={t("billing.tradeUsage")}
+                hint={t("billing.tradeUsageHint", {
+                  used: status.trades_this_month,
+                  limit: status.trades_limit,
+                })}
               >
                 <span className="text-sm text-slate-700">
-                  {status.trades_remaining ?? 0} remaining
+                  {t("billing.remaining", { count: status.trades_remaining ?? 0 })}
                 </span>
               </FieldRow>
             ) : null}
@@ -220,7 +227,7 @@ function BillingSection() {
                   disabled={busy}
                   className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-50 disabled:opacity-50"
                 >
-                  {busy ? "Opening…" : "Manage subscription"}
+                  {busy ? tCommon("actions.opening") : t("billing.manage")}
                 </button>
               ) : (
                 <button
@@ -229,7 +236,7 @@ function BillingSection() {
                   disabled={busy}
                   className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
                 >
-                  {busy ? "Redirecting…" : "Upgrade to Premium — $1/mo"}
+                  {busy ? tCommon("actions.redirecting") : t("billing.upgrade")}
                 </button>
               )}
             </div>
@@ -252,6 +259,9 @@ function AccountSection({
   const [displayName, setDisplayName] = useState(displayNameProp);
   const [sending, setSending] = useState(false);
   const { showToast } = useToast();
+  const { t } = useTranslations("settings");
+  const { t: tToast } = useTranslations("toast");
+  const { t: tCommon } = useTranslations("common");
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -281,40 +291,34 @@ function AccountSection({
         redirectTo: authCallbackUrl("/settings"),
       });
       if (error) throw error;
-      showToast("Password reset email sent. Check your inbox.", "success");
+      showToast(tToast("account.resetSent"), "success");
     } catch {
-      showToast("Failed to send reset email. Please try again.", "error");
+      showToast(tToast("account.resetFailed"), "error");
     } finally {
       setSending(false);
     }
   };
 
   return (
-    <Section
-        title="Account"
-        description="Your account information and authentication settings."
-      >
-        <FieldRow label="Display name" hint="Name from your sign-in provider.">
+    <Section title={t("account.title")} description={t("account.description")}>
+        <FieldRow label={t("account.displayName")} hint={t("account.displayNameHint")}>
           <span className="inline-flex max-w-[14rem] items-center truncate rounded-lg bg-slate-100 px-3 py-1.5 text-sm text-slate-700">
             {displayName ?? "—"}
           </span>
         </FieldRow>
-        <FieldRow label="Email address" hint="Your Supabase Auth email.">
+        <FieldRow label={t("account.email")} hint={t("account.emailHint")}>
           <span className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-sm text-slate-700">
             {email ?? "—"}
           </span>
         </FieldRow>
-        <FieldRow
-          label="Password"
-          hint="Send a reset link to your email to change your password."
-        >
+        <FieldRow label={t("account.password")} hint={t("account.passwordHint")}>
           <button
             type="button"
             onClick={() => void handlePasswordReset()}
             disabled={sending || !email}
             className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {sending ? "Sending…" : "Send reset email"}
+            {sending ? t("account.sending") : t("account.sendReset")}
           </button>
         </FieldRow>
       </Section>
@@ -326,6 +330,8 @@ function TradingDefaultsSection({ hasCapitalFlows }: { hasCapitalFlows: boolean 
   const { defaults, setDefaults, loading, saving } = useTradeDefaults();
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const { t } = useTranslations("settings");
+  const { t: tCommon } = useTranslations("common");
 
   const [commissionPerContract, setCommissionPerContract] = useState(
     defaults.commissionPerContract !== undefined
@@ -374,20 +380,14 @@ function TradingDefaultsSection({ hasCapitalFlows }: { hasCapitalFlows: boolean 
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to save. Please try again.";
+      const message = err instanceof Error ? err.message : t("defaults.error");
       setSaveError(message);
     }
   };
 
   return (
-    <Section
-      title="Trading Defaults"
-      description="Pre-fill values when adding new trades. Saved to your account."
-    >
-      <FieldRow
-        label="Commission per contract"
-        hint="Auto-fills total opening commission when adding a trade (per-contract rate × contracts). Leave blank to skip."
-      >
+    <Section title={t("defaults.title")} description={t("defaults.description")}>
+      <FieldRow label={t("defaults.commission")} hint={t("defaults.commissionHint")}>
         <div className="flex items-center gap-2">
           <span className="text-sm text-slate-500">$</span>
           <input
@@ -399,14 +399,11 @@ function TradingDefaultsSection({ hasCapitalFlows }: { hasCapitalFlows: boolean 
             placeholder="0.65"
             className="w-24 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
           />
-          <span className="text-xs text-slate-400">/ contract</span>
+          <span className="text-xs text-slate-400">{t("defaults.perContract")}</span>
         </div>
       </FieldRow>
 
-      <FieldRow
-        label="Default contracts"
-        hint="Number of contracts pre-filled when opening a new trade."
-      >
+      <FieldRow label={t("defaults.contracts")} hint={t("defaults.contractsHint")}>
         <input
           type="number"
           min="1"
@@ -418,11 +415,9 @@ function TradingDefaultsSection({ hasCapitalFlows }: { hasCapitalFlows: boolean 
       </FieldRow>
 
       <FieldRow
-        label="Total capital budget"
+        label={t("defaults.budget")}
         hint={
-          hasCapitalFlows
-            ? "Locked after deposits or withdrawals exist. Change capital in Capital Management below."
-            : "Initial capital only. After your first deposit or withdrawal, use Capital Management below."
+          hasCapitalFlows ? t("defaults.budgetLockedHint") : t("defaults.budgetHint")
         }
       >
         <div className="flex items-center gap-2">
@@ -444,10 +439,7 @@ function TradingDefaultsSection({ hasCapitalFlows }: { hasCapitalFlows: boolean 
         </div>
       </FieldRow>
 
-      <FieldRow
-        label="Default DTE (days to expiry)"
-        hint="The expiry date pre-filled when opening a new trade."
-      >
+      <FieldRow label={t("defaults.dte")} hint={t("defaults.dteHint")}>
         <div className="flex items-center gap-2">
           <input
             type="number"
@@ -457,7 +449,7 @@ function TradingDefaultsSection({ hasCapitalFlows }: { hasCapitalFlows: boolean 
             onChange={(e) => setDefaultDte(e.target.value)}
             className="w-20 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
           />
-          <span className="text-xs text-slate-400">days</span>
+          <span className="text-xs text-slate-400">{t("defaults.days")}</span>
         </div>
       </FieldRow>
 
@@ -468,11 +460,11 @@ function TradingDefaultsSection({ hasCapitalFlows }: { hasCapitalFlows: boolean 
           disabled={loading || saving}
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {saving ? "Saving…" : "Save defaults"}
+          {saving ? tCommon("actions.saving") : t("defaults.save")}
         </button>
         {loading ? <DataSyncBanner active compact /> : null}
         {saved && !saveError && (
-          <span className="text-sm text-emerald-600">Saved.</span>
+          <span className="text-sm text-emerald-600">{t("defaults.saved")}</span>
         )}
         {saveError && <span className="text-sm text-red-600">{saveError}</span>}
       </div>
@@ -488,10 +480,10 @@ function localTodayIsoDate(): string {
   return `${y}-${m}-${day}`;
 }
 
-function formatDisplayDate(iso: string): string {
+function formatDisplayDate(iso: string, intlLocale: string): string {
   const [y, m, d] = iso.split("-").map(Number);
   if (!y || !m || !d) return iso;
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
+  return new Date(y, m - 1, d).toLocaleDateString(intlLocale, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -514,6 +506,8 @@ function CapitalFlowModal({
   submitting: boolean;
   initial?: CapitalFlow;
 }) {
+  const { t } = useTranslations("settings");
+  const { t: tCommon } = useTranslations("common");
   const [amount, setAmount] = useState("");
   const [eventDate, setEventDate] = useState(localTodayIsoDate());
   const [error, setError] = useState<string | null>(null);
@@ -540,28 +534,29 @@ function CapitalFlowModal({
   if (!open) return null;
 
   const title = isEdit
-    ? "Edit capital flow"
+    ? t("capital.modal.edit")
     : type === "deposit"
-      ? "Record deposit"
-      : "Record withdrawal";
-  const label = type === "deposit" ? "Deposit amount" : "Withdrawal amount";
+      ? t("capital.modal.deposit")
+      : t("capital.modal.withdrawal");
+  const label =
+    type === "deposit" ? t("capital.modal.depositAmount") : t("capital.modal.withdrawalAmount");
 
   const handleSubmit = async () => {
     setError(null);
     const parsed = Number(amount);
     if (!Number.isFinite(parsed) || parsed <= 0) {
-      setError("Enter an amount greater than zero.");
+      setError(t("capital.error.amount"));
       return;
     }
     if (!eventDate) {
-      setError("Select a date.");
+      setError(t("capital.error.date"));
       return;
     }
     try {
       await onSubmit(parsed, eventDate);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save.");
+      setError(err instanceof Error ? err.message : t("capital.error.save"));
     }
   };
 
@@ -573,9 +568,7 @@ function CapitalFlowModal({
     >
       <div className="animate-scale-in w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
         <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Updates your capital budget and feeds time-weighted return calculations.
-        </p>
+        <p className="mt-1 text-sm text-slate-500">{t("capital.modal.body")}</p>
         <div className="mt-4 space-y-4">
           <div>
             <label className="block text-xs font-medium text-slate-700">{label}</label>
@@ -593,7 +586,7 @@ function CapitalFlowModal({
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-700">Date</label>
+            <label className="block text-xs font-medium text-slate-700">{tCommon("columns.date")}</label>
             <input
               type="date"
               value={eventDate}
@@ -611,7 +604,7 @@ function CapitalFlowModal({
             disabled={submitting}
             className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
           >
-            Cancel
+            {tCommon("actions.cancel")}
           </button>
           <button
             type="button"
@@ -623,7 +616,7 @@ function CapitalFlowModal({
                 : "bg-amber-600 hover:bg-amber-700"
             }`}
           >
-            {submitting ? "Saving…" : "Save"}
+            {submitting ? tCommon("actions.saving") : tCommon("actions.save")}
           </button>
         </div>
       </div>
@@ -638,6 +631,9 @@ function CapitalManagementSection({
 }) {
   const { token } = useProtectedAuth();
   const { defaults, loading: defaultsLoading } = useTradeDefaults();
+  const { t } = useTranslations("settings");
+  const { t: tCommon } = useTranslations("common");
+  const { intlLocale } = useLocale();
   const [flows, setFlows] = useState<CapitalFlow[]>([]);
   const [loadingFlows, setLoadingFlows] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -660,7 +656,7 @@ function CapitalManagementSection({
       onFlowsChange(data.length > 0);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load capital flows.");
+      setError(err instanceof Error ? err.message : t("capital.error.load"));
     } finally {
       setLoadingFlows(false);
     }
@@ -704,8 +700,15 @@ function CapitalManagementSection({
 
   const handleDelete = async (flow: CapitalFlow) => {
     if (!token) return;
-    const label = flow.type === "deposit" ? "deposit" : "withdrawal";
-    if (!window.confirm(`Remove this ${label} from ${formatDisplayDate(flow.event_date)}?`)) {
+    const typeLabel = flow.type === "deposit" ? t("capital.type.deposit") : t("capital.type.withdrawal");
+    if (
+      !window.confirm(
+        t("capital.confirmDelete", {
+          type: typeLabel,
+          date: formatDisplayDate(flow.event_date, intlLocale),
+        })
+      )
+    ) {
       return;
     }
     setDeletingId(flow.id);
@@ -714,7 +717,7 @@ function CapitalManagementSection({
       window.dispatchEvent(new Event(TRADE_DEFAULTS_UPDATED_EVENT));
       await refreshFlows();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete entry.");
+      setError(err instanceof Error ? err.message : t("capital.error.delete"));
     } finally {
       setDeletingId(null);
     }
@@ -730,14 +733,8 @@ function CapitalManagementSection({
         submitting={submitting}
         initial={editingFlow ?? undefined}
       />
-      <Section
-        title="Capital Management"
-        description="Record deposits and withdrawals with dates. Total capital and time-weighted return use these cash flows."
-      >
-        <FieldRow
-          label="Current capital budget"
-          hint="Budget after all recorded flows. Total capital on Dashboard = budget + realized P&L."
-        >
+      <Section title={t("capital.title")} description={t("capital.description")}>
+        <FieldRow label={t("capital.currentBudget")} hint={t("capital.currentBudgetHint")}>
           <span className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-800">
             {defaultsLoading ? "…" : formatFlowAmount(defaults.totalCapitalBudget)}
           </span>
@@ -751,7 +748,7 @@ function CapitalManagementSection({
             className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <ArrowDownCircle className={iconSm} strokeWidth={iconStroke} aria-hidden />
-            Deposit
+            {t("capital.deposit")}
           </button>
           <button
             type="button"
@@ -760,7 +757,7 @@ function CapitalManagementSection({
             className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <ArrowUpCircle className={iconSm} strokeWidth={iconStroke} aria-hidden />
-            Withdraw
+            {t("capital.withdraw")}
           </button>
         </div>
 
@@ -770,11 +767,11 @@ function CapitalManagementSection({
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 py-2 text-left font-medium text-slate-600">Date</th>
-                <th className="px-4 py-2 text-left font-medium text-slate-600">Type</th>
-                <th className="px-4 py-2 text-right font-medium text-slate-600">Amount</th>
+                <th className="px-4 py-2 text-left font-medium text-slate-600">{tCommon("columns.date")}</th>
+                <th className="px-4 py-2 text-left font-medium text-slate-600">{tCommon("columns.type")}</th>
+                <th className="px-4 py-2 text-right font-medium text-slate-600">{tCommon("columns.amount")}</th>
                 <th className="px-4 py-2 text-right font-medium text-slate-600">
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">{tCommon("a11y.actions")}</span>
                 </th>
               </tr>
             </thead>
@@ -790,16 +787,18 @@ function CapitalManagementSection({
               ) : flows.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
-                    No deposits or withdrawals yet.
+                    {t("capital.empty")}
                   </td>
                 </tr>
               ) : (
                 flows.map((flow) => (
                   <tr key={flow.id}>
                     <td className="px-4 py-2.5 text-slate-900">
-                      {formatDisplayDate(flow.event_date)}
+                      {formatDisplayDate(flow.event_date, intlLocale)}
                     </td>
-                    <td className="px-4 py-2.5 capitalize text-slate-700">{flow.type}</td>
+                    <td className="px-4 py-2.5 capitalize text-slate-700">
+                      {t(`capital.type.${flow.type}`)}
+                    </td>
                     <td
                       className={`px-4 py-2.5 text-right font-medium ${
                         flow.type === "deposit" ? "text-emerald-700" : "text-amber-700"
@@ -814,7 +813,7 @@ function CapitalManagementSection({
                           type="button"
                           onClick={() => openEdit(flow)}
                           className="inline-flex items-center rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                          aria-label="Edit entry"
+                          aria-label={tCommon("a11y.editEntry")}
                         >
                           <Pencil className="h-4 w-4" strokeWidth={iconStroke} aria-hidden />
                         </button>
@@ -823,7 +822,7 @@ function CapitalManagementSection({
                           onClick={() => void handleDelete(flow)}
                           disabled={deletingId === flow.id}
                           className="inline-flex items-center rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-red-600 disabled:opacity-50"
-                          aria-label="Delete entry"
+                          aria-label={tCommon("a11y.deleteEntry")}
                         >
                           <Trash2 className="h-4 w-4" strokeWidth={iconStroke} aria-hidden />
                         </button>
@@ -848,6 +847,9 @@ function DangerZoneSection() {
   const [resetting, setResetting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { showToast } = useToast();
+  const { t } = useTranslations("settings");
+  const { t: tToast } = useTranslations("toast");
+  const { t: tCommon } = useTranslations("common");
 
   const handleReset = async () => {
     if (!token) return;
@@ -857,7 +859,10 @@ function DangerZoneSection() {
       const result = await resetTradingData(token);
       setConfirmOpen(false);
       showToast(
-        `Deleted ${result.trades_deleted} trade(s) and ${result.cycles_deleted} cycle(s).`,
+        tToast("danger.resetSuccess", {
+          trades: result.trades_deleted,
+          cycles: result.cycles_deleted,
+        }),
         "success"
       );
       setTimeout(() => {
@@ -865,7 +870,7 @@ function DangerZoneSection() {
         router.refresh();
       }, 1200);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Reset failed. Please try again.");
+      setError(err instanceof Error ? err.message : t("danger.error"));
     } finally {
       setResetting(false);
     }
@@ -873,14 +878,8 @@ function DangerZoneSection() {
 
   return (
     <>
-      <Section
-        title="Danger zone"
-        description="Irreversible actions for your trading data."
-      >
-        <FieldRow
-          label="Reset all trading data"
-          hint="Permanently delete every trade and wheel cycle. Capital deposits/withdrawals and trading defaults are kept."
-        >
+      <Section title={t("danger.title")} description={t("danger.description")}>
+        <FieldRow label={t("danger.reset.label")} hint={t("danger.reset.hint")}>
           <button
             type="button"
             onClick={() => {
@@ -889,7 +888,7 @@ function DangerZoneSection() {
             }}
             className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 shadow-sm hover:bg-red-50"
           >
-            Reset data
+            {t("danger.reset.button")}
           </button>
         </FieldRow>
       </Section>
@@ -903,12 +902,9 @@ function DangerZoneSection() {
         >
           <div className="animate-scale-in w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <h2 id="reset-data-title" className="text-base font-semibold text-slate-900">
-              Reset all trading data?
+              {t("danger.confirm.title")}
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">
-              This will permanently delete all your trades and wheel cycles. Your account,
-              login, and trading defaults will not be affected.
-            </p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">{t("danger.confirm.body")}</p>
             {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
             <div className="mt-6 flex justify-end gap-3">
               <button
@@ -917,7 +913,7 @@ function DangerZoneSection() {
                 disabled={resetting}
                 className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
               >
-                Cancel
+                {tCommon("actions.cancel")}
               </button>
               <button
                 type="button"
@@ -925,7 +921,7 @@ function DangerZoneSection() {
                 disabled={resetting}
                 className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
               >
-                {resetting ? "Deleting…" : "Delete all data"}
+                {resetting ? tCommon("actions.deleting") : t("danger.confirm.delete")}
               </button>
             </div>
           </div>
@@ -939,6 +935,7 @@ function DangerZoneSection() {
 export default function SettingsPage() {
   const { email, displayName, onLogout } = useProtectedAuth();
   const [hasCapitalFlows, setHasCapitalFlows] = useState(false);
+  const { t: tCommon } = useTranslations("common");
 
   return (
     <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-slate-50 px-4 py-4 sm:px-6 sm:py-6">
@@ -958,9 +955,9 @@ export default function SettingsPage() {
             onClick={() => void onLogout()}
             className="px-6"
           >
-            Sign out
+            {tCommon("actions.signOut")}
           </Button>
-          <p className="text-xs text-slate-400">CycleIQ · v0.1</p>
+          <p className="text-xs text-slate-400">{tCommon("version")}</p>
         </div>
       </div>
     </main>
