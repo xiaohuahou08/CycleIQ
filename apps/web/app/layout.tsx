@@ -5,6 +5,10 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import { Inter, Space_Grotesk, Geist } from "next/font/google";
 import OAuthCodeRelay from "@/app/components/OAuthCodeRelay";
+import SkipToMain from "@/app/components/SkipToMain";
+import { LocaleProvider } from "@/lib/i18n/locale-context";
+import { htmlLang } from "@/lib/i18n/locales";
+import { getLocaleFromCookies } from "@/lib/i18n/server";
 import { DEFAULT_DESCRIPTION, DEFAULT_KEYWORDS, SITE_NAME, SITE_TAGLINE, getSiteUrl } from "@/lib/seo/site";
 import "./globals.css";
 import { cn } from "@/lib/utils";
@@ -76,21 +80,19 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocaleFromCookies();
+
   return (
-    <html lang="en" className={cn("h-full", "antialiased", spaceGrotesk.variable, "font-sans", geist.variable)}>
+    <html lang={htmlLang(locale)} className={cn("h-full", "antialiased", spaceGrotesk.variable, "font-sans", geist.variable)}>
       <body className={`${geist.className} min-h-full flex flex-col`}>
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-slate-900 focus:px-4 focus:py-2 focus:text-sm focus:text-white"
-        >
-          Skip to main content
-        </a>
-        {children}
+        <LocaleProvider initialLocale={locale}>
+          <SkipToMain />
+          {children}
         <Suspense fallback={null}>
           <OAuthCodeRelay />
         </Suspense>
@@ -105,6 +107,7 @@ export default function RootLayout({
             strategy="afterInteractive"
           />
         ) : null}
+        </LocaleProvider>
       </body>
     </html>
   );

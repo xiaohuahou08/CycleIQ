@@ -131,9 +131,13 @@ export function TradeModalShell({
 export function OptionalFieldsToggle({
   open,
   onToggle,
+  showLabel = "Show Optional Fields",
+  hideLabel = "Hide Optional Fields",
 }: {
   open: boolean;
   onToggle: () => void;
+  showLabel?: string;
+  hideLabel?: string;
 }) {
   return (
     <button
@@ -144,12 +148,12 @@ export function OptionalFieldsToggle({
       {open ? (
         <>
           <ChevronUp className={iconSm} strokeWidth={iconStroke} aria-hidden />
-          Hide Optional Fields
+          {hideLabel}
         </>
       ) : (
         <>
           <ChevronDown className={iconSm} strokeWidth={iconStroke} aria-hidden />
-          Show Optional Fields
+          {showLabel}
         </>
       )}
     </button>
@@ -164,6 +168,7 @@ export function ModalActionButtons({
   onCancel,
   submitLabel,
   submittingLabel = "Saving...",
+  cancelLabel = "Cancel",
   isSubmitting,
   onSubmit,
   submitTone = "dark",
@@ -172,6 +177,7 @@ export function ModalActionButtons({
   onCancel: () => void;
   submitLabel: string;
   submittingLabel?: string;
+  cancelLabel?: string;
   isSubmitting: boolean;
   onSubmit?: () => void;
   submitTone?: "dark" | "blue";
@@ -180,7 +186,7 @@ export function ModalActionButtons({
   return (
     <div className="mt-6 flex justify-end gap-3">
       <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
-        Cancel
+        {cancelLabel}
       </Button>
       <Button
         type={onSubmit ? "button" : "submit"}

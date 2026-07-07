@@ -1,24 +1,30 @@
 import type { Metadata } from "next";
 import MarketingShell from "@/app/components/marketing/MarketingShell";
 import { MARKETING_PAGE_PAD } from "@/app/components/marketing/styles";
+import { getServerTranslations } from "@/lib/i18n/server";
 import { createPageMetadata } from "@/lib/seo/metadata";
 import ContactForm from "./ContactForm";
 
-export const metadata: Metadata = createPageMetadata({
-  title: "Contact Us",
-  description:
-    "Get in touch with the CycleIQ team. Questions about wheel strategy tracking, billing, or your account — we're here to help.",
-  path: "/contact",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerTranslations("contact");
+  return createPageMetadata({
+    title: t("metaTitle"),
+    description: t("metaDescription"),
+    path: "/contact",
+  });
+}
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const tMarketing = await getServerTranslations("marketing");
+  const t = await getServerTranslations("contact");
+
   return (
     <MarketingShell
       activePage="contact"
       cta={{
-        title: "Ready to track your wheel?",
-        description: "Sign in free — Basic includes 20 trades per month.",
-        buttonLabel: "Sign in / Register",
+        title: tMarketing("contact.cta.title"),
+        description: tMarketing("contact.cta.body"),
+        buttonLabel: tMarketing("home.ctaSignIn"),
         buttonHref: "/login",
       }}
     >
@@ -26,16 +32,13 @@ export default function ContactPage() {
         <div className={MARKETING_PAGE_PAD}>
           <div className="animate-page-enter mx-auto max-w-2xl text-center">
             <div className="inline-flex items-center rounded-full border border-emerald-200/80 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
-              Get in touch
+              {t("badge")}
             </div>
             <h1 className="mt-5 text-4xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-[2.75rem] sm:leading-[1.1]">
-              We&apos;d love to hear from you.
-              <span className="text-emerald-600"> Send us a message.</span>
+              {t("title")}
+              <span className="text-emerald-600"> {t("titleAccent")}</span>
             </h1>
-            <p className="mt-5 text-base leading-relaxed text-slate-600">
-              Questions about CycleIQ, your account, or the wheel strategy tracker? Fill out the
-              form below and we&apos;ll reply to your email as soon as we can.
-            </p>
+            <p className="mt-5 text-base leading-relaxed text-slate-600">{t("subtitle")}</p>
           </div>
 
           <ContactForm />

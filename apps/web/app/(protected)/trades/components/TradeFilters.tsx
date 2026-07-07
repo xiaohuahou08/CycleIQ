@@ -17,6 +17,7 @@ import DatePicker from "@/app/components/DatePicker";
 import { iconSm, iconStroke } from "@/app/components/icons";
 import { PILL_ACTIVE, PILL_IDLE } from "@/app/components/ui/styles";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "@/lib/i18n/locale-context";
 
 export interface FilterState {
   type: string;
@@ -36,15 +37,15 @@ const DEFAULT_FILTERS: FilterState = {
 
 const STATUS_ROW: ReadonlyArray<{
   key: string;
-  label: string;
+  labelKey: string;
   Icon: LucideIcon;
 }> = [
-  { key: "OPEN", label: "Open", Icon: Clock },
-  { key: "CLOSED", label: "Closed", Icon: Check },
-  { key: "EXPIRED", label: "Expired", Icon: Calendar },
-  { key: "ASSIGNED", label: "Assigned", Icon: ArrowDownToLine },
-  { key: "CALLED_AWAY", label: "Away", Icon: TrendingUp },
-  { key: "ROLLED", label: "Rolled", Icon: RotateCw },
+  { key: "OPEN", labelKey: "open", Icon: Clock },
+  { key: "CLOSED", labelKey: "closed", Icon: Check },
+  { key: "EXPIRED", labelKey: "expired", Icon: Calendar },
+  { key: "ASSIGNED", labelKey: "assigned", Icon: ArrowDownToLine },
+  { key: "CALLED_AWAY", labelKey: "away", Icon: TrendingUp },
+  { key: "ROLLED", labelKey: "rolled", Icon: RotateCw },
 ];
 
 function countActiveFilters(filters: FilterState): number {
@@ -64,7 +65,6 @@ interface TradeFiltersProps {
   addTradeDisabled?: boolean;
   addTradeDisabledReason?: string;
   tradesUsageLabel?: string;
-  /** When wrapped in outer card (rounded border/shadow handled by parent) */
   embedded?: boolean;
 }
 
@@ -78,6 +78,8 @@ export default function TradeFilters({
   tradesUsageLabel,
   embedded = false,
 }: TradeFiltersProps) {
+  const { t } = useTranslations("trades");
+  const { t: tCommon } = useTranslations("common");
   const [suggestOpen, setSuggestOpen] = useState(false);
   const searchWrapRef = useRef<HTMLDivElement>(null);
   const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
@@ -87,8 +89,8 @@ export default function TradeFilters({
     if (!raw) return [];
     const q = raw.toLowerCase();
     return tickerSuggestions
-      .filter((t) => {
-        const tl = t.toLowerCase();
+      .filter((ticker) => {
+        const tl = ticker.toLowerCase();
         return tl.startsWith(q) || tl.includes(q);
       })
       .sort((a, b) => {
@@ -153,7 +155,7 @@ export default function TradeFilters({
             </span>
             <input
               type="text"
-              placeholder="Search ticker…"
+              placeholder={t("filters.searchPlaceholder")}
               value={filters.search}
               autoComplete="off"
               onChange={(e) => {
@@ -168,18 +170,18 @@ export default function TradeFilters({
                 className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-auto rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg ring-1 ring-slate-900/5"
                 role="listbox"
               >
-                {matchingTickers.map((t) => (
-                  <li key={t}>
+                {matchingTickers.map((ticker) => (
+                  <li key={ticker}>
                     <button
                       type="button"
                       className="w-full px-3 py-2 text-left text-sm font-medium tracking-tight text-slate-900 hover:bg-slate-50"
                       onMouseDown={(e) => {
                         e.preventDefault();
-                        apply({ search: t });
+                        apply({ search: ticker });
                         setSuggestOpen(false);
                       }}
                     >
-                      {t}
+                      {ticker}
                     </button>
                   </li>
                 ))}
@@ -196,7 +198,7 @@ export default function TradeFilters({
               }`}
             >
               <CircleDot className={iconSm} strokeWidth={iconStroke} aria-hidden />
-              CSP
+              {tCommon("strategy.csp")}
             </button>
             <button
               type="button"
@@ -206,7 +208,7 @@ export default function TradeFilters({
               }`}
             >
               <LineChart className={iconSm} strokeWidth={iconStroke} aria-hidden />
-              CC
+              {tCommon("strategy.cc")}
             </button>
           </div>
 
@@ -216,7 +218,7 @@ export default function TradeFilters({
               onClick={clearFilters}
               className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700"
             >
-              Clear filters
+              {t("filters.clearFilters")}
               <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-100 px-1.5 text-[10px] font-semibold text-emerald-700">
                 {activeFilterCount}
               </span>
@@ -237,7 +239,7 @@ export default function TradeFilters({
                 title={addTradeDisabled ? addTradeDisabledReason : undefined}
                 className="h-9 shrink-0 bg-emerald-600 text-white hover:bg-emerald-700"
               >
-                + Add trade
+                {t("filters.addTrade")}
               </Button>
             </div>
           )}
@@ -250,7 +252,7 @@ export default function TradeFilters({
               if (filters.type === "PUT" && key === "CALLED_AWAY") return false;
               if (filters.type === "CALL" && key === "ASSIGNED") return false;
               return true;
-            }).map(({ key, label, Icon }) => {
+            }).map(({ key, labelKey, Icon }) => {
               const active = filters.status === key;
               return (
                 <button
@@ -271,7 +273,7 @@ export default function TradeFilters({
                   }`}
                 >
                   <Icon className={iconSm} strokeWidth={iconStroke} aria-hidden />
-                  {label}
+                  {t(`filters.status.${labelKey}`)}
                 </button>
               );
             })}
@@ -288,7 +290,7 @@ export default function TradeFilters({
                   : PILL_IDLE
               }`}
             >
-              Since last month
+              {t("filters.sinceLastMonth")}
             </button>
             <div
               className={`flex flex-wrap items-center gap-1 rounded-lg border p-1 ${
@@ -306,16 +308,16 @@ export default function TradeFilters({
                     : "text-slate-700 hover:text-slate-900"
                 }`}
               >
-                Custom
+                {t("filters.custom")}
               </button>
               <span className="text-slate-300" aria-hidden>
                 |
               </span>
               <DatePicker
                 value={filters.startDate}
-                placeholder="From"
+                placeholder={tCommon("date.from")}
                 emphasized={filters.dateRangeType === "CUSTOM"}
-                aria-label="From date"
+                aria-label={tCommon("date.from")}
                 onChange={(startDate) =>
                   apply({
                     dateRangeType: "CUSTOM",
@@ -326,9 +328,9 @@ export default function TradeFilters({
               <span className="text-xs font-medium text-slate-600">–</span>
               <DatePicker
                 value={filters.endDate}
-                placeholder="To"
+                placeholder={tCommon("date.to")}
                 emphasized={filters.dateRangeType === "CUSTOM"}
-                aria-label="To date"
+                aria-label={tCommon("date.to")}
                 onChange={(endDate) =>
                   apply({
                     dateRangeType: "CUSTOM",

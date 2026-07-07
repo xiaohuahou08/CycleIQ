@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BTN_PRIMARY } from "@/app/components/marketing/MarketingShell";
 import { createCheckoutSession } from "@/lib/api/billing";
+import { useTranslations } from "@/lib/i18n/locale-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 
 /** Post-login target that auto-starts Stripe checkout on the pricing page. */
@@ -13,6 +14,8 @@ export const PRICING_CHECKOUT_PATH = "/pricing?checkout=1";
 export default function PremiumUpgradeButton({ className = "" }: { className?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useTranslations("marketing");
+  const { t: tCommon } = useTranslations("common");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSession, setHasSession] = useState<boolean | null>(null);
@@ -77,10 +80,10 @@ export default function PremiumUpgradeButton({ className = "" }: { className?: s
       const { url } = await createCheckoutSession(token);
       window.location.assign(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not start checkout.");
+      setError(err instanceof Error ? err.message : t("pricing.upgrade.error"));
       setLoading(false);
     }
-  }, [refreshSession, router]);
+  }, [refreshSession, router, t]);
 
   useEffect(() => {
     if (!shouldAutoCheckout || hasSession !== true || autoCheckoutStarted.current) return;
@@ -94,7 +97,7 @@ export default function PremiumUpgradeButton({ className = "" }: { className?: s
         href={`/login?next=${encodeURIComponent(PRICING_CHECKOUT_PATH)}`}
         className={`${BTN_PRIMARY} w-full ${className}`}
       >
-        Sign in to upgrade
+        {t("pricing.upgrade.signIn")}
       </Link>
     );
   }
@@ -106,14 +109,14 @@ export default function PremiumUpgradeButton({ className = "" }: { className?: s
           role="status"
           className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
         >
-          <span>Checkout canceled — you can upgrade anytime.</span>
+          <span>{t("pricing.upgrade.canceled")}</span>
           <button
             type="button"
             onClick={() => setDismissed(true)}
             className="font-semibold underline-offset-2 hover:underline"
-            aria-label="Dismiss"
+            aria-label={tCommon("a11y.dismiss")}
           >
-            Dismiss
+            {tCommon("a11y.dismiss")}
           </button>
         </div>
       ) : null}
@@ -123,7 +126,11 @@ export default function PremiumUpgradeButton({ className = "" }: { className?: s
         disabled={loading || hasSession === null}
         className={`${BTN_PRIMARY} w-full disabled:cursor-not-allowed disabled:opacity-60`}
       >
-        {loading ? "Redirecting…" : hasSession === null ? "Loading…" : "Upgrade to Premium — $1/mo"}
+        {loading
+          ? tCommon("actions.redirecting")
+          : hasSession === null
+            ? tCommon("actions.loading")
+            : t("pricing.upgrade.button")}
       </button>
       {error ? (
         <p role="alert" className="mt-2 text-center text-xs text-red-600">

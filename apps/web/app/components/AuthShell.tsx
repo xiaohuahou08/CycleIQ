@@ -1,26 +1,12 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useMemo, type ReactNode } from "react";
 import { LayoutDashboard, RefreshCw, TrendingUp } from "lucide-react";
 import AppLoadingScreen from "@/app/components/AppLoadingScreen";
 import { CycleIQMark, iconMd, iconStroke } from "@/app/components/icons";
-import { AUTH_LOADING_PHASES } from "@/lib/hooks/useSlowLoadingMessage";
+import { useTranslations } from "@/lib/i18n/locale-context";
 
-const FEATURES = [
-  {
-    Icon: TrendingUp,
-    title: "Trade journal",
-    description: "Log CSPs and covered calls with fees, rolls, and lifecycle actions.",
-  },
-  {
-    Icon: RefreshCw,
-    title: "Wheel cycles",
-    description: "Follow each ticker from put assignment through CC premium and exit.",
-  },
-  {
-    Icon: LayoutDashboard,
-    title: "Portfolio insights",
-    description: "Realized P&L, cost basis, and open positions in one dashboard.",
-  },
-] as const;
+const FEATURE_ICONS = [TrendingUp, RefreshCw, LayoutDashboard] as const;
 
 export const AUTH_INPUT_CLS =
   "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/25";
@@ -41,6 +27,21 @@ interface AuthShellProps {
 }
 
 export default function AuthShell({ title, subtitle, children, footer }: AuthShellProps) {
+  const { t } = useTranslations("auth");
+  const features = useMemo(
+    () =>
+      FEATURE_ICONS.map((Icon, index) => {
+        const n = (index + 1) as 1 | 2 | 3;
+        const key = `shell.feature${n}` as const;
+        return {
+          Icon,
+          title: t(`${key}.title`),
+          description: t(`${key}.body`),
+        };
+      }),
+    [t]
+  );
+
   return (
     <main className="flex min-h-screen flex-col lg:flex-row">
       <section className="relative flex shrink-0 flex-col justify-between overflow-hidden bg-slate-900 px-6 py-10 text-white sm:px-10 lg:w-[44%] lg:min-h-screen lg:px-12 lg:py-12">
@@ -60,17 +61,15 @@ export default function AuthShell({ title, subtitle, children, footer }: AuthShe
 
         <div className="relative mt-10 max-w-md lg:mt-0">
           <p className="text-sm font-semibold uppercase tracking-wider text-emerald-400/90">
-            Wheel strategy tracker
+            {t("shell.badge")}
           </p>
           <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl">
-            Run your options wheel with clarity
+            {t("shell.headline")}
           </h2>
-          <p className="mt-4 text-base leading-relaxed text-slate-300">
-            Purpose-built for cash-secured puts and covered calls — not a generic spreadsheet.
-          </p>
+          <p className="mt-4 text-base leading-relaxed text-slate-300">{t("shell.subhead")}</p>
 
           <ul className="mt-10 hidden space-y-5 lg:block">
-            {FEATURES.map(({ Icon, title: featureTitle, description }) => (
+            {features.map(({ Icon, title: featureTitle, description }) => (
               <li key={featureTitle} className="flex gap-3">
                 <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/10">
                   <Icon className={iconMd} strokeWidth={iconStroke} aria-hidden />
@@ -85,7 +84,7 @@ export default function AuthShell({ title, subtitle, children, footer }: AuthShe
         </div>
 
         <p className="relative mt-10 hidden text-xs text-slate-500 lg:block">
-          © {new Date().getFullYear()} CycleIQ
+          {t("shell.copyright", { year: new Date().getFullYear() })}
         </p>
       </section>
 
@@ -108,5 +107,15 @@ export default function AuthShell({ title, subtitle, children, footer }: AuthShe
 }
 
 export function AuthLoadingShell() {
-  return <AppLoadingScreen phases={AUTH_LOADING_PHASES} />;
+  const { t } = useTranslations("common");
+  const phases = useMemo(
+    () => [
+      { afterMs: 0, message: t("loadingPhases.auth.p0") },
+      { afterMs: 3000, message: t("loadingPhases.auth.p3000") },
+      { afterMs: 8000, message: t("loadingPhases.auth.p8000") },
+    ],
+    [t]
+  );
+
+  return <AppLoadingScreen phases={phases} />;
 }

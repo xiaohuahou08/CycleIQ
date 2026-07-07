@@ -1,7 +1,9 @@
 "use client";
 
+import { useMemo } from "react";
 import { RefreshCw } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
+import { useTranslations } from "@/lib/i18n/locale-context";
 import { useSlowLoadingMessage } from "@/lib/hooks/useSlowLoadingMessage";
 
 interface DataSyncBannerProps {
@@ -15,7 +17,16 @@ export default function DataSyncBanner({
   className = "",
   compact = false,
 }: DataSyncBannerProps) {
-  const message = useSlowLoadingMessage(active);
+  const { t } = useTranslations("common");
+  const phases = useMemo(
+    () => [
+      { afterMs: 0, message: t("loadingPhases.default.p0") },
+      { afterMs: 3000, message: t("loadingPhases.default.p3000") },
+      { afterMs: 8000, message: t("loadingPhases.default.p8000") },
+    ],
+    [t]
+  );
+  const message = useSlowLoadingMessage(active, phases);
 
   if (!active) return null;
 
@@ -52,9 +63,7 @@ export default function DataSyncBanner({
       </span>
       <div className="min-w-0">
         <p className="text-sm font-medium text-emerald-900">{message}</p>
-        <p className="mt-0.5 text-xs text-emerald-700/75">
-          Fetching the latest from your database
-        </p>
+        <p className="mt-0.5 text-xs text-emerald-700/75">{t("sync.fetchSubtitle")}</p>
       </div>
       <span className="ml-auto hidden items-center gap-1 sm:flex" aria-hidden>
         {[0, 1, 2].map((i) => (
