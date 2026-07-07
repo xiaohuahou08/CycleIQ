@@ -29,6 +29,9 @@ export default function MarketingHeader({ activePage }: MarketingHeaderProps) {
             <Link href="/pricing" className={marketingNavLinkClass(activePage === "pricing")}>
               Pricing
             </Link>
+            <Link href="/contact" className={marketingNavLinkClass(activePage === "contact")}>
+              Contact Us
+            </Link>
           </div>
         </nav>
 

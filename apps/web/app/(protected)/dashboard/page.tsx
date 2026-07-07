@@ -8,6 +8,8 @@ import {
   type Trade,
 } from "@/lib/api/trades";
 import PageHeader from "@/app/components/PageHeader";
+import DataSyncBanner from "@/app/components/DataSyncBanner";
+import RefreshButton from "@/app/components/RefreshButton";
 import { useProtectedAuth } from "../auth-context";
 import ActivePositionsTable from "./components/ActivePositionsTable";
 import DashboardInsights from "./components/DashboardInsights";
@@ -16,7 +18,7 @@ export default function DashboardPage() {
   const { token, isAuthLoading } = useProtectedAuth();
   const [allTrades, setAllTrades] = useState<Trade[]>([]);
   const [insights, setInsights] = useState<DashboardInsightsData | null>(null);
-  const [tradesLoading, setTradesLoading] = useState(false);
+  const [tradesLoading, setTradesLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const activeTrades = useMemo(
     () => allTrades.filter((trade) => trade.status === "OPEN"),
@@ -62,17 +64,11 @@ export default function DashboardPage() {
             description="Your wheel strategy at a glance"
             actions={
               token ? (
-                <button
-                  type="button"
-                  onClick={() => void loadData(token)}
-                  disabled={tradesLoading}
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
-                >
-                  {tradesLoading ? "Refreshing…" : "Refresh"}
-                </button>
+                <RefreshButton loading={tradesLoading} onClick={() => void loadData(token)} />
               ) : null
             }
           />
+          <DataSyncBanner active={tradesLoading} />
           {loadError ? (
             <div
               role="alert"

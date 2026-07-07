@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { Menu } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/app/components/Sidebar";
+import AppLoadingScreen from "@/app/components/AppLoadingScreen";
 import { ToastProvider } from "@/app/components/Toast";
 import { iconMd, iconStroke } from "@/app/components/icons";
 import { getSupabaseClient } from "@/lib/supabase/client";
@@ -55,7 +56,7 @@ export default function ProtectedLayoutClient({
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       if (!active) return;
       if (event === "SIGNED_OUT" || !session) {
         setToken(null);
@@ -98,14 +99,7 @@ export default function ProtectedLayoutClient({
   );
 
   if (isAuthLoading) {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-3 app-page-bg">
-        <div className="loading-spinner" aria-hidden />
-        <p role="status" aria-live="polite" className="animate-fade-in text-sm text-slate-500">
-          Loading…
-        </p>
-      </main>
-    );
+    return <AppLoadingScreen />;
   }
 
   return (

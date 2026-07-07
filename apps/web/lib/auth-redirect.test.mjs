@@ -46,6 +46,7 @@ test("safeInternalRedirectPath allows only known in-app targets", () => {
   assert.equal(safeInternalRedirectPath("/cycles"), "/cycles");
   assert.equal(safeInternalRedirectPath("/dashboard/foo"), "/dashboard/foo");
   assert.equal(safeInternalRedirectPath("/pricing"), "/pricing");
+  assert.equal(safeInternalRedirectPath("/pricing?checkout=1"), "/pricing?checkout=1");
   assert.equal(safeInternalRedirectPath(null), null);
   assert.equal(safeInternalRedirectPath("//evil.com"), null);
   assert.equal(safeInternalRedirectPath("https://evil.com"), null);

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CircleDollarSign, Search } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
 import PageHeader from "@/app/components/PageHeader";
+import DataSyncBanner from "@/app/components/DataSyncBanner";
 import { BTN_ACCENT, PILL_ACTIVE, PILL_IDLE } from "@/app/components/ui/styles";
 import { listCycles, listTrades, type CycleSummary, type Trade } from "@/lib/api/trades";
 import {
@@ -280,6 +281,9 @@ export default function CyclesPage() {
           title="Cycles"
           description="Track wheel cycles and covered call cost basis"
         />
+        <div className={loading ? "pb-4" : undefined}>
+          <DataSyncBanner active={loading} />
+        </div>
       </div>
       <div className="shrink-0 border-b border-slate-200/80 bg-white">
         <div className="flex flex-col gap-3 px-4 py-3.5 sm:px-6">

@@ -67,9 +67,10 @@ export function safeInternalRedirectPath(path) {
   if (path == null || typeof path !== "string") return null;
   const trimmed = path.trim();
   if (!trimmed.startsWith("/") || trimmed.startsWith("//")) return null;
-  if (isAuthRoute(trimmed)) return null;
+  const pathname = trimmed.split("?")[0].split("#")[0];
+  if (isAuthRoute(pathname)) return null;
   const ok = ALLOWED_POST_LOGIN_PREFIXES.some(
-    (p) => trimmed === p || trimmed.startsWith(`${p}/`),
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
   );
   return ok ? trimmed : null;
 }
