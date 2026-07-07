@@ -1,7 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ChevronDown, ChevronUp, ChevronsUpDown, MoreHorizontal } from "lucide-react";
+import { createPortal } from "react-dom";
+import {
+  CalendarClock,
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
+  CircleDollarSign,
+  MoreHorizontal,
+  PackageCheck,
+  Pencil,
+  PhoneOutgoing,
+  RotateCw,
+  Trash2,
+} from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
 import { STATUS_COLORS } from "@/app/components/ui/styles";
 import { Button } from "@/components/ui/button";
@@ -150,7 +163,7 @@ function fmtStockCostPerShare(trade: Trade): string {
       maximumFractionDigits: 4,
     })}`;
   }
-  return "?";
+  return "-";
 }
 
 function computeMoneyness(
@@ -322,6 +335,11 @@ function TickerLogo({ ticker }: { ticker: string }) {
   );
 }
 
+const MENU_WIDTH = 176;
+
+const menuItemClass =
+  "flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-slate-50";
+
 function TradeRow({
   trade,
   price,
@@ -330,8 +348,7 @@ function TradeRow({
   onAction,
   rowTint,
 }: TradeRowProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(
+  const [menuAnchor, setMenuAnchor] = useState<{ top: number; left: number } | null>(
     null
   );
   const [confirmRolledDelete, setConfirmRolledDelete] = useState(false);
@@ -339,33 +356,30 @@ function TradeRow({
   const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!menuAnchor) return;
 
     const handlePointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
       if (menuRef.current?.contains(target)) return;
       if (triggerRef.current?.contains(target)) return;
-      setMenuOpen(false);
+      setMenuAnchor(null);
       setConfirmRolledDelete(false);
     };
 
-    const handleViewportChange = () => {
-      setMenuOpen(false);
+    const handleResize = () => {
+      setMenuAnchor(null);
     };
 
     window.addEventListener("mousedown", handlePointerDown);
-    window.addEventListener("resize", handleViewportChange);
-    window.addEventListener("scroll", handleViewportChange, true);
+    window.addEventListener("resize", handleResize);
 
     return () => {
       window.removeEventListener("mousedown", handlePointerDown);
-      window.removeEventListener("resize", handleViewportChange);
-      window.removeEventListener("scroll", handleViewportChange, true);
+      window.removeEventListener("resize", handleResize);
     };
-  }, [menuOpen]);
+  }, [menuAnchor]);
 
   const exp = fmtExpirationRibbon(trade.expiry);
-  const COLS = 13;
 
   return (
     <>
@@ -430,7 +444,7 @@ function TradeRow({
               {fmtStockCostPerShare(trade)}
             </span>
           ) : (
-            <span className="text-slate-500">?</span>
+            <span className="text-slate-500">-</span>
           )}
         </td>
         <td className="whitespace-nowrap px-5 py-3.5">
@@ -443,143 +457,157 @@ function TradeRow({
         <td className="whitespace-nowrap px-5 py-3.5 text-right text-base font-semibold tabular-nums tracking-tight text-slate-900">
           {fmtRoi(trade)}
         </td>
-        <td className="relative whitespace-nowrap px-5 py-3.5 text-right">
+        <td className="whitespace-nowrap px-5 py-3.5 text-right">
           <button
             ref={triggerRef}
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              if (menuOpen) {
-                setMenuOpen(false);
+              if (menuAnchor) {
+                setMenuAnchor(null);
                 setConfirmRolledDelete(false);
                 return;
               }
               const rect = e.currentTarget.getBoundingClientRect();
-              setMenuPos({
+              setMenuAnchor({
                 top: rect.bottom + 6,
-                left: rect.right - 144,
+                left: Math.max(8, rect.right - MENU_WIDTH),
               });
-              setMenuOpen(true);
             }}
             className="inline-flex rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
             title="Actions"
             aria-label="Trade actions"
+            aria-expanded={menuAnchor != null}
           >
             <MoreHorizontal className={iconSm} strokeWidth={iconStroke} aria-hidden />
           </button>
-          {menuOpen && menuPos && (
-            <div
-              ref={menuRef}
-              className="fixed z-[100] w-36 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-left text-[13px] shadow-xl"
-              style={{ top: menuPos.top, left: menuPos.left }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onEdit();
-                }}
-                className="block w-full px-3 py-2 text-left hover:bg-slate-50"
+          {menuAnchor &&
+            typeof document !== "undefined" &&
+            createPortal(
+              <div
+                ref={menuRef}
+                className="fixed z-[200] w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-left text-[13px] shadow-xl"
+                style={{ top: menuAnchor.top, left: menuAnchor.left }}
+                onClick={(e) => e.stopPropagation()}
               >
-                Edit
-              </button>
-              {trade.status !== "ASSIGNED" &&
-                trade.status !== "ROLLED" &&
-                !(trade.option_type === "PUT" && trade.status === "EXPIRED") && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      onAction("buy_to_close");
-                    }}
-                    className="block w-full px-3 py-2 text-left hover:bg-slate-50"
-                  >
-                    Buy to Close
-                  </button>
-                  {isExpiredEligible(trade) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        onAction("expire");
-                      }}
-                      className="block w-full px-3 py-2 text-left hover:bg-slate-50"
-                    >
-                      Expire
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      onAction("assign");
-                    }}
-                    className="block w-full px-3 py-2 text-left hover:bg-slate-50"
-                  >
-                    {trade.option_type === "CALL" ? "Call Away" : "Assign"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      onAction("roll");
-                    }}
-                    className="block w-full px-3 py-2 text-left hover:bg-slate-50"
-                  >
-                    Roll
-                  </button>
-                </>
-              )}
-              {trade.status === "ROLLED" && !confirmRolledDelete && (
-                <button
-                  type="button"
-                  onClick={() => setConfirmRolledDelete(true)}
-                  className="block w-full px-3 py-2 text-left text-red-600 hover:bg-red-50"
-                >
-                  Delete?
-                </button>
-              )}
-              {trade.status === "ROLLED" && confirmRolledDelete && (
-                <div className="px-3 py-2">
-                  <p className="mb-2 text-[11px] leading-snug text-slate-500">
-                    This is a rolled trade. Deleting it will break the trade chain.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      setConfirmRolledDelete(false);
-                      onDelete();
-                    }}
-                    className="block w-full rounded bg-red-600 px-2 py-1.5 text-center text-[11px] font-semibold text-white hover:bg-red-700"
-                  >
-                    Yes, delete anyway
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmRolledDelete(false)}
-                    className="mt-1 block w-full rounded px-2 py-1.5 text-center text-[11px] text-slate-500 hover:bg-slate-50"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
-              {trade.status !== "ROLLED" && (
                 <button
                   type="button"
                   onClick={() => {
-                    setMenuOpen(false);
-                    onDelete();
+                    setMenuAnchor(null);
+                    onEdit();
                   }}
-                  className="block w-full px-3 py-2 text-left text-red-600 hover:bg-red-50"
+                  className={menuItemClass}
                 >
-                  Delete
+                  <Pencil className={iconSm} strokeWidth={iconStroke} aria-hidden />
+                  Edit
                 </button>
-              )}
-            </div>
-          )}
+                {trade.status !== "ASSIGNED" &&
+                  trade.status !== "ROLLED" &&
+                  !(trade.option_type === "PUT" && trade.status === "EXPIRED") && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuAnchor(null);
+                        onAction("buy_to_close");
+                      }}
+                      className={menuItemClass}
+                    >
+                      <CircleDollarSign className={iconSm} strokeWidth={iconStroke} aria-hidden />
+                      Buy to Close
+                    </button>
+                    {isExpiredEligible(trade) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMenuAnchor(null);
+                          onAction("expire");
+                        }}
+                        className={menuItemClass}
+                      >
+                        <CalendarClock className={iconSm} strokeWidth={iconStroke} aria-hidden />
+                        Expire
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuAnchor(null);
+                        onAction("assign");
+                      }}
+                      className={menuItemClass}
+                    >
+                      {trade.option_type === "CALL" ? (
+                        <PhoneOutgoing className={iconSm} strokeWidth={iconStroke} aria-hidden />
+                      ) : (
+                        <PackageCheck className={iconSm} strokeWidth={iconStroke} aria-hidden />
+                      )}
+                      {trade.option_type === "CALL" ? "Call Away" : "Assign"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuAnchor(null);
+                        onAction("roll");
+                      }}
+                      className={menuItemClass}
+                    >
+                      <RotateCw className={iconSm} strokeWidth={iconStroke} aria-hidden />
+                      Roll
+                    </button>
+                  </>
+                )}
+                {trade.status === "ROLLED" && !confirmRolledDelete && (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmRolledDelete(true)}
+                    className={`${menuItemClass} text-red-600 hover:bg-red-50`}
+                  >
+                    <Trash2 className={iconSm} strokeWidth={iconStroke} aria-hidden />
+                    Delete?
+                  </button>
+                )}
+                {trade.status === "ROLLED" && confirmRolledDelete && (
+                  <div className="px-3 py-2">
+                    <p className="mb-2 text-[11px] leading-snug text-slate-500">
+                      This is a rolled trade. Deleting it will break the trade chain.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuAnchor(null);
+                        setConfirmRolledDelete(false);
+                        onDelete();
+                      }}
+                      className="block w-full rounded bg-red-600 px-2 py-1.5 text-center text-[11px] font-semibold text-white hover:bg-red-700"
+                    >
+                      Yes, delete anyway
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmRolledDelete(false)}
+                      className="mt-1 block w-full rounded px-2 py-1.5 text-center text-[11px] text-slate-500 hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+                {trade.status !== "ROLLED" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuAnchor(null);
+                      onDelete();
+                    }}
+                    className={`${menuItemClass} text-red-600 hover:bg-red-50`}
+                  >
+                    <Trash2 className={iconSm} strokeWidth={iconStroke} aria-hidden />
+                    Delete
+                  </button>
+                )}
+              </div>,
+              document.body
+            )}
         </td>
       </tr>
 
