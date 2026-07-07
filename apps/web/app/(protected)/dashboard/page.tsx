@@ -8,13 +8,15 @@ import {
   type Trade,
 } from "@/lib/api/trades";
 import PageHeader from "@/app/components/PageHeader";
-import RefreshButton from "@/app/components/RefreshButton";
 import RefreshingSpinner from "@/app/components/RefreshingSpinner";
+import { useTranslations } from "@/lib/i18n/locale-context";
 import { useProtectedAuth } from "../auth-context";
 import ActivePositionsTable from "./components/ActivePositionsTable";
 import DashboardInsights from "./components/DashboardInsights";
 
 export default function DashboardPage() {
+  const { t } = useTranslations("dashboard");
+  const { t: tCommon } = useTranslations("common");
   const { token, isAuthLoading } = useProtectedAuth();
   const [allTrades, setAllTrades] = useState<Trade[]>([]);
   const [insights, setInsights] = useState<DashboardInsightsData | null>(null);
@@ -38,13 +40,10 @@ export default function DashboardPage() {
     setInsights(insightsRes.status === "fulfilled" ? insightsRes.value : null);
 
     if (tradesRes.status === "rejected" && insightsRes.status === "rejected") {
-      const reason = tradesRes.reason;
-      setLoadError(
-        reason instanceof Error ? reason.message : "Failed to load dashboard data."
-      );
+      setLoadError(t("error.load"));
     }
     setTradesLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (token) {
@@ -59,15 +58,7 @@ export default function DashboardPage() {
     <>
       <main className="animate-page-enter flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
         <div className="w-full space-y-6">
-          <PageHeader
-            title="Dashboard"
-            description="Your wheel strategy at a glance"
-            actions={
-              token ? (
-                <RefreshButton loading={tradesLoading} onClick={() => void loadData(token)} />
-              ) : null
-            }
-          />
+          <PageHeader title={t("title")} description={t("description")} />
           {tradesLoading ? (
             <RefreshingSpinner className="flex min-h-[40vh] w-full items-center justify-center" />
           ) : (
@@ -84,7 +75,7 @@ export default function DashboardPage() {
                       onClick={() => void loadData(token)}
                       className="shrink-0 font-semibold underline-offset-2 hover:underline"
                     >
-                      Retry
+                      {tCommon("actions.retry")}
                     </button>
                   ) : null}
                 </div>

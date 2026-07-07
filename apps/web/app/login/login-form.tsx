@@ -9,20 +9,15 @@ import AuthShell, {
   AUTH_PRIMARY_BTN_CLS,
 } from "@/app/components/AuthShell";
 import GoogleSignInButton from "@/app/components/GoogleSignInButton";
+import LanguageSwitcher from "@/app/components/LanguageSwitcher";
+import { useTranslations } from "@/lib/i18n/locale-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { safeInternalRedirectPath } from "@/lib/auth-redirect.mjs";
-
-function mapLoginError(message: string) {
-  const m = message.toLowerCase();
-  if (m.includes("invalid login credentials") || m.includes("invalid email or password")) {
-    return "Invalid email or password.";
-  }
-  return message;
-}
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useTranslations("auth");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
@@ -31,18 +26,16 @@ export function LoginForm() {
 
   const isValidEmail = useMemo(() => /\S+@\S+\.\S+/.test(email), [email]);
   const registrationMessage =
-    searchParams.get("registered") === "1"
-      ? "Registration successful. Please check your email to confirm your account if required."
-      : null;
+    searchParams.get("registered") === "1" ? t("login.registered") : null;
 
   const oauthErrorMessage =
     searchParams.get("error") === "supabase_url"
-      ? "Supabase URL is misconfigured. Set NEXT_PUBLIC_SUPABASE_URL to https://<project>.supabase.co only (no /auth/v1/... path) in Vercel, then redeploy."
+      ? t("login.oauth.supabaseUrl")
       : searchParams.get("error") === "oauth"
-      ? typeof window !== "undefined" && window.location.hostname.endsWith(".vercel.app")
-        ? "Google sign-in failed (bad_oauth_callback). In your dev Supabase project → Authentication → URL Configuration, add Redirect URL https://*-xiaohuahou-4977s-projects.vercel.app/** (or https://*-.vercel.app/**). Also set NEXT_PUBLIC_SUPABASE_URL to the project origin only, redeploy, then retry."
-        : "Google sign-in failed. Please try again or use email and password."
-      : null;
+        ? typeof window !== "undefined" && window.location.hostname.endsWith(".vercel.app")
+          ? t("login.oauth.vercel")
+          : t("login.oauth.generic")
+        : null;
 
   const nextPath = searchParams.get("next");
 
@@ -51,12 +44,12 @@ export function LoginForm() {
     setError(null);
 
     if (!isValidEmail) {
-      setError("Please enter a valid email address.");
+      setError(t("login.error.invalidEmail"));
       return;
     }
 
     if (!password) {
-      setError("Please enter your password.");
+      setError(t("login.error.passwordRequired"));
       return;
     }
 
@@ -70,7 +63,15 @@ export function LoginForm() {
       });
 
       if (signInError) {
-        setError(mapLoginError(signInError.message));
+        const m = signInError.message.toLowerCase();
+        if (
+          m.includes("invalid login credentials") ||
+          m.includes("invalid email or password")
+        ) {
+          setError(t("login.error.invalidCredentials"));
+        } else {
+          setError(signInError.message);
+        }
         return;
       }
 
@@ -83,9 +84,7 @@ export function LoginForm() {
       router.push(target);
     } catch (submitError) {
       setError(
-        submitError instanceof Error
-          ? submitError.message
-          : "Unexpected error while signing in.",
+        submitError instanceof Error ? submitError.message : t("login.error.unexpected"),
       );
     } finally {
       setIsSubmitting(false);
@@ -94,57 +93,62 @@ export function LoginForm() {
 
   return (
     <AuthShell
-      title="Welcome back"
-      subtitle="Sign in to your CycleIQ account to continue tracking your wheel."
+      title={t("login.title")}
+      subtitle={t("login.subtitle")}
       footer={
         <p className="text-sm text-slate-600">
-          New to CycleIQ?{" "}
+          {t("login.footer")}{" "}
           <Link
             href={nextPath ? `/register?next=${encodeURIComponent(nextPath)}` : "/register"}
             className="font-medium text-slate-900 underline decoration-slate-300 underline-offset-2 transition hover:decoration-slate-500"
           >
-            Create an account
+            {t("login.createAccount")}
           </Link>
         </p>
       }
     >
+      <div className="mb-4 flex justify-end">
+        <LanguageSwitcher />
+      </div>
       <form className="space-y-4" onSubmit={onSubmit}>
         {registrationMessage ? (
-          <p role="status" className="rounded-lg border border-emerald-200/80 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
+          <p
+            role="status"
+            className="rounded-lg border border-emerald-200/80 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800"
+          >
             {registrationMessage}
           </p>
         ) : null}
 
         {oauthErrorMessage ? (
-          <p role="alert" className="rounded-lg border border-red-200/80 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+          <p
+            role="alert"
+            className="rounded-lg border border-red-200/80 bg-red-50 px-3 py-2.5 text-sm text-red-700"
+          >
             {oauthErrorMessage}
           </p>
         ) : null}
 
-        <GoogleSignInButton
-          nextPath={nextPath}
-          rememberMe={rememberMe}
-          onError={setError}
-        />
+        <GoogleSignInButton nextPath={nextPath} rememberMe={rememberMe} onError={setError} />
 
         <div className="relative py-1">
           <div className="absolute inset-0 flex items-center" aria-hidden>
             <div className="w-full border-t border-slate-200" />
           </div>
           <p className="relative mx-auto w-fit bg-white px-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-            Or with email
+            {t("login.divider")}
           </p>
         </div>
 
         <div>
           <label htmlFor="email" className={AUTH_LABEL_CLS}>
-            Email
+            {t("login.email")}
           </label>
           <input
             id="email"
             type="email"
             autoComplete="email"
-            placeholder="you@example.com"
+            placeholder={t("login.emailPlaceholder")}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             className={AUTH_INPUT_CLS}
@@ -154,13 +158,13 @@ export function LoginForm() {
 
         <div>
           <label htmlFor="password" className={AUTH_LABEL_CLS}>
-            Password
+            {t("login.password")}
           </label>
           <input
             id="password"
             type="password"
             autoComplete="current-password"
-            placeholder="••••••••"
+            placeholder={t("login.passwordPlaceholder")}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             className={AUTH_INPUT_CLS}
@@ -176,19 +180,22 @@ export function LoginForm() {
               onChange={(event) => setRememberMe(event.target.checked)}
               className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-emerald-500/30"
             />
-            Remember me
+            {t("login.rememberMe")}
           </label>
-          <span className="text-sm text-slate-500">Forgot password? Coming soon</span>
+          <span className="text-sm text-slate-500">{t("login.forgotPassword")}</span>
         </div>
 
         {error ? (
-          <p role="alert" className="rounded-lg border border-red-200/80 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+          <p
+            role="alert"
+            className="rounded-lg border border-red-200/80 bg-red-50 px-3 py-2.5 text-sm text-red-700"
+          >
             {error}
           </p>
         ) : null}
 
         <button type="submit" disabled={isSubmitting} className={AUTH_PRIMARY_BTN_CLS}>
-          {isSubmitting ? "Signing in…" : "Sign in"}
+          {isSubmitting ? t("login.submitting") : t("login.submit")}
         </button>
       </form>
     </AuthShell>

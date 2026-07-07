@@ -1,15 +1,26 @@
 "use client";
 
+import { useMemo } from "react";
 import { CycleIQMark } from "@/app/components/icons";
-import { APP_LOADING_PHASES, useSlowLoadingMessage } from "@/lib/hooks/useSlowLoadingMessage";
+import { useTranslations } from "@/lib/i18n/locale-context";
+import { useSlowLoadingMessage } from "@/lib/hooks/useSlowLoadingMessage";
 
 interface AppLoadingScreenProps {
   /** Override default phased status messages. */
   phases?: readonly { afterMs: number; message: string }[];
 }
 
-export default function AppLoadingScreen({ phases = APP_LOADING_PHASES }: AppLoadingScreenProps) {
-  const message = useSlowLoadingMessage(true, phases);
+export default function AppLoadingScreen({ phases }: AppLoadingScreenProps) {
+  const { t } = useTranslations("common");
+  const defaultPhases = useMemo(
+    () => [
+      { afterMs: 0, message: t("loadingPhases.app.p0") },
+      { afterMs: 3000, message: t("loadingPhases.app.p3000") },
+      { afterMs: 8000, message: t("loadingPhases.app.p8000") },
+    ],
+    [t]
+  );
+  const message = useSlowLoadingMessage(true, phases ?? defaultPhases);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 app-page-bg px-4">
@@ -22,9 +33,7 @@ export default function AppLoadingScreen({ phases = APP_LOADING_PHASES }: AppLoa
         <p role="status" aria-live="polite" className="text-sm font-medium text-slate-700">
           {message}
         </p>
-        <p className="mt-2 text-xs leading-relaxed text-slate-500">
-          Syncing with your account and trade data
-        </p>
+        <p className="mt-2 text-xs leading-relaxed text-slate-500">{t("sync.subtitle")}</p>
       </div>
     </main>
   );

@@ -18,6 +18,7 @@ import {
 import { iconSm, iconStroke } from "@/app/components/icons";
 import { STATUS_COLORS } from "@/app/components/ui/styles";
 import { Button } from "@/components/ui/button";
+import { useLocale, useTranslations } from "@/lib/i18n/locale-context";
 import type { Trade, TradeStatus } from "@/lib/api/trades";
 
 interface TradeRowProps {
@@ -68,16 +69,16 @@ function parseDateLike(input: string): Date {
   return new Date(input);
 }
 
-function fmtDate(iso: string): string {
-  return new Intl.DateTimeFormat("en-US", {
+function fmtDate(iso: string, intlLocale: string): string {
+  return new Intl.DateTimeFormat(intlLocale, {
     month: "short",
     day: "2-digit",
     year: "numeric",
   }).format(parseDateLike(iso));
 }
 
-function getStrategy(t: Trade): string {
-  return t.option_type === "PUT" ? "CSP" : "CC";
+function getStrategy(t: Trade, tCommon: (key: string) => string): string {
+  return t.option_type === "PUT" ? tCommon("strategy.csp") : tCommon("strategy.cc");
 }
 
 function getDte(expiry: string): number {
@@ -85,9 +86,12 @@ function getDte(expiry: string): number {
   return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 }
 
-function fmtExpirationRibbon(iso: string): { label: string; accent: boolean } {
+function fmtExpirationRibbon(
+  iso: string,
+  intlLocale: string
+): { label: string; accent: boolean } {
   const d = parseDateLike(iso);
-  const mon = new Intl.DateTimeFormat("en-US", { month: "short" }).format(d);
+  const mon = new Intl.DateTimeFormat(intlLocale, { month: "short" }).format(d);
   const day = d.getDate();
   return { label: `${mon} - ${day}`, accent: getDte(iso) <= 7 };
 }
@@ -211,24 +215,28 @@ function getWeekKey(expiry: string): string {
   return toLocalDateKey(startOfWeekMonday(parseDateLike(expiry)));
 }
 
-function formatWeekLabel(weekKey: string): string {
+function formatWeekLabel(
+  weekKey: string,
+  intlLocale: string,
+  t: (key: string, params?: Record<string, string | number>) => string
+): string {
   const monday = parseLocalDateKey(weekKey);
   const friday = new Date(monday);
   friday.setDate(monday.getDate() + 4);
   const fmt = (date: Date, withYear = false) =>
-    new Intl.DateTimeFormat("en-US", {
+    new Intl.DateTimeFormat(intlLocale, {
       month: "short",
       day: "numeric",
       ...(withYear ? { year: "numeric" } : {}),
     }).format(date);
-  return `Week of ${fmt(monday)} ? ${fmt(friday, true)}`;
+  return t("list.weekOf", { mon: fmt(monday), fri: fmt(friday, true) });
 }
 
-function fmtStatusLabel(status: TradeStatus): string {
-  return status
-    .replaceAll("_", " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+function statusLabel(
+  status: TradeStatus,
+  tCommon: (key: string) => string
+): string {
+  return tCommon(`status.${status}`);
 }
 
 type SortKey =
@@ -347,6 +355,9 @@ function TradeRow({
   onAction,
   rowTint,
 }: TradeRowProps) {
+  const { t } = useTranslations("trades");
+  const { t: tCommon } = useTranslations("common");
+  const { intlLocale } = useLocale();
   const [menuAnchor, setMenuAnchor] = useState<{ top: number; left: number } | null>(
     null
   );
@@ -378,7 +389,7 @@ function TradeRow({
     };
   }, [menuAnchor]);
 
-  const exp = fmtExpirationRibbon(trade.expiry);
+  const exp = fmtExpirationRibbon(trade.expiry, intlLocale);
 
   return (
     <>
@@ -397,7 +408,7 @@ function TradeRow({
         </td>
         <td className="whitespace-nowrap px-5 py-3.5">
           <span className="inline-flex rounded-md bg-slate-200/60 px-2 py-0.5 text-xs font-medium text-slate-800">
-            {getStrategy(trade)}
+            {getStrategy(trade, tCommon)}
           </span>
         </td>
         <td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-slate-800">{trade.contracts}</td>
@@ -415,7 +426,7 @@ function TradeRow({
             return (
               <span className="inline-flex items-center gap-1.5">
                 <span className={`font-medium ${m.status === "ITM" ? "text-red-600" : "text-slate-600"}`}>
-                  {m.status}
+                  {tCommon(`moneyness.${m.status.toLowerCase()}`)}
                 </span>
                 <span className="font-medium tabular-nums text-emerald-600">
                   ${m.amount.toFixed(2)}
@@ -450,7 +461,7 @@ function TradeRow({
           <span
             className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${STATUS_STYLES[trade.status]}`}
           >
-            {fmtStatusLabel(trade.status)}
+            {statusLabel(trade.status, tCommon)}
           </span>
         </td>
         <td className="whitespace-nowrap px-5 py-3.5 text-right text-base font-semibold tabular-nums tracking-tight text-slate-900">
@@ -474,8 +485,8 @@ function TradeRow({
               });
             }}
             className="inline-flex rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-            title="Actions"
-            aria-label="Trade actions"
+            title={tCommon("a11y.actions")}
+            aria-label={tCommon("a11y.tradeActions")}
             aria-expanded={menuAnchor != null}
           >
             <MoreHorizontal className={iconSm} strokeWidth={iconStroke} aria-hidden />
@@ -498,7 +509,7 @@ function TradeRow({
                   className={menuItemClass}
                 >
                   <Pencil className={iconSm} strokeWidth={iconStroke} aria-hidden />
-                  Edit
+                  {t("list.menu.edit")}
                 </button>
                 {trade.status !== "ASSIGNED" &&
                   trade.status !== "ROLLED" &&
@@ -513,7 +524,7 @@ function TradeRow({
                       className={menuItemClass}
                     >
                       <CircleDollarSign className={iconSm} strokeWidth={iconStroke} aria-hidden />
-                      Buy to Close
+                      {t("list.menu.buyToClose")}
                     </button>
                     {isExpiredEligible(trade) && (
                       <button
@@ -525,7 +536,7 @@ function TradeRow({
                         className={menuItemClass}
                       >
                         <CalendarClock className={iconSm} strokeWidth={iconStroke} aria-hidden />
-                        Expire
+                        {t("list.menu.expire")}
                       </button>
                     )}
                     <button
@@ -541,7 +552,7 @@ function TradeRow({
                       ) : (
                         <PackageCheck className={iconSm} strokeWidth={iconStroke} aria-hidden />
                       )}
-                      {trade.option_type === "CALL" ? "Call Away" : "Assign"}
+                      {trade.option_type === "CALL" ? t("list.menu.callAway") : t("list.menu.assign")}
                     </button>
                     <button
                       type="button"
@@ -552,7 +563,7 @@ function TradeRow({
                       className={menuItemClass}
                     >
                       <RotateCw className={iconSm} strokeWidth={iconStroke} aria-hidden />
-                      Roll
+                      {t("list.menu.roll")}
                     </button>
                   </>
                 )}
@@ -563,13 +574,13 @@ function TradeRow({
                     className={`${menuItemClass} text-red-600 hover:bg-red-50`}
                   >
                     <Trash2 className={iconSm} strokeWidth={iconStroke} aria-hidden />
-                    Delete?
+                    {t("list.menu.deleteConfirm")}
                   </button>
                 )}
                 {trade.status === "ROLLED" && confirmRolledDelete && (
                   <div className="px-3 py-2">
                     <p className="mb-2 text-[11px] leading-snug text-slate-500">
-                      This is a rolled trade. Deleting it will break the trade chain.
+                      {t("list.menu.rolledWarning")}
                     </p>
                     <button
                       type="button"
@@ -580,14 +591,14 @@ function TradeRow({
                       }}
                       className="block w-full rounded bg-red-600 px-2 py-1.5 text-center text-[11px] font-semibold text-white hover:bg-red-700"
                     >
-                      Yes, delete anyway
+                      {t("list.menu.deleteAnyway")}
                     </button>
                     <button
                       type="button"
                       onClick={() => setConfirmRolledDelete(false)}
                       className="mt-1 block w-full rounded px-2 py-1.5 text-center text-[11px] text-slate-500 hover:bg-slate-50"
                     >
-                      Cancel
+                      {tCommon("actions.cancel")}
                     </button>
                   </div>
                 )}
@@ -601,7 +612,7 @@ function TradeRow({
                     className={`${menuItemClass} text-red-600 hover:bg-red-50`}
                   >
                     <Trash2 className={iconSm} strokeWidth={iconStroke} aria-hidden />
-                    Delete
+                    {t("list.menu.delete")}
                   </button>
                 )}
               </div>,
@@ -626,6 +637,9 @@ export default function TradeList({
   statusFilter,
   onAddTrade,
 }: TradeListProps) {
+  const { t } = useTranslations("trades");
+  const { t: tCommon } = useTranslations("common");
+  const { intlLocale } = useLocale();
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "expiry",
     dir: "asc",
@@ -705,17 +719,15 @@ export default function TradeList({
   if (trades.length === 0) {
     return (
       <div className="animate-fade-in flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
-        <p className="text-base font-semibold text-slate-900">No trades match your filters</p>
-        <p className="max-w-sm text-sm text-slate-600">
-          Try a wider date range, a different status tab, or add a new trade.
-        </p>
+        <p className="text-base font-semibold text-slate-900">{t("list.empty.title")}</p>
+        <p className="max-w-sm text-sm text-slate-600">{t("list.empty.body")}</p>
         {onAddTrade ? (
           <Button
             type="button"
             onClick={onAddTrade}
             className="mt-2 bg-emerald-600 text-white hover:bg-emerald-700"
           >
-            Add your first trade
+            {t("list.empty.cta")}
           </Button>
         ) : null}
       </div>
@@ -727,18 +739,18 @@ export default function TradeList({
       <table className="w-full min-w-[960px] border-collapse text-base">
         <thead>
           <tr>
-            {th("ticker", "left", "Ticker")}
-            {thInactive("left", "Strategy")}
-            {th("contracts", "left", "Qty")}
-            {th("strike", "left", "Strike")}
-            {thInactive("left", "Price")}
-            {thInactive("left", "Moneyness")}
-            {th("expiry", "left", "Expiration")}
-            {th("dte", "left", "DTE")}
-            {th("premium", "left", "Premium")}
-            {thInactive("left", "Stock Cost")}
-            {thInactive("left", "Status")}
-            {th("roi", "right", "ROI (Ann.)")}
+            {th("ticker", "left", tCommon("columns.ticker"))}
+            {thInactive("left", tCommon("columns.strategy"))}
+            {th("contracts", "left", tCommon("columns.qty"))}
+            {th("strike", "left", tCommon("columns.strike"))}
+            {thInactive("left", tCommon("columns.price"))}
+            {thInactive("left", tCommon("columns.moneyness"))}
+            {th("expiry", "left", tCommon("columns.expiration"))}
+            {th("dte", "left", tCommon("columns.dte"))}
+            {th("premium", "left", tCommon("columns.premium"))}
+            {thInactive("left", tCommon("columns.stockCost"))}
+            {thInactive("left", tCommon("columns.status"))}
+            {th("roi", "right", tCommon("columns.roiAnn"))}
             {thInactive("right", "")}
           </tr>
         </thead>
@@ -752,7 +764,7 @@ export default function TradeList({
                   colSpan={13}
                   className="sticky top-0 z-[5] border-y border-slate-200 border-l-[3px] border-l-emerald-600 bg-slate-100 px-5 py-2.5 text-sm font-semibold tracking-wide text-slate-800 backdrop-blur-sm"
                 >
-                  {formatWeekLabel(weekKey)}
+                  {formatWeekLabel(weekKey, intlLocale, t)}
                 </td>
               </tr>
               {list.map((trade) => (

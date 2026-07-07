@@ -1,9 +1,11 @@
-import Link from "next/link";
+"use client";
+
 import { useMemo, useState } from "react";
 import { ClipboardList } from "lucide-react";
 import { iconStroke } from "@/app/components/icons";
-import { CARD_BASE, STATUS_COLORS } from "@/app/components/ui/styles";
+import { STATUS_COLORS } from "@/app/components/ui/styles";
 import { Badge } from "@/components/ui/badge";
+import { useLocale, useTranslations } from "@/lib/i18n/locale-context";
 import type { Trade, TradeStatus } from "@/lib/api/trades";
 
 const statusStyles: Record<TradeStatus, string> = {
@@ -15,8 +17,8 @@ const statusStyles: Record<TradeStatus, string> = {
   ROLLED: STATUS_COLORS.ROLLED,
 };
 
-function fmtDate(iso: string): string {
-  return new Intl.DateTimeFormat("en-US", {
+function fmtDate(iso: string, intlLocale: string): string {
+  return new Intl.DateTimeFormat(intlLocale, {
     month: "short",
     day: "2-digit",
     year: "numeric",
@@ -28,10 +30,6 @@ function getDte(expiry: string): number {
   return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 }
 
-function getStrategy(trade: Trade): "CSP" | "CC" {
-  return trade.option_type === "PUT" ? "CSP" : "CC";
-}
-
 const LOGO_URL_BUILDERS = [
   (ticker: string) =>
     `https://cdn.brandfetch.io/ticker/${encodeURIComponent(
@@ -41,7 +39,13 @@ const LOGO_URL_BUILDERS = [
   (ticker: string) => `https://eodhd.com/img/logos/US/${ticker}.png`,
 ];
 
-function TickerLogo({ ticker }: { ticker: string }) {
+function TickerLogo({
+  ticker,
+  logoAlt,
+}: {
+  ticker: string;
+  logoAlt: string;
+}) {
   const urls = useMemo(() => LOGO_URL_BUILDERS.map((build) => build(ticker)), [ticker]);
   const [urlIndex, setUrlIndex] = useState(0);
 
@@ -56,7 +60,7 @@ function TickerLogo({ ticker }: { ticker: string }) {
   return (
     <img
       src={urls[urlIndex]}
-      alt={`${ticker} logo`}
+      alt={logoAlt}
       className="h-5 w-5 rounded object-cover"
       onError={() => setUrlIndex((prev) => prev + 1)}
       loading="lazy"
@@ -71,31 +75,25 @@ interface ActivePositionsTableProps {
 export default function ActivePositionsTable({
   trades,
 }: ActivePositionsTableProps) {
+  const { t } = useTranslations("dashboard");
+  const { t: tCommon } = useTranslations("common");
+  const { intlLocale } = useLocale();
   const displayed = trades.slice(0, 5);
+
+  const statusLabel = (status: TradeStatus) => tCommon(`status.${status}`);
+
+  const getStrategy = (trade: Trade) =>
+    trade.option_type === "PUT" ? tCommon("strategy.csp") : tCommon("strategy.cc");
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      {trades.length > 0 && (
-        <div className="flex items-center justify-end gap-3 border-b border-slate-200 px-5 py-2">
-          {trades.length > 5 && (
-            <span className="text-xs text-slate-400">{trades.length} total</span>
-          )}
-          <Link
-            href="/trades"
-            className="text-xs font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
-          >
-            View all trades ??
-          </Link>
-        </div>
-      )}
-
       {trades.length === 0 ? (
         <div className="flex flex-col items-center px-6 py-12 text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
             <ClipboardList className="h-6 w-6" strokeWidth={iconStroke} aria-hidden />
           </span>
-          <p className="mt-3 text-sm font-medium text-slate-900">No trades yet</p>
-          <p className="mt-1 text-xs text-slate-500">No active positions at the moment.</p>
+          <p className="mt-3 text-sm font-medium text-slate-900">{t("positions.empty.title")}</p>
+          <p className="mt-1 text-xs text-slate-500">{t("positions.empty.body")}</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -103,25 +101,25 @@ export default function ActivePositionsTable({
             <thead>
               <tr>
                 <th className="border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-800">
-                  Ticker
+                  {tCommon("columns.ticker")}
                 </th>
                 <th className="border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-800">
-                  Strategy
+                  {tCommon("columns.strategy")}
                 </th>
                 <th className="border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-800">
-                  Strike
+                  {tCommon("columns.strike")}
                 </th>
                 <th className="border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-800">
-                  Expiry
+                  {tCommon("columns.expiry")}
                 </th>
                 <th className="border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-800">
-                  DTE
+                  {tCommon("columns.dte")}
                 </th>
                 <th className="border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-800">
-                  Premium
+                  {tCommon("columns.premium")}
                 </th>
                 <th className="border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-800">
-                  Status
+                  {tCommon("columns.status")}
                 </th>
               </tr>
             </thead>
@@ -130,28 +128,24 @@ export default function ActivePositionsTable({
                 <tr key={trade.id} className="transition-colors hover:bg-emerald-50/40">
                   <td className="px-5 py-3 font-medium text-slate-900">
                     <div className="flex items-center gap-2">
-                      <TickerLogo key={trade.ticker} ticker={trade.ticker} />
+                      <TickerLogo
+                        key={trade.ticker}
+                        ticker={trade.ticker}
+                        logoAlt={t("positions.logoAlt", { ticker: trade.ticker })}
+                      />
                       <span>{trade.ticker}</span>
                     </div>
                   </td>
-                  <td className="px-5 py-3 text-slate-600">
-                    {getStrategy(trade)}
-                  </td>
-                  <td className="px-5 py-3 text-slate-600">
-                    ${trade.strike.toFixed(2)}
-                  </td>
-                  <td className="px-5 py-3 text-slate-600">
-                    {fmtDate(trade.expiry)}
-                  </td>
-                  <td className="px-5 py-3 text-slate-600">
-                    {getDte(trade.expiry)}d
-                  </td>
+                  <td className="px-5 py-3 text-slate-600">{getStrategy(trade)}</td>
+                  <td className="px-5 py-3 text-slate-600">${trade.strike.toFixed(2)}</td>
+                  <td className="px-5 py-3 text-slate-600">{fmtDate(trade.expiry, intlLocale)}</td>
+                  <td className="px-5 py-3 text-slate-600">{getDte(trade.expiry)}d</td>
                   <td className="px-5 py-3 font-medium text-emerald-600">
                     +${(trade.premium * trade.contracts * 100).toFixed(2)}
                   </td>
                   <td className="px-5 py-3">
                     <Badge variant="secondary" className={statusStyles[trade.status]}>
-                      {trade.status}
+                      {statusLabel(trade.status)}
                     </Badge>
                   </td>
                 </tr>

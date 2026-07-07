@@ -1,7 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import { CycleIQMark } from "@/app/components/icons";
+import { useTranslations } from "@/lib/i18n/locale-context";
 
 export default function MarketingFooter() {
+  const { t } = useTranslations("nav");
+
   return (
     <footer className="border-t border-slate-800 bg-slate-950">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -10,7 +15,7 @@ export default function MarketingFooter() {
             <CycleIQMark className="h-8 w-8 text-emerald-400" />
             <div>
               <p className="text-sm font-bold text-white">CycleIQ</p>
-              <p className="text-xs text-slate-500">Wheel strategy tracking for retail traders</p>
+              <p className="text-xs text-slate-500">{t("tagline")}</p>
             </div>
           </div>
           <nav
@@ -18,13 +23,13 @@ export default function MarketingFooter() {
             aria-label="Legal"
           >
             <Link href="/privacy" className="transition hover:text-slate-300">
-              Privacy Policy
+              {t("privacy")}
             </Link>
             <span className="text-slate-700" aria-hidden>
               ·
             </span>
             <Link href="/terms" className="transition hover:text-slate-300">
-              Terms of Service
+              {t("terms")}
             </Link>
           </nav>
         </div>

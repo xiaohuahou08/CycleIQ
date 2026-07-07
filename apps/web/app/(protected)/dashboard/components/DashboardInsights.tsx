@@ -6,6 +6,7 @@ import { Info } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
 import { CARD_BASE, KPI_ACCENT, profitLossClass } from "@/app/components/ui/styles";
 import { Card } from "@/components/ui/card";
+import { useLocale, useTranslations } from "@/lib/i18n/locale-context";
 import type {
   CapitalTrendCharts,
   DashboardInsights as DashboardInsightsData,
@@ -19,7 +20,7 @@ const TOOLTIP_MAX_W = 224;
 const TOOLTIP_GAP = 8;
 const VIEWPORT_PAD = 12;
 
-function StatCardHelp({ tip }: { tip: string }) {
+function StatCardHelp({ tip, ariaLabel }: { tip: string; ariaLabel: string }) {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0, width: TOOLTIP_MAX_W });
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -71,7 +72,7 @@ function StatCardHelp({ tip }: { tip: string }) {
         ref={btnRef}
         type="button"
         className="flex h-6 w-6 shrink-0 cursor-help items-center justify-center rounded-full bg-slate-100 text-slate-400 transition-colors duration-150 hover:bg-slate-200 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-        aria-label="Metric details"
+        aria-label={ariaLabel}
         onMouseEnter={show}
         onMouseLeave={hide}
         onFocus={show}
@@ -103,8 +104,8 @@ function StatCardHelp({ tip }: { tip: string }) {
   );
 }
 
-function fmtCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", {
+function fmtCurrency(value: number, intlLocale: string): string {
+  return new Intl.NumberFormat(intlLocale, {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 2,
@@ -119,10 +120,14 @@ function BarChartCard({
   title,
   points,
   gradient,
+  intlLocale,
+  noDataLabel,
 }: {
   title: string;
   points: { label: string; value: number }[];
   gradient: string;
+  intlLocale: string;
+  noDataLabel: string;
 }) {
   const max = Math.max(1, ...points.map((p) => p.value));
   const recentPoints = points.slice(-6);
@@ -131,17 +136,19 @@ function BarChartCard({
       <p className="mb-4 text-sm font-semibold text-slate-800">{title}</p>
       <div className="flex h-40 items-end gap-2">
         {points.length === 0 ? (
-          <p className="text-sm text-slate-400">No data</p>
+          <p className="text-sm text-slate-400">{noDataLabel}</p>
         ) : (
           points.map((p, i) => {
             const height = Math.max(16, Math.round((p.value / max) * 128));
             return (
               <div key={p.label} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                <span className="text-[10px] font-semibold text-slate-600">{fmtCurrency(p.value)}</span>
+                <span className="text-[10px] font-semibold text-slate-600">
+                  {fmtCurrency(p.value, intlLocale)}
+                </span>
                 <div
                   className={`animate-bar-grow w-full rounded-md transition-[filter] duration-150 hover:brightness-110 ${gradient}`}
                   style={{ height: `${height}px`, animationDelay: `${i * 60}ms` }}
-                  title={`${p.label}: ${fmtCurrency(p.value)}`}
+                  title={`${p.label}: ${fmtCurrency(p.value, intlLocale)}`}
                 />
                 <span className="truncate text-[10px] text-slate-400">{p.label}</span>
               </div>
@@ -158,7 +165,9 @@ function BarChartCard({
                 className="flex items-center justify-between rounded px-1.5 py-0.5 text-xs"
               >
                 <span className="truncate text-slate-500">{p.label}</span>
-                <span className="font-semibold text-slate-700">{fmtCurrency(p.value)}</span>
+                <span className="font-semibold text-slate-700">
+                  {fmtCurrency(p.value, intlLocale)}
+                </span>
               </div>
             ))}
           </div>
@@ -175,7 +184,6 @@ function chartYDomain(values: number[], budgetLine?: number): { min: number; max
   const rawMin = Math.min(...all);
   const rawMax = Math.max(...all);
   const magnitude = Math.max(rawMax, 1);
-  // Ensure small P&L moves are visible on a large capital base (e.g. $100k + $450).
   const minHalfSpan = magnitude * 0.025;
   const halfSpan = Math.max((rawMax - rawMin) / 2, minHalfSpan);
   const center = (rawMin + rawMax) / 2;
@@ -195,15 +203,16 @@ function yAxisTicks(min: number, max: number, count = 4): number[] {
 
 function formatTrendPeriod(
   point: DashboardSeriesPoint,
-  granularity: TrendGranularity
+  granularity: TrendGranularity,
+  intlLocale: string
 ): string {
   if (point.date) {
     const [y, m, d] = point.date.split("-").map(Number);
     const dt = new Date(y, (m ?? 1) - 1, d ?? 1);
     if (granularity === "month") {
-      return new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(dt);
+      return new Intl.DateTimeFormat(intlLocale, { month: "short", year: "numeric" }).format(dt);
     }
-    return new Intl.DateTimeFormat("en-US", {
+    return new Intl.DateTimeFormat(intlLocale, {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -214,15 +223,16 @@ function formatTrendPeriod(
 
 function formatTrendAxisLabel(
   point: DashboardSeriesPoint,
-  granularity: TrendGranularity
+  granularity: TrendGranularity,
+  intlLocale: string
 ): string {
   if (point.date) {
     const [y, m, d] = point.date.split("-").map(Number);
     const dt = new Date(y, (m ?? 1) - 1, d ?? 1);
     if (granularity === "month") {
-      return new Intl.DateTimeFormat("en-US", { month: "short" }).format(dt);
+      return new Intl.DateTimeFormat(intlLocale, { month: "short" }).format(dt);
     }
-    return new Intl.DateTimeFormat("en-US", { month: "numeric", day: "numeric" }).format(dt);
+    return new Intl.DateTimeFormat(intlLocale, { month: "numeric", day: "numeric" }).format(dt);
   }
   return point.label;
 }
@@ -325,10 +335,20 @@ function CapitalTrendChart({
   trend,
   budgetLine,
   overBudget,
+  intlLocale,
+  t,
+  metricDetailsLabel,
+  noDataLabel,
+  ariaLabel,
 }: {
   trend: CapitalTrendCharts | undefined;
   budgetLine?: number;
   overBudget: boolean;
+  intlLocale: string;
+  t: (key: string, params?: Record<string, string | number>) => string;
+  metricDetailsLabel: string;
+  noDataLabel: string;
+  ariaLabel: string;
 }) {
   const [granularity, setGranularity] = useState<TrendGranularity>("month");
   const [range, setRange] = useState<TrendRange>("ytd");
@@ -341,37 +361,40 @@ function CapitalTrendChart({
   }, [granularity, range, trend]);
 
   const rangeHint =
-    range === "ytd"
-      ? "Year to date, snapshot at each week/month end."
-      : "Trailing 12 months, snapshot at each week/month end.";
+    range === "ytd" ? t("chart.capitalTrendRangeYtd") : t("chart.capitalTrendRange1y");
+
+  const budgetLineText =
+    budgetLine != null && budgetLine > 0
+      ? t("chart.capitalTrendBudgetLine", { amount: fmtCurrency(budgetLine, intlLocale) })
+      : t("chart.capitalTrendNoBudget");
 
   return (
     <div className={`${CARD_BASE} p-5`}>
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-semibold text-slate-800">Total Capital Trend</p>
+          <p className="text-sm font-semibold text-slate-800">{t("chart.capitalTrend")}</p>
           <StatCardHelp
-            tip={`Budget (adjusted for deposits/withdrawals) + cumulative realized P&L at each period end. ${
-              budgetLine != null && budgetLine > 0
-                ? `Dashed line = current budget (${fmtCurrency(budgetLine)}).`
-                : "No budget reference line when deposit/withdrawal history exists."
-            } ${rangeHint}`}
+            ariaLabel={metricDetailsLabel}
+            tip={t("chart.capitalTrendTip", {
+              budgetLine: budgetLineText,
+              rangeHint,
+            })}
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <SegmentToggle
             value={granularity}
             options={[
-              { id: "week", label: "Week" },
-              { id: "month", label: "Month" },
+              { id: "week", label: t("chart.granularity.week") },
+              { id: "month", label: t("chart.granularity.month") },
             ]}
             onChange={setGranularity}
           />
           <SegmentToggle
             value={range}
             options={[
-              { id: "ytd", label: "YTD" },
-              { id: "1y", label: "1Y" },
+              { id: "ytd", label: t("chart.range.ytd") },
+              { id: "1y", label: t("chart.range.oneYear") },
             ]}
             onChange={setRange}
           />
@@ -384,6 +407,10 @@ function CapitalTrendChart({
         budgetLine={budgetLine}
         granularity={granularity}
         embedded
+        intlLocale={intlLocale}
+        noDataLabel={noDataLabel}
+        vsBudgetLabel={(sign, amount) => t("chart.vsBudget", { sign, amount })}
+        ariaLabel={ariaLabel}
       />
     </div>
   );
@@ -397,6 +424,10 @@ function LineChartCard({
   budgetLine,
   granularity = "month",
   embedded = false,
+  intlLocale,
+  noDataLabel,
+  vsBudgetLabel,
+  ariaLabel,
 }: {
   title?: string;
   points: DashboardSeriesPoint[];
@@ -405,6 +436,10 @@ function LineChartCard({
   budgetLine?: number;
   granularity?: TrendGranularity;
   embedded?: boolean;
+  intlLocale: string;
+  noDataLabel: string;
+  vsBudgetLabel: (sign: string, amount: string) => string;
+  ariaLabel: string;
 }) {
   const gradientId = useId().replace(/:/g, "");
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -456,7 +491,7 @@ function LineChartCard({
   const chartBody = (
     <>
       {points.length === 0 ? (
-        <p className="text-sm text-slate-400">No data</p>
+        <p className="text-sm text-slate-400">{noDataLabel}</p>
       ) : (
         <div className="relative w-full">
           {hovered && hoveredCoord && (
@@ -469,15 +504,17 @@ function LineChartCard({
               }}
             >
               <p className="text-[11px] font-medium text-slate-300">
-                {formatTrendPeriod(hovered, granularity)}
+                {formatTrendPeriod(hovered, granularity, intlLocale)}
               </p>
               <p className="mt-0.5 text-sm font-bold tabular-nums text-white">
-                {fmtCurrency(hovered.value)}
+                {fmtCurrency(hovered.value, intlLocale)}
               </p>
               {budgetLine != null && budgetLine > 0 && (
                 <p className="mt-0.5 text-[10px] tabular-nums text-slate-400">
-                  {hovered.value >= budgetLine ? "+" : ""}
-                  {fmtCurrency(hovered.value - budgetLine)} vs budget
+                  {vsBudgetLabel(
+                    hovered.value >= budgetLine ? "+" : "",
+                    fmtCurrency(hovered.value - budgetLine, intlLocale)
+                  )}
                 </p>
               )}
             </div>
@@ -486,7 +523,7 @@ function LineChartCard({
             viewBox={`0 0 ${width} ${height}`}
             className={embedded ? "h-56 w-full" : "h-44 w-full"}
             role="img"
-            aria-label={title ?? "Total capital trend"}
+            aria-label={title ?? ariaLabel}
             preserveAspectRatio="xMidYMid meet"
             onMouseLeave={() => setHoveredIndex(null)}
           >
@@ -515,7 +552,7 @@ function LineChartCard({
                     className="fill-slate-400"
                     fontSize="9"
                   >
-                    {fmtCurrency(tick)}
+                    {fmtCurrency(tick, intlLocale)}
                   </text>
                 </g>
               );
@@ -577,7 +614,7 @@ function LineChartCard({
                   className="fill-slate-400"
                   fontSize="9"
                 >
-                  {formatTrendAxisLabel(p, granularity)}
+                  {formatTrendAxisLabel(p, granularity, intlLocale)}
                 </text>
               );
             })}
@@ -604,6 +641,7 @@ function StatCard({
   accent,
   tip,
   valueClassName,
+  metricDetailsLabel,
 }: {
   label: string;
   value: string;
@@ -611,6 +649,7 @@ function StatCard({
   accent: string;
   tip?: string;
   valueClassName?: string;
+  metricDetailsLabel: string;
 }) {
   return (
     <Card className="card-hover-lift relative overflow-visible gap-0 rounded-2xl py-0 ring-1 ring-slate-900/[0.04]">
@@ -623,7 +662,7 @@ function StatCard({
           </p>
           <p className="mt-1 text-xs text-slate-500">{sub}</p>
         </div>
-        {tip && <StatCardHelp tip={tip} />}
+        {tip && <StatCardHelp tip={tip} ariaLabel={metricDetailsLabel} />}
       </div>
     </Card>
   );
@@ -634,6 +673,12 @@ export default function DashboardInsights({
 }: {
   insights: DashboardInsightsData | null;
 }) {
+  const { t } = useTranslations("dashboard");
+  const { t: tCommon } = useTranslations("common");
+  const { intlLocale } = useLocale();
+  const metricDetailsLabel = tCommon("a11y.metricDetails");
+  const noDataLabel = tCommon("empty.noData");
+
   const kpis = insights?.kpis;
   const charts = insights?.charts;
   const capitalTrend = normalizeCapitalTrend(charts);
@@ -645,106 +690,134 @@ export default function DashboardInsights({
 
   return (
     <div className="space-y-4">
-      {/* KPI cards — 4-column grid */}
       <div className="animate-stagger-fade-up grid grid-cols-2 gap-4 overflow-visible md:grid-cols-3 lg:grid-cols-4">
         <StatCard
-          label="Total Capital"
-          value={fmtCurrency(totalCapital)}
-          sub={`${fmtCurrency(capitalInvested)} deployed (${capitalUtilPct.toFixed(0)}%) · budget ${fmtCurrency(capitalBudget)} + P&L`}
-          tip="Total capital = starting budget + cumulative realized P&L (profits add, losses subtract). Deployed = open CSP + stock held. New trades cannot push deployed capital above total capital."
+          label={t("kpi.totalCapital.label")}
+          value={fmtCurrency(totalCapital, intlLocale)}
+          sub={t("kpi.totalCapital.sub", {
+            deployed: fmtCurrency(capitalInvested, intlLocale),
+            pct: capitalUtilPct.toFixed(0),
+            budget: fmtCurrency(capitalBudget, intlLocale),
+          })}
+          tip={t("kpi.totalCapital.tip")}
           accent={overBudget ? KPI_ACCENT.loss : KPI_ACCENT.capital}
           valueClassName={overBudget ? "text-loss" : "text-slate-800"}
+          metricDetailsLabel={metricDetailsLabel}
         />
         <StatCard
-          label="Total Premium"
-          value={fmtCurrency(kpis?.total_premium ?? 0)}
-          sub="Gross premium, all legs"
-          tip="Sum of premium × contracts × 100 for every trade (includes open, rolled, and bought-back legs). Not net cash after fees or buybacks."
+          label={t("kpi.totalPremium.label")}
+          value={fmtCurrency(kpis?.total_premium ?? 0, intlLocale)}
+          sub={t("kpi.totalPremium.sub")}
+          tip={t("kpi.totalPremium.tip")}
           accent={KPI_ACCENT.premium}
+          metricDetailsLabel={metricDetailsLabel}
         />
         <StatCard
-          label="Realized P&L"
-          value={fmtCurrency(kpis?.realized_pnl ?? 0)}
-          sub="Option cashflow + stock sales"
-          tip="Net option cashflow (premium − fees − buyback) on CLOSED, EXPIRED, ROLLED, CALLED_AWAY, and ASSIGNED legs, plus stock P&L when CC shares are called away (strike − assignment basis)."
+          label={t("kpi.realizedPnl.label")}
+          value={fmtCurrency(kpis?.realized_pnl ?? 0, intlLocale)}
+          sub={t("kpi.realizedPnl.sub")}
+          tip={t("kpi.realizedPnl.tip")}
           accent={KPI_ACCENT.profit}
           valueClassName={profitLossClass(kpis?.realized_pnl ?? 0)}
+          metricDetailsLabel={metricDetailsLabel}
         />
         <StatCard
-          label="Yearly Income"
-          value={fmtCurrency(kpis?.yearly_income ?? 0)}
-          sub={`${fmtCurrency(kpis?.daily_avg_income ?? 0)} / day`}
-          tip="Projection only: (total gross premium ÷ days since first trade) × 365. Not realized income; ignores fees, buybacks, and assignment timing."
+          label={t("kpi.yearlyIncome.label")}
+          value={fmtCurrency(kpis?.yearly_income ?? 0, intlLocale)}
+          sub={t("kpi.yearlyIncome.sub", {
+            daily: fmtCurrency(kpis?.daily_avg_income ?? 0, intlLocale),
+          })}
+          tip={t("kpi.yearlyIncome.tip")}
           accent={KPI_ACCENT.premium}
+          metricDetailsLabel={metricDetailsLabel}
         />
         <StatCard
-          label="Open Premium Ann. Yield"
+          label={t("kpi.openPremiumYield.label")}
           value={fmtPercent(kpis?.open_premium_annualized_yield ?? kpis?.avg_annual_roi ?? 0)}
-          sub="Based on open premium and capital"
-          tip="(sum of open-leg gross premium ÷ total capital invested) × (365 ÷ simple average DTE of open legs). Uses unweighted DTE, not the premium-weighted DTE on the card below."
+          sub={t("kpi.openPremiumYield.sub")}
+          tip={t("kpi.openPremiumYield.tip")}
           accent={KPI_ACCENT.ratio}
+          metricDetailsLabel={metricDetailsLabel}
         />
         <StatCard
-          label="Realized Annual ROI"
+          label={t("kpi.realizedRoi.label")}
           value={fmtPercent(kpis?.realized_annual_roi ?? 0)}
-          sub="Annualized · simple avg hold"
-          tip="(realized P&L ÷ capital at risk on realized legs) × (365 ÷ simple average holding days). Annualized projection using unweighted average hold time."
+          sub={t("kpi.realizedRoi.sub")}
+          tip={t("kpi.realizedRoi.tip")}
           accent={KPI_ACCENT.ratio}
+          metricDetailsLabel={metricDetailsLabel}
         />
         <StatCard
-          label="Period Return"
+          label={t("kpi.periodReturn.label")}
           value={fmtPercent(kpis?.cumulative_total_return_pct ?? 0)}
           sub={
             kpis?.time_weighted_return_unreliable
-              ? `Realized ${fmtCurrency(kpis?.realized_pnl ?? 0)} · TWR ${fmtPercent(kpis?.time_weighted_return_pct ?? 0)} · large flows — trust realized $`
-              : `Realized ${fmtCurrency(kpis?.realized_pnl ?? 0)} · TWR ${fmtPercent(kpis?.time_weighted_return_pct ?? 0)}`
+              ? t("kpi.periodReturn.subUnreliable", {
+                  amount: fmtCurrency(kpis?.realized_pnl ?? 0, intlLocale),
+                  twr: fmtPercent(kpis?.time_weighted_return_pct ?? 0),
+                })
+              : t("kpi.periodReturn.sub", {
+                  amount: fmtCurrency(kpis?.realized_pnl ?? 0, intlLocale),
+                  twr: fmtPercent(kpis?.time_weighted_return_pct ?? 0),
+                })
           }
-          tip="Main value = return on starting capital for the period: (end − start − net deposits) ÷ start. Subtitle shows dollars earned (realized P&L) and time-weighted return (TWR), which adjusts for deposit/withdrawal timing. When large flows make TWR unreliable, focus on realized $ and period return %."
+          tip={t("kpi.periodReturn.tip")}
           accent={kpis?.time_weighted_return_unreliable ? KPI_ACCENT.warning : KPI_ACCENT.ratio}
+          metricDetailsLabel={metricDetailsLabel}
         />
         <StatCard
-          label="Win Rate"
+          label={t("kpi.winRate.label")}
           value={fmtPercent(kpis?.win_rate ?? 0)}
-          sub="Based on strategy outcomes"
-          tip="Wins ÷ terminal legs (CLOSED, EXPIRED, ASSIGNED, CALLED_AWAY). Win = OTM expire, called away, or CLOSED with positive net cashflow. ASSIGNED CSP counts in the denominator but not as a win."
+          sub={t("kpi.winRate.sub")}
+          tip={t("kpi.winRate.tip")}
           accent={KPI_ACCENT.ratio}
+          metricDetailsLabel={metricDetailsLabel}
         />
         <StatCard
-          label="Active Trades"
+          label={t("kpi.activeTrades.label")}
           value={String(kpis?.active_trades ?? 0)}
-          sub="OPEN, expiry not passed"
-          tip="Count of OPEN legs with expiry on or after today (same as Trades → Today filter)."
+          sub={t("kpi.activeTrades.sub")}
+          tip={t("kpi.activeTrades.tip")}
           accent={KPI_ACCENT.count}
+          metricDetailsLabel={metricDetailsLabel}
         />
         <StatCard
-          label="Avg Premium / Weighted DTE"
-          value={fmtCurrency(kpis?.avg_premium_per_active_day ?? 0)}
+          label={t("kpi.avgPremiumDte.label")}
+          value={fmtCurrency(kpis?.avg_premium_per_active_day ?? 0, intlLocale)}
           sub={
             (kpis?.weighted_open_dte ?? 0) > 0
-              ? `Avg DTE: ${(kpis?.weighted_open_dte ?? 0).toFixed(1)} days`
-              : "No open positions"
+              ? t("kpi.avgPremiumDte.sub", {
+                  days: (kpis?.weighted_open_dte ?? 0).toFixed(1),
+                })
+              : t("kpi.avgPremiumDte.subEmpty")
           }
-          tip="Weighted open DTE = Σ(premium × DTE) ÷ Σ(premium). Avg premium/day = open premium ÷ weighted open DTE."
+          tip={t("kpi.avgPremiumDte.tip")}
           accent={KPI_ACCENT.count}
+          metricDetailsLabel={metricDetailsLabel}
         />
       </div>
 
-      {/* Charts — premium row + capital trend */}
       <div className="animate-stagger-fade-up grid grid-cols-1 gap-4 lg:grid-cols-3">
         <BarChartCard
-          title="Daily Premium (by open date)"
+          title={t("chart.dailyPremium")}
           points={charts?.daily_premium_income ?? []}
           gradient="bg-gradient-to-t from-blue-500 to-sky-300"
+          intlLocale={intlLocale}
+          noDataLabel={noDataLabel}
         />
         <BarChartCard
-          title="Weekly Premium (by open date)"
+          title={t("chart.weeklyPremium")}
           points={charts?.weekly_premium_income ?? []}
           gradient="bg-gradient-to-t from-violet-600 to-fuchsia-300"
+          intlLocale={intlLocale}
+          noDataLabel={noDataLabel}
         />
         <BarChartCard
-          title="Monthly Premium (by open date)"
+          title={t("chart.monthlyPremium")}
           points={charts?.monthly_premium_income ?? []}
           gradient="bg-gradient-to-t from-indigo-600 to-blue-300"
+          intlLocale={intlLocale}
+          noDataLabel={noDataLabel}
         />
       </div>
       <div className="animate-stagger-fade-up">
@@ -754,6 +827,11 @@ export default function DashboardInsights({
             !kpis?.has_capital_flows && capitalBudget > 0 ? capitalBudget : undefined
           }
           overBudget={overBudget}
+          intlLocale={intlLocale}
+          t={t}
+          metricDetailsLabel={metricDetailsLabel}
+          noDataLabel={noDataLabel}
+          ariaLabel={t("chart.ariaCapitalTrend")}
         />
       </div>
     </div>

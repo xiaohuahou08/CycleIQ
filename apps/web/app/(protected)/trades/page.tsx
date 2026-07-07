@@ -25,6 +25,7 @@ import { iconXs, iconStroke } from "@/app/components/icons";
 import PageHeader from "@/app/components/PageHeader";
 import RefreshingSpinner from "@/app/components/RefreshingSpinner";
 import { useToast } from "@/app/components/Toast";
+import { useLocale, useTranslations } from "@/lib/i18n/locale-context";
 import { applyFilters, getClosedCycleIds } from "@/lib/trades/filters";
 import TradeFilters, { type FilterState } from "./components/TradeFilters";
 import TradeList from "./components/TradeList";
@@ -40,6 +41,9 @@ function todayIso(): string {
 export default function TradesPage() {
   const { token, isAuthLoading } = useProtectedAuth();
   const { showToast } = useToast();
+  const { t } = useTranslations("trades");
+  const { t: tToast } = useTranslations("toast");
+  const { intlLocale } = useLocale();
   const [allTrades, setAllTrades] = useState<Trade[]>([]);
   const [tradesLoading, setTradesLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -163,10 +167,10 @@ export default function TradesPage() {
         type: created.option_type,
         status: created.status === "OPEN" ? "OPEN" : prev.status,
       }));
-      showToast("Trade saved successfully.", "success");
+      showToast(tToast("trade.saved"), "success");
       await refreshPlanUsage();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to save trade.", "error");
+      showToast(err instanceof Error ? err.message : tToast("trade.saveFailed"), "error");
     }
   };
 
@@ -177,9 +181,9 @@ export default function TradesPage() {
       await reloadTrades();
       setModalOpen(false);
       setEditingTrade(null);
-      showToast("Trade updated successfully.", "success");
+      showToast(tToast("trade.updated"), "success");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to update trade.", "error");
+      showToast(err instanceof Error ? err.message : tToast("trade.updateFailed"), "error");
     }
   };
 
@@ -193,7 +197,7 @@ export default function TradesPage() {
       await refreshPlanUsage();
     } catch (err) {
       setAllTrades(previous);
-      showToast(err instanceof Error ? err.message : "Failed to delete trade.", "error");
+      showToast(err instanceof Error ? err.message : tToast("trade.deleteFailed"), "error");
     }
   };
 
@@ -214,7 +218,7 @@ export default function TradesPage() {
           closed_at: todayIso(),
         });
         setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
-        showToast("Trade closed successfully.", "success");
+        showToast(tToast("trade.closed"), "success");
         return;
       }
 
@@ -235,10 +239,10 @@ export default function TradesPage() {
 
       const updated = await updateTrade(token, trade.id, { status: "CLOSED" as TradeStatus });
       setAllTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)));
-      showToast("Trade updated successfully.", "success");
+      showToast(tToast("trade.updated"), "success");
     } catch (err) {
       showToast(
-        err instanceof Error ? err.message : "Failed to apply trade action.",
+        err instanceof Error ? err.message : tToast("trade.actionFailed"),
         "error"
       );
     }
@@ -248,13 +252,15 @@ export default function TradesPage() {
 
   const tradesUsageLabel = planUsage
     ? planUsage.trades_limit != null
-      ? `${planUsage.trades_this_month}/${planUsage.trades_limit} trades this month · Basic`
-      : `${planUsage.trades_this_month} trades this month · Premium`
+      ? t("usage.basic", {
+          used: planUsage.trades_this_month,
+          limit: planUsage.trades_limit,
+        })
+      : t("usage.premium", { used: planUsage.trades_this_month })
     : undefined;
 
   const addTradeDisabled = Boolean(planUsage?.limit_reached);
-  const addTradeDisabledReason =
-    "Monthly trade limit reached (Basic plan: 20/month). Upgrade to Premium or wait until next month.";
+  const addTradeDisabledReason = t("limitReason");
 
   if (isAuthLoading) return null;
   return (
@@ -262,20 +268,16 @@ export default function TradesPage() {
       <main className="animate-page-enter flex min-h-0 flex-1 flex-col overflow-hidden">
         {planUsage?.limit_reached && (
           <div className="shrink-0 border-b border-amber-200/80 bg-amber-50 px-5 py-2.5 text-sm text-amber-900">
-            You&apos;ve used all {planUsage.trades_limit} trades for this month on the Basic
-            plan.{" "}
+            {t("limitBanner", { limit: planUsage.trades_limit ?? 0 })}{" "}
             <Link href="/pricing" className="font-medium underline underline-offset-2 hover:text-amber-950">
-              View pricing
+              {t("limitBannerLink")}
             </Link>{" "}
-            or wait until the next calendar month.
+            {t("limitBannerSuffix")}
           </div>
         )}
 
         <div className="shrink-0 border-b border-slate-200/80 bg-white px-4 pt-4 sm:px-6">
-          <PageHeader
-            title="Trades"
-            description="Manage CSP and covered call positions"
-          />
+          <PageHeader title={t("title")} description={t("description")} />
         </div>
 
         {tradesLoading ? (
@@ -321,8 +323,12 @@ export default function TradesPage() {
             {pricesUpdatedAt && (
               <div className="flex shrink-0 items-center gap-1.5 border-t border-slate-200 bg-white px-5 py-2 text-xs font-medium text-slate-600">
                 <Clock className={iconXs} strokeWidth={iconStroke} aria-hidden />
-                Prices update once per hour. Last updated at{" "}
-                {pricesUpdatedAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}.
+                {t("prices.footer", {
+                  time: pricesUpdatedAt.toLocaleTimeString(intlLocale, {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }),
+                })}
               </div>
             )}
           </>
@@ -355,8 +361,8 @@ export default function TradesPage() {
               }
             : undefined
         }
-        title={editingTrade ? "Edit Trade" : "Add Trade"}
-        submitLabel={editingTrade ? "Update Trade" : "Save Trade"}
+        title={editingTrade ? t("modal.editTitle") : t("modal.addTitle")}
+        submitLabel={editingTrade ? t("modal.update") : t("modal.save")}
         existingTrades={allTrades}
         editingTradeId={editingTrade?.id}
       />
@@ -405,12 +411,12 @@ export default function TradesPage() {
             setAssigningTrade(null);
             showToast(
               assigningTrade.option_type === "CALL"
-                ? "Position marked called away successfully."
-                : "Trade assigned successfully.",
+                ? tToast("trade.calledAway")
+                : tToast("trade.assigned"),
               "success"
             );
           } catch (err) {
-            showToast(err instanceof Error ? err.message : "Failed to assign trade.", "error");
+            showToast(err instanceof Error ? err.message : tToast("trade.assignFailed"), "error");
             throw err;
           }
         }}
@@ -484,10 +490,10 @@ export default function TradesPage() {
               newLeg,
             ]);
             setRollingTrade(null);
-            showToast("Trade rolled successfully. New leg added as OPEN position.", "success");
+            showToast(tToast("trade.rolled"), "success");
             await refreshPlanUsage();
           } catch (err) {
-            showToast(err instanceof Error ? err.message : "Failed to roll trade.", "error");
+            showToast(err instanceof Error ? err.message : tToast("trade.rollFailed"), "error");
             throw err;
           }
         }}
@@ -523,9 +529,9 @@ export default function TradesPage() {
             }
 
             setExpiringTrade(null);
-            showToast("Trade expired successfully.", "success");
+            showToast(tToast("trade.expired"), "success");
           } catch (err) {
-            showToast(err instanceof Error ? err.message : "Failed to expire trade.", "error");
+            showToast(err instanceof Error ? err.message : tToast("trade.expireFailed"), "error");
             throw err;
           }
         }}
