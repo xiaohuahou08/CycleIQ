@@ -5,10 +5,16 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import { getMessages, type Messages } from "@/messages";
 import { DEFAULT_LOCALE, intlLocale, type Locale } from "./locales";
+import {
+  getClientLocale,
+  persistLocale,
+  subscribeLocale,
+} from "./locale-storage";
 import { translate } from "./translate";
 
 type Namespace = keyof Messages;
@@ -18,6 +24,7 @@ interface LocaleContextValue {
   intlLocale: string;
   messages: Messages;
   fallbackMessages: Messages;
+  setLocale: (locale: Locale) => void;
 }
 
 const LocaleContext = createContext<LocaleContextValue | null>(null);
@@ -29,15 +36,27 @@ export function LocaleProvider({
   initialLocale?: Locale;
   children: ReactNode;
 }) {
-  const locale = initialLocale ?? DEFAULT_LOCALE;
+  const serverLocale = initialLocale ?? DEFAULT_LOCALE;
+  const storedLocale = useSyncExternalStore(
+    subscribeLocale,
+    getClientLocale,
+    () => null
+  );
+  const locale = storedLocale ?? serverLocale;
+
+  const setLocale = useCallback((next: Locale) => {
+    persistLocale(next);
+  }, []);
+
   const value = useMemo<LocaleContextValue>(
     () => ({
       locale,
       intlLocale: intlLocale(locale),
       messages: getMessages(locale),
       fallbackMessages: getMessages("en"),
+      setLocale,
     }),
-    [locale]
+    [locale, setLocale]
   );
 
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;

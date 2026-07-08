@@ -93,7 +93,8 @@ function fmtExpirationRibbon(
   const d = parseDateLike(iso);
   const mon = new Intl.DateTimeFormat(intlLocale, { month: "short" }).format(d);
   const day = d.getDate();
-  return { label: `${mon} - ${day}`, accent: getDte(iso) <= 7 };
+  const year = d.getFullYear();
+  return { label: `${mon} - ${day}, ${year}`, accent: getDte(iso) <= 7 };
 }
 
 function holdingDays(trade: Trade): number {

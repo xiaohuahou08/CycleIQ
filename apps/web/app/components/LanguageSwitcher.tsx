@@ -1,13 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { LOCALE_COOKIE, type Locale } from "@/lib/i18n/locales";
+import type { Locale } from "@/lib/i18n/locales";
 import { useLocale, useTranslations } from "@/lib/i18n/locale-context";
-
-function setLocaleCookie(locale: Locale) {
-  const maxAge = 60 * 60 * 24 * 365;
-  document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=${maxAge}; SameSite=Lax`;
-}
 
 interface LanguageSwitcherProps {
   className?: string;
@@ -20,12 +15,12 @@ export default function LanguageSwitcher({
   compact = false,
 }: LanguageSwitcherProps) {
   const router = useRouter();
-  const { locale } = useLocale();
+  const { locale, setLocale } = useLocale();
   const { t } = useTranslations("common");
 
   const switchTo = (next: Locale) => {
     if (next === locale) return;
-    setLocaleCookie(next);
+    setLocale(next);
     router.refresh();
   };
 
