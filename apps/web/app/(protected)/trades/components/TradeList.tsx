@@ -20,9 +20,11 @@ import { STATUS_COLORS } from "@/app/components/ui/styles";
 import { Button } from "@/components/ui/button";
 import { useLocale, useTranslations } from "@/lib/i18n/locale-context";
 import type { Trade, TradeStatus } from "@/lib/api/trades";
+import { effectiveStockCostPerShareForTrade } from "@/lib/cycles/ccCostBasis";
 
 interface TradeRowProps {
   trade: Trade;
+  allTrades: Trade[];
   price?: number;
   onDelete: () => void;
   onEdit: () => void;
@@ -32,6 +34,7 @@ interface TradeRowProps {
 
 interface TradeListProps {
   trades: Trade[];
+  allTrades: Trade[];
   prices: Record<string, number>;
   onDeleteTrade: (id: string) => void;
   onEditTrade: (trade: Trade) => void;
@@ -116,7 +119,7 @@ function holdingDays(trade: Trade): number {
   return Math.max(1, Math.round((expiry - open) / (1000 * 60 * 60 * 24)));
 }
 
-function annualizedRoiPct(trade: Trade): number | null {
+function annualizedRoiPct(trade: Trade, allTrades: Trade[]): number | null {
   const days = holdingDays(trade);
   const gross = trade.premium * trade.contracts * 100;
   const fee = trade.commission_fee ?? 0;
@@ -124,11 +127,10 @@ function annualizedRoiPct(trade: Trade): number | null {
 
   // Capital at risk:
   // ? CSP (PUT)  ? full strike notional (cash-secured)
-  // ? CC  (CALL) ? stock cost basis per share when available, else strike
+  // ? CC  (CALL) ? effective stock cost when available, else strike
+  const effectiveCost = effectiveStockCostPerShareForTrade(trade, allTrades);
   const pricePerShare =
-    trade.option_type === "CALL" && trade.stock_cost_basis_per_share != null
-      ? trade.stock_cost_basis_per_share
-      : trade.strike;
+    trade.option_type === "CALL" && effectiveCost != null ? effectiveCost : trade.strike;
 
   const capital = pricePerShare * trade.contracts * 100;
   if (capital <= 0) return null;
@@ -136,8 +138,8 @@ function annualizedRoiPct(trade: Trade): number | null {
   return (net / capital) * (365 / days) * 100;
 }
 
-function fmtRoi(trade: Trade): string {
-  const r = annualizedRoiPct(trade);
+function fmtRoi(trade: Trade, allTrades: Trade[]): string {
+  const r = annualizedRoiPct(trade, allTrades);
   if (r == null || !Number.isFinite(r)) return "?";
   const sign = r < 0 ? "?" : "";
   return `${sign}${Math.abs(r).toFixed(1)}%`;
@@ -151,19 +153,13 @@ function fmtPremiumTotal(trade: Trade): string {
   })}`;
 }
 
-function fmtStockCostPerShare(trade: Trade): string {
-  if (
-    trade.status === "ASSIGNED" &&
-    trade.option_type === "PUT" &&
-    trade.stock_cost_basis_per_share != null &&
-    Number.isFinite(trade.stock_cost_basis_per_share)
-  ) {
-    return `$${trade.stock_cost_basis_per_share.toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 4,
-    })}`;
-  }
-  return "-";
+function fmtStockCostPerShare(trade: Trade, allTrades: Trade[]): string | null {
+  const cost = effectiveStockCostPerShareForTrade(trade, allTrades);
+  if (cost == null || !Number.isFinite(cost)) return null;
+  return `$${cost.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  })}`;
 }
 
 function computeMoneyness(
@@ -176,15 +172,6 @@ function computeMoneyness(
       ? diff < 0
       : diff > 0;
   return { status: itm ? "ITM" : "OTM", amount: Math.abs(diff) };
-}
-
-function isExpiredEligible(trade: Trade): boolean {
-  if (trade.status !== "OPEN") return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const expiry = parseDateLike(trade.expiry);
-  expiry.setHours(0, 0, 0, 0);
-  return expiry <= today;
 }
 
 function startOfWeekMonday(input: Date): Date {
@@ -346,6 +333,7 @@ const menuItemClass =
 
 function TradeRow({
   trade,
+  allTrades,
   price,
   onDelete,
   onEdit,
@@ -446,13 +434,14 @@ function TradeRow({
           {fmtPremiumTotal(trade)}
         </td>
         <td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-base">
-          {trade.status === "ASSIGNED" && trade.option_type === "PUT" && trade.stock_cost_basis_per_share != null ? (
-            <span className="font-medium text-orange-700">
-              {fmtStockCostPerShare(trade)}
-            </span>
-          ) : (
-            <span className="text-slate-500">-</span>
-          )}
+          {(() => {
+            const stockCost = fmtStockCostPerShare(trade, allTrades);
+            return stockCost ? (
+              <span className="font-medium text-orange-700">{stockCost}</span>
+            ) : (
+              <span className="text-slate-500">-</span>
+            );
+          })()}
         </td>
         <td className="whitespace-nowrap px-5 py-3.5">
           <span
@@ -462,7 +451,7 @@ function TradeRow({
           </span>
         </td>
         <td className="whitespace-nowrap px-5 py-3.5 text-right text-base font-semibold tabular-nums tracking-tight text-slate-900">
-          {fmtRoi(trade)}
+          {fmtRoi(trade, allTrades)}
         </td>
         <td className="whitespace-nowrap px-5 py-3.5 text-right">
           <button
@@ -523,19 +512,17 @@ function TradeRow({
                       <CircleDollarSign className={iconSm} strokeWidth={iconStroke} aria-hidden />
                       {t("list.menu.buyToClose")}
                     </button>
-                    {isExpiredEligible(trade) && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMenuAnchor(null);
-                          onAction("expire");
-                        }}
-                        className={menuItemClass}
-                      >
-                        <CalendarClock className={iconSm} strokeWidth={iconStroke} aria-hidden />
-                        {t("list.menu.expire")}
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuAnchor(null);
+                        onAction("expire");
+                      }}
+                      className={menuItemClass}
+                    >
+                      <CalendarClock className={iconSm} strokeWidth={iconStroke} aria-hidden />
+                      {t("list.menu.expire")}
+                    </button>
                     <button
                       type="button"
                       onClick={() => {
@@ -627,6 +614,7 @@ const theadBtn =
 
 export default function TradeList({
   trades,
+  allTrades,
   prices,
   onDeleteTrade,
   onEditTrade,
@@ -768,6 +756,7 @@ export default function TradeList({
                 <TradeRow
                   key={trade.id}
                   trade={trade}
+                  allTrades={allTrades}
                   price={prices[trade.ticker]}
                   rowTint={rowTint}
                   onDelete={() => onDeleteTrade(trade.id)}

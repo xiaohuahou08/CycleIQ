@@ -137,6 +137,52 @@ export function assignedCycleIdForTicker(trades: Trade[], ticker: string): strin
   return assignedCycleIdByTicker(trades)[ticker.toUpperCase().trim()];
 }
 
+function scopeTradesForTrade(trade: Trade, allTrades: Trade[]): Trade[] {
+  const cycleId = resolveTradeCycleId(trade, allTrades);
+  if (cycleId) {
+    return allTrades.filter((t) => t.cycle_id === cycleId);
+  }
+  const sym = trade.ticker.toUpperCase();
+  return allTrades.filter((t) => t.ticker.toUpperCase() === sym);
+}
+
+/**
+ * Effective stock cost per share for display — ASSIGNED CSP basis or CC wheel
+ * cost after premium reduction (OPEN + terminal CC legs).
+ */
+export function effectiveStockCostPerShareForTrade(
+  trade: Trade,
+  allTrades: Trade[]
+): number | null {
+  if (trade.option_type === "PUT" && trade.status === "ASSIGNED") {
+    return assignmentStockBasisPerShare(trade);
+  }
+  if (trade.option_type !== "CALL") return null;
+
+  const scope = scopeTradesForTrade(trade, allTrades);
+  const assignedPuts = scope.filter(
+    (t) =>
+      t.option_type === "PUT" &&
+      t.status === "ASSIGNED" &&
+      assignmentStockBasisPerShare(t) != null
+  );
+  if (assignedPuts.length === 0) return null;
+
+  const assignedShares = assignedPuts.reduce((s, t) => s + t.contracts * 100, 0);
+  if (assignedShares <= 0) return null;
+
+  let basisWeighted = 0;
+  for (const put of assignedPuts) {
+    const basis = assignmentStockBasisPerShare(put);
+    if (basis == null) continue;
+    basisWeighted += basis * put.contracts * 100;
+  }
+  const weightedInitial = basisWeighted / assignedShares;
+  const ccPremium = effectiveCcPremiumForBasis(scope);
+  const reductionPerShare = ccPremium / assignedShares;
+  return Math.max(0, weightedInitial - reductionPerShare);
+}
+
 /**
  * Wheel total realized P&L: terminal option cashflows + stock gain/loss on call-away.
  * ROLLED legs are excluded — their net premium is already embedded in the assignment
