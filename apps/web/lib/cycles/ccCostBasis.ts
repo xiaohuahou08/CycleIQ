@@ -56,6 +56,86 @@ export function assignmentStockBasisPerShare(put: Trade): number | null {
   return put.strike - put.premium - priorRoll + (openFee + assignFee) / shares;
 }
 
+/** Shares still available to write new OPEN covered calls for a ticker. */
+export function availableCcSharesForTicker(
+  trades: Trade[],
+  ticker: string,
+  options?: { excludeTradeId?: string }
+): number {
+  const sym = ticker.toUpperCase().trim();
+  const tt = trades.filter((t) => t.ticker.toUpperCase() === sym);
+  const assignedPuts = tt.filter(
+    (t) =>
+      t.option_type === "PUT" &&
+      (t.status === "ASSIGNED" || t.status === "CALLED_AWAY") &&
+      assignmentStockBasisPerShare(t) != null
+  );
+  if (assignedPuts.length === 0) return 0;
+
+  const assignedShares = assignedPuts.reduce((s, t) => s + t.contracts * 100, 0);
+  const calledAwayShares = tt
+    .filter((t) => t.option_type === "CALL" && t.status === "CALLED_AWAY")
+    .reduce((s, t) => s + t.contracts * 100, 0);
+  const exclude = options?.excludeTradeId;
+  const openCcShares = tt
+    .filter(
+      (t) =>
+        t.option_type === "CALL" &&
+        t.status === "OPEN" &&
+        t.id !== exclude
+    )
+    .reduce((s, t) => s + t.contracts * 100, 0);
+
+  return Math.max(0, assignedShares - calledAwayShares - openCcShares);
+}
+
+/** Resolve cycle_id from the trade or its rolled_from chain. */
+export function resolveTradeCycleId(trade: Trade, trades: Trade[]): string | undefined {
+  if (trade.cycle_id) return trade.cycle_id;
+  const byId = new Map(trades.map((t) => [t.id, t]));
+  const seen = new Set<string>();
+  let currentId: string | null | undefined = trade.rolled_from_id;
+  while (currentId && !seen.has(currentId)) {
+    seen.add(currentId);
+    const parent = byId.get(currentId);
+    if (!parent) break;
+    if (parent.cycle_id) return parent.cycle_id;
+    currentId = parent.rolled_from_id;
+  }
+  return undefined;
+}
+
+/** Tickers with stock still held after CSP assignment (shares available for CC). */
+export function tickersWithCcStock(trades: Trade[]): string[] {
+  const tickers = new Set<string>();
+  for (const t of trades) {
+    if (availableCcSharesForTicker(trades, t.ticker) > 0) {
+      tickers.add(t.ticker.toUpperCase());
+    }
+  }
+  return Array.from(tickers).sort((a, b) => a.localeCompare(b));
+}
+
+/** Map ticker → cycle_id for wheels with assignable stock (most recent ASSIGNED put). */
+export function assignedCycleIdByTicker(trades: Trade[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  const puts = trades
+    .filter((t) => t.option_type === "PUT" && t.status === "ASSIGNED")
+    .sort((a, b) => a.trade_date.localeCompare(b.trade_date));
+
+  for (const put of puts) {
+    const ticker = put.ticker.toUpperCase();
+    if (availableCcSharesForTicker(trades, ticker) <= 0) continue;
+    const cycleId = resolveTradeCycleId(put, trades);
+    if (cycleId) map[ticker] = cycleId;
+  }
+  return map;
+}
+
+export function assignedCycleIdForTicker(trades: Trade[], ticker: string): string | undefined {
+  return assignedCycleIdByTicker(trades)[ticker.toUpperCase().trim()];
+}
+
 /**
  * Wheel total realized P&L: terminal option cashflows + stock gain/loss on call-away.
  * ROLLED legs are excluded — their net premium is already embedded in the assignment

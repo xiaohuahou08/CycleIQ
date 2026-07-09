@@ -1,10 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  availableCcSharesForTicker,
   basisReducingCcPremium,
   buildCcCostBasisRows,
   isCompletedWheel,
   netLegCashflow,
+  resolveTradeCycleId,
   wheelTotalNetPnl,
 } from "./ccCostBasis.ts";
 
@@ -148,5 +150,39 @@ describe("isCompletedWheel", () => {
     assert.equal(isCompletedWheel("EXIT"), true);
     assert.equal(isCompletedWheel("CSP_CLOSED"), true);
     assert.equal(isCompletedWheel("STOCK_HELD"), false);
+  });
+});
+
+describe("availableCcSharesForTicker", () => {
+  it("returns zero without assigned stock", () => {
+    assert.equal(availableCcSharesForTicker([], "AAPL"), 0);
+  });
+
+  it("subtracts called-away and open CC shares", () => {
+    const trades = [
+      trade({ id: "put", status: "ASSIGNED", contracts: 2 }),
+      trade({ id: "cc-open", option_type: "CALL", status: "OPEN", contracts: 1 }),
+      trade({ id: "cc-away", option_type: "CALL", status: "CALLED_AWAY", contracts: 1 }),
+    ];
+    assert.equal(availableCcSharesForTicker(trades, "UNH"), 0);
+    assert.equal(
+      availableCcSharesForTicker(trades, "UNH", { excludeTradeId: "cc-open" }),
+      100
+    );
+  });
+});
+
+describe("resolveTradeCycleId", () => {
+  it("inherits cycle_id from rolled_from chain", () => {
+    const trades = [
+      trade({ id: "rolled", status: "ROLLED", cycle_id: "cycle-1" }),
+      trade({
+        id: "open",
+        status: "ASSIGNED",
+        cycle_id: null,
+        rolled_from_id: "rolled",
+      }),
+    ];
+    assert.equal(resolveTradeCycleId(trades[1], trades), "cycle-1");
   });
 });

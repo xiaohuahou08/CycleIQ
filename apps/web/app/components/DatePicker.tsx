@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from "react-dom";
 import { Calendar } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
+import { useLocale, useTranslations } from "@/lib/i18n/locale-context";
 
 const POPOVER_W = 280;
 const POPOVER_GAP = 6;
@@ -22,10 +23,10 @@ function toIso(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-function formatDisplay(iso: string): string {
+function formatDisplay(iso: string, intlLocale: string): string {
   const d = parseIso(iso);
   if (!d) return "";
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat(intlLocale, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -50,6 +51,8 @@ export default function DatePicker({
   emphasized = false,
   "aria-label": ariaLabel,
 }: DatePickerProps) {
+  const { intlLocale } = useLocale();
+  const { t: tCommon } = useTranslations("common");
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -109,7 +112,7 @@ export default function DatePicker({
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
-  const monthLabel = new Intl.DateTimeFormat("en-US", {
+  const monthLabel = new Intl.DateTimeFormat(intlLocale, {
     month: "long",
     year: "numeric",
   }).format(viewMonth);
@@ -155,7 +158,7 @@ export default function DatePicker({
               setViewMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
             }
             className="rounded-lg px-2 py-1 text-sm text-slate-600 hover:bg-slate-100"
-            aria-label="Previous month"
+            aria-label={tCommon("a11y.previousMonth")}
           >
             ‹
           </button>
@@ -166,7 +169,7 @@ export default function DatePicker({
               setViewMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
             }
             className="rounded-lg px-2 py-1 text-sm text-slate-600 hover:bg-slate-100"
-            aria-label="Next month"
+            aria-label={tCommon("a11y.nextMonth")}
           >
             ›
           </button>
@@ -216,7 +219,7 @@ export default function DatePicker({
             onClick={() => pick(new Date())}
             className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700"
           >
-            Today
+            {tCommon("actions.today")}
           </button>
           {value && (
             <button
@@ -227,7 +230,7 @@ export default function DatePicker({
               }}
               className="text-[11px] font-medium text-slate-500 hover:text-slate-700"
             >
-              Clear
+              {tCommon("actions.clear")}
             </button>
           )}
         </div>
@@ -251,7 +254,7 @@ export default function DatePicker({
         }}
         aria-label={ariaLabel ?? placeholder}
         aria-expanded={open}
-        className={`inline-flex min-w-[7.5rem] items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium transition ${
+        className={`inline-flex min-w-[8.5rem] items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium transition ${
           emphasized || value
             ? "bg-slate-900 text-white shadow-sm"
             : "text-slate-800 hover:bg-slate-100"
@@ -262,7 +265,7 @@ export default function DatePicker({
           strokeWidth={iconStroke}
           aria-hidden
         />
-        <span className="truncate">{value ? formatDisplay(value) : placeholder}</span>
+        <span className="truncate">{value ? formatDisplay(value, intlLocale) : placeholder}</span>
       </button>
       {popover}
     </div>

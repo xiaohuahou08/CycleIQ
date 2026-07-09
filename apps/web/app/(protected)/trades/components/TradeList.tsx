@@ -72,9 +72,16 @@ function parseDateLike(input: string): Date {
 function fmtDate(iso: string, intlLocale: string): string {
   return new Intl.DateTimeFormat(intlLocale, {
     month: "short",
-    day: "2-digit",
+    day: "numeric",
     year: "numeric",
   }).format(parseDateLike(iso));
+}
+
+function fmtExpirationRibbon(
+  iso: string,
+  intlLocale: string
+): { label: string; accent: boolean } {
+  return { label: fmtDate(iso, intlLocale), accent: getDte(iso) <= 7 };
 }
 
 function getStrategy(t: Trade, tCommon: (key: string) => string): string {
@@ -84,17 +91,6 @@ function getStrategy(t: Trade, tCommon: (key: string) => string): string {
 function getDte(expiry: string): number {
   const diffMs = parseDateLike(expiry).getTime() - Date.now();
   return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-}
-
-function fmtExpirationRibbon(
-  iso: string,
-  intlLocale: string
-): { label: string; accent: boolean } {
-  const d = parseDateLike(iso);
-  const mon = new Intl.DateTimeFormat(intlLocale, { month: "short" }).format(d);
-  const day = d.getDate();
-  const year = d.getFullYear();
-  return { label: `${mon} - ${day}, ${year}`, accent: getDte(iso) <= 7 };
 }
 
 function holdingDays(trade: Trade): number {

@@ -564,6 +564,7 @@ const zh = {
       openDate: "开仓日",
       expiration: "到期日",
       ccLinkFound: "将关联 {{ticker}} 的现有滚轮周期（已找到指派持仓）。",
+      ccPickAssignedTicker: "当前持有指派股票：{{tickers}}。请输入其中一个标的以卖出备兑看涨。",
       ccNoAssignment:
         "未找到 {{ticker}} 的指派持仓。备兑看涨需持有标的股票（来自先前 CSP 指派）。",
       capitalSummary:
@@ -581,6 +582,10 @@ const zh = {
       wholeNumber: "必须为整数",
       minContracts: "至少 1 个合约",
       notesMax: "最多 500 个字符",
+      ccNoPosition:
+        "{{ticker}} 无指派持仓。请先卖出 CSP 并标记为已指派，再开备兑看涨。",
+      ccInsufficientShares:
+        "{{ticker}} 股数不足：需要 {{needed}} 股，仅剩 {{available}} 股可用于备兑（约 {{availableContracts}} 个合约）。",
     },
     optional: {
       title: "可选详情",

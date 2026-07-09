@@ -13,6 +13,7 @@ from backend.services.cycle_fsm import append_transition, apply_api_event, repla
 from decimal import Decimal
 
 from backend.services.trade_cost_basis import apply_stock_cost_basis
+from backend.services.cc_position import cc_position_error
 from backend.services.csp_capital import capital_budget_error, get_capital_budget, capital_utilization_pct
 from backend.services.trade_limits import trade_limit_error
 from backend.services.capital_invested import (
@@ -201,6 +202,11 @@ def register_trades_routes(trades_bp):
             rolled_from_id=rolled_from_id or None,
         )
         _stamp_lifecycle_dates(trade, data, status=status)
+
+        if option_type == "CALL" and status == "OPEN":
+            cc_err = cc_position_error(user_id, ticker, contracts_val)
+            if cc_err:
+                return jsonify({"error": cc_err}), 400
 
         budget_err = capital_budget_error(user_id, pending_trade=trade)
         if budget_err:
@@ -403,6 +409,40 @@ def register_trades_routes(trades_bp):
                 if chain_premium > 0:
                     trade.prior_roll_premium_per_share = float(chain_premium)
 
+            if (
+                st == "ASSIGNED"
+                and trade.option_type == "PUT"
+                and prior_status == "OPEN"
+                and trade.cycle_id is None
+                and trade.rolled_from_id
+            ):
+                parent = Trade.query.filter_by(id=trade.rolled_from_id, user_id=user_id).first()
+                if parent and parent.cycle_id:
+                    trade.cycle_id = parent.cycle_id
+
+            if (
+                st == "ASSIGNED"
+                and trade.option_type == "PUT"
+                and prior_status == "OPEN"
+                and trade.cycle_id
+            ):
+                cycle = WheelCycle.query.filter_by(id=trade.cycle_id, user_id=user_id).first()
+                if cycle and cycle.state == "CSP_OPEN":
+                    try:
+                        fsm_cycle = replay_cycle(cycle.ticker, cycle.transition_log)
+                        transition = apply_api_event(
+                            fsm_cycle,
+                            "assigned",
+                            {
+                                "shares": int(trade.contracts) * 100,
+                                "assignment_price": float(trade.strike),
+                            },
+                        )
+                        cycle.transition_log = append_transition(cycle.transition_log, transition)
+                        cycle.state = fsm_cycle.state.value
+                    except (InvalidTransitionError, ValueError, KeyError, TypeError):
+                        pass
+
             if st == "CALLED_AWAY" and trade.option_type == "CALL" and trade.cycle_id:
                 assigned_put = (
                     Trade.query.filter_by(user_id=user_id, cycle_id=trade.cycle_id, option_type="PUT")
@@ -421,6 +461,17 @@ def register_trades_routes(trades_bp):
                     cycle.state = "EXIT"
 
         apply_stock_cost_basis(trade)
+        if trade.option_type == "CALL" and trade.status == "OPEN":
+            cc_err = cc_position_error(
+                user_id,
+                trade.ticker,
+                trade.contracts,
+                exclude_trade_id=trade.id,
+            )
+            if cc_err:
+                db.session.rollback()
+                return jsonify({"error": cc_err}), 400
+
         budget_err = capital_budget_error(
             user_id,
             pending_trade=trade,

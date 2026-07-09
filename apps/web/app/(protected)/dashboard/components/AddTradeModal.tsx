@@ -11,6 +11,7 @@ import {
   cspNotional,
   effectiveCapitalPool,
 } from "@/lib/trades/cspCapital";
+import { availableCcSharesForTicker, assignedCycleIdForTicker } from "@/lib/cycles/ccCostBasis";
 import { todayIso } from "@/lib/trades/cspCapital";
 import {
   ModalActionButtons,
@@ -78,6 +79,28 @@ function getCapitalBudgetErrorMessage(
     pct: pct.toFixed(0),
     pool: `$${fmtMoneyCompact(pool, intlLocale)}`,
     over: `$${fmtMoneyCompact(over, intlLocale)}`,
+  });
+}
+
+function getCcPositionErrorMessage(
+  trades: Trade[],
+  leg: { ticker: string; contracts: number },
+  excludeTradeId: string | undefined,
+  t: (key: string, params?: Record<string, string | number>) => string
+): string | null {
+  const ticker = leg.ticker.toUpperCase().trim();
+  if (!ticker) return null;
+  const available = availableCcSharesForTicker(trades, ticker, { excludeTradeId });
+  const needed = leg.contracts * 100;
+  if (available >= needed) return null;
+  if (available <= 0) {
+    return t("validation.ccNoPosition", { ticker });
+  }
+  return t("validation.ccInsufficientShares", {
+    ticker,
+    needed,
+    available,
+    availableContracts: Math.floor(available / 100),
   });
 }
 
@@ -253,33 +276,53 @@ export default function AddTradeModal({
   }, [optionTypeValue, initialValues?.status, strikeValue, contractsValue, expiryValue]);
 
   useEffect(() => {
-    if (!open || optionTypeValue !== "PUT") {
+    if (!open) {
       setCspError(null);
       return;
     }
     const status = initialValues?.status ?? "OPEN";
-    const strike = Number(strikeValue);
-    const contracts = Number(contractsValue) || 1;
-    if (!expiryValue || !Number.isFinite(strike) || strike <= 0) {
-      setCspError(null);
+    if (optionTypeValue === "PUT") {
+      const strike = Number(strikeValue);
+      const contracts = Number(contractsValue) || 1;
+      if (!expiryValue || !Number.isFinite(strike) || strike <= 0) {
+        setCspError(null);
+        return;
+      }
+      setCspError(
+        getCapitalBudgetErrorMessage(
+          existingTrades,
+          defaults.totalCapitalBudget,
+          {
+            optionType: "PUT",
+            status,
+            strike,
+            contracts,
+            expiry: expiryValue,
+          },
+          editingTradeId,
+          tCommon,
+          intlLocale
+        )
+      );
       return;
     }
-    setCspError(
-      getCapitalBudgetErrorMessage(
-        existingTrades,
-        defaults.totalCapitalBudget,
-        {
-          optionType: "PUT",
-          status,
-          strike,
-          contracts,
-          expiry: expiryValue,
-        },
-        editingTradeId,
-        tCommon,
-        intlLocale
-      )
-    );
+    if (optionTypeValue === "CALL" && status === "OPEN") {
+      const contracts = Number(contractsValue) || 1;
+      if (!tickerValue) {
+        setCspError(null);
+        return;
+      }
+      setCspError(
+        getCcPositionErrorMessage(
+          existingTrades,
+          { ticker: tickerValue, contracts },
+          editingTradeId,
+          t
+        )
+      );
+      return;
+    }
+    setCspError(null);
   }, [
     open,
     optionTypeValue,
@@ -290,6 +333,8 @@ export default function AddTradeModal({
     strikeValue,
     contractsValue,
     expiryValue,
+    tickerValue,
+    t,
     tCommon,
     intlLocale,
   ]);
@@ -350,10 +395,26 @@ export default function AddTradeModal({
       return;
     }
 
+    if (values.option_type === "CALL" && status === "OPEN") {
+      const ccErr = getCcPositionErrorMessage(
+        existingTrades,
+        { ticker: values.ticker, contracts: values.contracts },
+        editingTradeId,
+        t
+      );
+      if (ccErr) {
+        setCspError(ccErr);
+        return;
+      }
+    }
+
+    setCspError(null);
     const commissionNumber = commissionFees.trim() ? Number(commissionFees) : undefined;
     const ticker = values.ticker.toUpperCase().trim();
     const linkedCycleId =
-      values.option_type === "CALL" ? (assignedCycleByTicker[ticker] ?? undefined) : undefined;
+      values.option_type === "CALL"
+        ? (assignedCycleByTicker[ticker] ?? assignedCycleIdForTicker(existingTrades, ticker))
+        : undefined;
     const input: CreateTradeInput = {
       ticker,
       option_type: values.option_type,
@@ -401,16 +462,29 @@ export default function AddTradeModal({
                 <option value="CALL">{tCommon("strategy.ccOption")}</option>
               </select>
               {optionTypeValue === "CALL" && tickerValue && (
-                assignedCycleByTicker[tickerValue] ? (
+                assignedCycleByTicker[tickerValue] ||
+                assignedTickers.includes(tickerValue) ? (
                   <p className="mt-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] text-emerald-800">
                     {t("form.ccLinkFound", { ticker: tickerValue })}
                   </p>
-                ) : assignedTickers.includes(tickerValue) ? null : (
+                ) : (
                   <p className="mt-1.5 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
                     {t("form.ccNoAssignment", { ticker: tickerValue })}
                   </p>
                 )
               )}
+              {optionTypeValue === "CALL" && !tickerValue && assignedTickers.length > 0 && (
+                <p className="mt-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] text-emerald-800">
+                  {t("form.ccPickAssignedTicker", { tickers: assignedTickers.join(", ") })}
+                </p>
+              )}
+              {optionTypeValue === "CALL" &&
+                (initialValues?.status ?? "OPEN") === "OPEN" &&
+                cspError && (
+                  <p className="mt-1.5 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-800">
+                    {cspError}
+                  </p>
+                )}
               {optionTypeValue === "PUT" && (initialValues?.status ?? "OPEN") === "OPEN" && (
                 <div className="mt-2 space-y-1.5">
                   <p className="text-xs text-slate-600">
