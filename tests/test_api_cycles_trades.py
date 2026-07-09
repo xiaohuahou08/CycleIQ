@@ -176,6 +176,28 @@ def test_put_assigned_sets_stock_cost_basis_csp(client):
 
 def test_put_called_away_clears_stock_cost_basis(client):
     h = auth_headers("cccccccc-cccc-cccc-cccc-cccccccccccc")
+    put_payload = {
+        "ticker": "HIMS",
+        "option_type": "PUT",
+        "strike": 28,
+        "expiry": "2026-06-15",
+        "trade_date": "2026-03-15",
+        "premium": 1.2,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    put_created = client.post("/api/trades", json=put_payload, headers=h)
+    assert put_created.status_code == 201
+    put_id = put_created.get_json()["id"]
+    cycle_id = put_created.get_json()["cycle_id"]
+
+    assign = client.put(
+        f"/api/trades/{put_id}",
+        json={"status": "ASSIGNED", "trade_date": "2026-04-01", "strike": 28},
+        headers=h,
+    )
+    assert assign.status_code == 200
+
     payload = {
         "ticker": "HIMS",
         "option_type": "CALL",
@@ -185,6 +207,7 @@ def test_put_called_away_clears_stock_cost_basis(client):
         "premium": 1.5,
         "contracts": 1,
         "status": "OPEN",
+        "cycle_id": cycle_id,
     }
     created = client.post("/api/trades", json=payload, headers=h)
     assert created.status_code == 201
