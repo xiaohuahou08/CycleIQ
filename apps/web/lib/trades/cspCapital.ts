@@ -1,7 +1,7 @@
 import type { Trade } from "@/lib/api/trades";
 import {
   assignmentStockBasisPerShare,
-  basisReducingCcPremium,
+  effectiveCcPremiumForBasis,
   netLegCashflow,
 } from "@/lib/cycles/ccCostBasis";
 
@@ -64,7 +64,7 @@ export function computeStockEffectiveCost(trades: Trade[]): number {
       basisWeighted += basis * put.contracts * 100;
     }
     const weightedInitialBasis = basisWeighted / assignedShares;
-    const ccReductionNet = basisReducingCcPremium(tt);
+    const ccReductionNet = effectiveCcPremiumForBasis(tt);
     const ccReductionPerShare = ccReductionNet / assignedShares;
     const effectiveBasisPerShare = Math.max(0, weightedInitialBasis - ccReductionPerShare);
 

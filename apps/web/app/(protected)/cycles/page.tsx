@@ -395,7 +395,13 @@ export default function CyclesPage() {
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
                       <p className="text-[11px] font-medium uppercase tracking-wider text-slate-600">{t("cc.premiumRealized")}</p>
                       <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">${row.ccPremiumTotal.toFixed(0)}</p>
-                      <p className="text-xs text-slate-600">{t("total")}</p>
+                      <p className="text-xs text-slate-600">
+                        {row.ccPremiumRealized < row.ccPremiumTotal
+                          ? t("cc.premiumRealizedHint", {
+                              realized: `$${row.ccPremiumRealized.toFixed(0)}`,
+                            })
+                          : t("total")}
+                      </p>
                     </div>
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
                       <p className="text-[11px] font-medium uppercase tracking-wider text-slate-600">{t("cc.positions")}</p>

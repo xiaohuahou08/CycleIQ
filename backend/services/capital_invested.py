@@ -109,8 +109,9 @@ def compute_stock_effective_cost_as_of(trades: list[Trade], as_of: date) -> floa
             t
             for t in tt
             if t.option_type == "CALL"
-            and t.status in ("EXPIRED", "CLOSED", "ROLLED")
-            and _completion_date(t) <= as_of
+            and t.status in ("OPEN", "EXPIRED", "CLOSED", "ROLLED")
+            and (t.status == "OPEN" or _completion_date(t) <= as_of)
+            and (t.status != "OPEN" or t.trade_date <= as_of)
         ]
         cc_reduction_net = sum(_realized_cashflow(t) for t in basis_reducing_ccs)
         cc_reduction_per_share = cc_reduction_net / assigned_shares
@@ -280,7 +281,7 @@ def compute_stock_effective_cost(trades: list[Trade], today: date | None = None)
         basis_reducing_ccs = [
             t
             for t in tt
-            if t.option_type == "CALL" and t.status in ("EXPIRED", "CLOSED", "ROLLED")
+            if t.option_type == "CALL" and t.status in ("OPEN", "EXPIRED", "CLOSED", "ROLLED")
         ]
         cc_reduction_net = sum(_realized_cashflow(t) for t in basis_reducing_ccs)
         cc_reduction_per_share = cc_reduction_net / assigned_shares

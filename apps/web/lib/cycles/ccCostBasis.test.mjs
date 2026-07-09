@@ -4,6 +4,7 @@ import {
   availableCcSharesForTicker,
   basisReducingCcPremium,
   buildCcCostBasisRows,
+  effectiveCcPremiumForBasis,
   isCompletedWheel,
   netLegCashflow,
   resolveTradeCycleId,
@@ -51,6 +52,17 @@ describe("basisReducingCcPremium", () => {
   });
 });
 
+describe("effectiveCcPremiumForBasis", () => {
+  it("includes OPEN plus terminal CC legs", () => {
+    const legs = [
+      trade({ option_type: "CALL", status: "EXPIRED", premium: 2.0 }),
+      trade({ id: "t2", option_type: "CALL", status: "OPEN", premium: 3.0 }),
+      trade({ id: "t3", option_type: "CALL", status: "CALLED_AWAY", premium: 4.0 }),
+    ];
+    assert.equal(effectiveCcPremiumForBasis(legs), 500);
+  });
+});
+
 describe("buildCcCostBasisRows", () => {
   it("skips completed wheels and reduces basis from expired CC premium", () => {
     const assignedPut = trade({
@@ -90,7 +102,42 @@ describe("buildCcCostBasisRows", () => {
     assert.equal(rows[0].wheelId, "wheel-active");
     assert.equal(rows[0].initialCost, 387.5);
     assert.equal(rows[0].ccPremiumTotal, 200);
+    assert.equal(rows[0].ccPremiumRealized, 200);
     assert.equal(rows[0].currentCost, 385.5);
+  });
+
+  it("reduces basis immediately when an OPEN CC is sold", () => {
+    const assignedPut = trade({
+      id: "put1",
+      status: "ASSIGNED",
+      stock_cost_basis_per_share: 100,
+    });
+    const openCc = trade({
+      id: "cc-open",
+      option_type: "CALL",
+      status: "OPEN",
+      premium: 2.0,
+      cycle_id: "cycle-1",
+    });
+    const wheels = [
+      {
+        id: "wheel-active",
+        ticker: "UNH",
+        state: "CC_OPEN",
+        trades: [assignedPut],
+      },
+    ];
+    const allTrades = [
+      { ...assignedPut, cycle_id: "cycle-1" },
+      openCc,
+    ];
+
+    const rows = buildCcCostBasisRows(wheels, allTrades);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].ccPremiumTotal, 200);
+    assert.equal(rows[0].ccPremiumRealized, 0);
+    assert.equal(rows[0].currentCost, 98);
+    assert.equal(rows[0].ccPositions, 1);
   });
 
   it("includes orphan assigned puts not linked to a wheel split", () => {

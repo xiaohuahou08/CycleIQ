@@ -171,13 +171,11 @@ def register_dashboard_routes(dashboard_bp):
                 / assigned_shares
             )
 
-            # EXPIRED, CLOSED (bought-back), and ROLLED CC legs all reduce the stock cost basis.
-            # ROLLED uses net cashflow (premium − buyback) via _realized_cashflow, so the
-            # debit portion of a debit-roll correctly increases the effective basis instead.
-            # CALLED_AWAY is excluded here — those shares were sold, handled in stock_sale_pnl.
+            # OPEN (premium collected), EXPIRED, CLOSED, and ROLLED CC legs reduce stock cost basis.
+            # CALLED_AWAY is excluded — those shares were sold, handled in stock_sale_pnl.
             basis_reducing_ccs = [
                 t for t in tt
-                if t.option_type == "CALL" and t.status in ("EXPIRED", "CLOSED", "ROLLED")
+                if t.option_type == "CALL" and t.status in ("OPEN", "EXPIRED", "CLOSED", "ROLLED")
             ]
             cc_reduction_net = sum(_realized_cashflow(t) for t in basis_reducing_ccs)
             cc_reduction_per_share = cc_reduction_net / assigned_shares

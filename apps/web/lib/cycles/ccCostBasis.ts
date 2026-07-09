@@ -15,6 +15,7 @@ export interface CcCostBasisRow {
   initialCost: number;
   currentCost: number;
   ccPremiumTotal: number;
+  ccPremiumRealized: number;
   assignedShares: number;
   ccPositions: number;
   reductionPct: number;
@@ -194,6 +195,36 @@ export function basisReducingCcPremium(trades: Trade[]): number {
     .reduce((sum, t) => sum + netLegCashflow(t), 0);
 }
 
+/**
+ * CC premium that lowers effective stock cost — includes OPEN legs (premium collected
+ * on sale) plus terminal legs. Excludes CALLED_AWAY (shares exited).
+ */
+export function effectiveCcPremiumForBasis(trades: Trade[]): number {
+  return trades
+    .filter(
+      (t) =>
+        t.option_type === "CALL" &&
+        (t.status === "OPEN" ||
+          t.status === "EXPIRED" ||
+          t.status === "CLOSED" ||
+          t.status === "ROLLED")
+    )
+    .reduce((sum, t) => sum + netLegCashflow(t), 0);
+}
+
+function tradesScopedToWheel(wheelTrades: Trade[], allTrades: Trade[]): Trade[] {
+  const tickers = new Set(wheelTrades.map((t) => t.ticker.toUpperCase()));
+  const cycleIds = new Set<string>();
+  for (const t of [...wheelTrades, ...allTrades]) {
+    if (t.cycle_id && tickers.has(t.ticker.toUpperCase())) {
+      cycleIds.add(t.cycle_id);
+    }
+  }
+  if (cycleIds.size === 0) return wheelTrades;
+  const scoped = allTrades.filter((t) => t.cycle_id != null && cycleIds.has(t.cycle_id));
+  return scoped.length > 0 ? scoped : wheelTrades;
+}
+
 export function buildCcCostBasisRow(
   wheelId: string,
   ticker: string,
@@ -212,7 +243,8 @@ export function buildCcCostBasisRow(
       0
     ) / assignedShares;
 
-  const ccPremiumTotal = basisReducingCcPremium(wheelTrades);
+  const ccPremiumTotal = effectiveCcPremiumForBasis(wheelTrades);
+  const ccPremiumRealized = basisReducingCcPremium(wheelTrades);
   const reductionPerShare = ccPremiumTotal / assignedShares;
   const currentCost = Math.max(0, weightedInitialCost - reductionPerShare);
   const reductionPct =
@@ -234,6 +266,7 @@ export function buildCcCostBasisRow(
     initialCost: weightedInitialCost,
     currentCost,
     ccPremiumTotal,
+    ccPremiumRealized,
     assignedShares,
     ccPositions: wheelTrades.filter((t) => t.option_type === "CALL").length,
     reductionPct,
@@ -249,10 +282,11 @@ export function buildCcCostBasisRows(
 
   for (const wheel of wheels) {
     if (isCompletedWheel(wheel.state)) continue;
+    const scopedTrades = tradesScopedToWheel(wheel.trades, allTrades);
     const row = buildCcCostBasisRow(
       wheel.id,
       wheel.ticker,
-      wheel.trades,
+      scopedTrades,
       wheel.created_at?.slice(0, 10)
     );
     if (row) rows.push(row);
