@@ -27,6 +27,7 @@ import RefreshingSpinner from "@/app/components/RefreshingSpinner";
 import { useToast } from "@/app/components/Toast";
 import { useLocale, useTranslations } from "@/lib/i18n/locale-context";
 import { applyFilters, getClosedCycleIds } from "@/lib/trades/filters";
+import { assignedCycleIdByTicker, tickersWithCcStock } from "@/lib/cycles/ccCostBasis";
 import TradeFilters, { type FilterState } from "./components/TradeFilters";
 import TradeList from "./components/TradeList";
 
@@ -106,41 +107,12 @@ export default function TradesPage() {
 
   const closedCycleIds = useMemo(() => getClosedCycleIds(allTrades), [allTrades]);
 
-  // Tickers that have an assigned (stock-held) position, i.e. CSP that was assigned.
-  // Exclude wheels that are already closed (no OPEN legs), including called-away wheels.
-  const assignedTickers = useMemo(() => {
-    return Array.from(
-      new Set(
-        allTrades
-          .filter(
-            (t) =>
-              t.option_type === "PUT" &&
-              t.status === "ASSIGNED" &&
-              (!t.cycle_id || !closedCycleIds.has(t.cycle_id))
-          )
-          .map((t) => t.ticker)
-      )
-    );
-  }, [allTrades, closedCycleIds]);
+  const assignedTickers = useMemo(() => tickersWithCcStock(allTrades), [allTrades]);
 
-  // Map ticker → cycle_id for ASSIGNED PUT trades (most recent per ticker).
-  // Used to explicitly link new CC trades to the correct existing wheel.
-  const assignedCycleByTicker = useMemo(() => {
-    const map: Record<string, string> = {};
-    allTrades
-      .filter(
-        (t) =>
-          t.option_type === "PUT" &&
-          t.status === "ASSIGNED" &&
-          t.cycle_id &&
-          !closedCycleIds.has(t.cycle_id)
-      )
-      .sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime())
-      .forEach((t) => {
-        if (t.cycle_id) map[t.ticker] = t.cycle_id;
-      });
-    return map;
-  }, [allTrades, closedCycleIds]);
+  const assignedCycleByTicker = useMemo(
+    () => assignedCycleIdByTicker(allTrades),
+    [allTrades]
+  );
 
   // Fetch live prices for all unique tickers whenever the trade list changes.
   useEffect(() => {
@@ -408,6 +380,7 @@ export default function TradesPage() {
             setAllTrades((prev) =>
               prev.map((t) => (t.id === assigningTrade.id ? updated : t))
             );
+            await reloadTrades();
             setAssigningTrade(null);
             showToast(
               assigningTrade.option_type === "CALL"

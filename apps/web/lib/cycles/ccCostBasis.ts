@@ -15,6 +15,7 @@ export interface CcCostBasisRow {
   initialCost: number;
   currentCost: number;
   ccPremiumTotal: number;
+  ccPremiumRealized: number;
   assignedShares: number;
   ccPositions: number;
   reductionPct: number;
@@ -54,6 +55,86 @@ export function assignmentStockBasisPerShare(put: Trade): number | null {
   const assignFee = put.fees_on_assignment ?? 0;
   const priorRoll = put.prior_roll_premium_per_share ?? 0;
   return put.strike - put.premium - priorRoll + (openFee + assignFee) / shares;
+}
+
+/** Shares still available to write new OPEN covered calls for a ticker. */
+export function availableCcSharesForTicker(
+  trades: Trade[],
+  ticker: string,
+  options?: { excludeTradeId?: string }
+): number {
+  const sym = ticker.toUpperCase().trim();
+  const tt = trades.filter((t) => t.ticker.toUpperCase() === sym);
+  const assignedPuts = tt.filter(
+    (t) =>
+      t.option_type === "PUT" &&
+      (t.status === "ASSIGNED" || t.status === "CALLED_AWAY") &&
+      assignmentStockBasisPerShare(t) != null
+  );
+  if (assignedPuts.length === 0) return 0;
+
+  const assignedShares = assignedPuts.reduce((s, t) => s + t.contracts * 100, 0);
+  const calledAwayShares = tt
+    .filter((t) => t.option_type === "CALL" && t.status === "CALLED_AWAY")
+    .reduce((s, t) => s + t.contracts * 100, 0);
+  const exclude = options?.excludeTradeId;
+  const openCcShares = tt
+    .filter(
+      (t) =>
+        t.option_type === "CALL" &&
+        t.status === "OPEN" &&
+        t.id !== exclude
+    )
+    .reduce((s, t) => s + t.contracts * 100, 0);
+
+  return Math.max(0, assignedShares - calledAwayShares - openCcShares);
+}
+
+/** Resolve cycle_id from the trade or its rolled_from chain. */
+export function resolveTradeCycleId(trade: Trade, trades: Trade[]): string | undefined {
+  if (trade.cycle_id) return trade.cycle_id;
+  const byId = new Map(trades.map((t) => [t.id, t]));
+  const seen = new Set<string>();
+  let currentId: string | null | undefined = trade.rolled_from_id;
+  while (currentId && !seen.has(currentId)) {
+    seen.add(currentId);
+    const parent = byId.get(currentId);
+    if (!parent) break;
+    if (parent.cycle_id) return parent.cycle_id;
+    currentId = parent.rolled_from_id;
+  }
+  return undefined;
+}
+
+/** Tickers with stock still held after CSP assignment (shares available for CC). */
+export function tickersWithCcStock(trades: Trade[]): string[] {
+  const tickers = new Set<string>();
+  for (const t of trades) {
+    if (availableCcSharesForTicker(trades, t.ticker) > 0) {
+      tickers.add(t.ticker.toUpperCase());
+    }
+  }
+  return Array.from(tickers).sort((a, b) => a.localeCompare(b));
+}
+
+/** Map ticker → cycle_id for wheels with assignable stock (most recent ASSIGNED put). */
+export function assignedCycleIdByTicker(trades: Trade[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  const puts = trades
+    .filter((t) => t.option_type === "PUT" && t.status === "ASSIGNED")
+    .sort((a, b) => a.trade_date.localeCompare(b.trade_date));
+
+  for (const put of puts) {
+    const ticker = put.ticker.toUpperCase();
+    if (availableCcSharesForTicker(trades, ticker) <= 0) continue;
+    const cycleId = resolveTradeCycleId(put, trades);
+    if (cycleId) map[ticker] = cycleId;
+  }
+  return map;
+}
+
+export function assignedCycleIdForTicker(trades: Trade[], ticker: string): string | undefined {
+  return assignedCycleIdByTicker(trades)[ticker.toUpperCase().trim()];
 }
 
 /**
@@ -114,6 +195,36 @@ export function basisReducingCcPremium(trades: Trade[]): number {
     .reduce((sum, t) => sum + netLegCashflow(t), 0);
 }
 
+/**
+ * CC premium that lowers effective stock cost — includes OPEN legs (premium collected
+ * on sale) plus terminal legs. Excludes CALLED_AWAY (shares exited).
+ */
+export function effectiveCcPremiumForBasis(trades: Trade[]): number {
+  return trades
+    .filter(
+      (t) =>
+        t.option_type === "CALL" &&
+        (t.status === "OPEN" ||
+          t.status === "EXPIRED" ||
+          t.status === "CLOSED" ||
+          t.status === "ROLLED")
+    )
+    .reduce((sum, t) => sum + netLegCashflow(t), 0);
+}
+
+function tradesScopedToWheel(wheelTrades: Trade[], allTrades: Trade[]): Trade[] {
+  const tickers = new Set(wheelTrades.map((t) => t.ticker.toUpperCase()));
+  const cycleIds = new Set<string>();
+  for (const t of [...wheelTrades, ...allTrades]) {
+    if (t.cycle_id && tickers.has(t.ticker.toUpperCase())) {
+      cycleIds.add(t.cycle_id);
+    }
+  }
+  if (cycleIds.size === 0) return wheelTrades;
+  const scoped = allTrades.filter((t) => t.cycle_id != null && cycleIds.has(t.cycle_id));
+  return scoped.length > 0 ? scoped : wheelTrades;
+}
+
 export function buildCcCostBasisRow(
   wheelId: string,
   ticker: string,
@@ -132,7 +243,8 @@ export function buildCcCostBasisRow(
       0
     ) / assignedShares;
 
-  const ccPremiumTotal = basisReducingCcPremium(wheelTrades);
+  const ccPremiumTotal = effectiveCcPremiumForBasis(wheelTrades);
+  const ccPremiumRealized = basisReducingCcPremium(wheelTrades);
   const reductionPerShare = ccPremiumTotal / assignedShares;
   const currentCost = Math.max(0, weightedInitialCost - reductionPerShare);
   const reductionPct =
@@ -154,6 +266,7 @@ export function buildCcCostBasisRow(
     initialCost: weightedInitialCost,
     currentCost,
     ccPremiumTotal,
+    ccPremiumRealized,
     assignedShares,
     ccPositions: wheelTrades.filter((t) => t.option_type === "CALL").length,
     reductionPct,
@@ -169,10 +282,11 @@ export function buildCcCostBasisRows(
 
   for (const wheel of wheels) {
     if (isCompletedWheel(wheel.state)) continue;
+    const scopedTrades = tradesScopedToWheel(wheel.trades, allTrades);
     const row = buildCcCostBasisRow(
       wheel.id,
       wheel.ticker,
-      wheel.trades,
+      scopedTrades,
       wheel.created_at?.slice(0, 10)
     );
     if (row) rows.push(row);

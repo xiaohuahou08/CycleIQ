@@ -83,4 +83,18 @@ describe("getClosedCycleIds", () => {
     assert.equal(closed.has("c2"), true);
     assert.equal(closed.has("c3"), false);
   });
+
+  it("keeps cycles with assigned stock open even without OPEN option legs", () => {
+    const trades = [
+      trade({
+        id: "1",
+        cycle_id: "c-assigned",
+        option_type: "PUT",
+        status: "ASSIGNED",
+        stock_cost_basis_per_share: 50,
+      }),
+    ];
+    const closed = getClosedCycleIds(trades);
+    assert.equal(closed.has("c-assigned"), false);
+  });
 });

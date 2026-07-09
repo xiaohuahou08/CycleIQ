@@ -567,6 +567,8 @@ const en = {
       expiration: "Expiration Date",
       ccLinkFound:
         "Will link to the existing wheel cycle for {{ticker}} (assigned position found).",
+      ccPickAssignedTicker:
+        "Assigned stock on hand: {{tickers}}. Enter one of these tickers to sell a covered call.",
       ccNoAssignment:
         "No assigned position found for {{ticker}}. A covered call requires owning the underlying shares (from a prior CSP assignment).",
       capitalSummary:
@@ -584,6 +586,10 @@ const en = {
       wholeNumber: "Must be a whole number",
       minContracts: "Minimum 1 contract",
       notesMax: "Max 500 characters",
+      ccNoPosition:
+        "No assigned stock for {{ticker}}. Sell a CSP and mark it assigned before opening a covered call.",
+      ccInsufficientShares:
+        "Not enough shares for {{ticker}}: {{needed}} shares needed but only {{available}} available ({{availableContracts}} contracts).",
     },
     optional: {
       title: "Optional Details",
@@ -692,7 +698,8 @@ const en = {
       },
       initialCost: "Initial Cost",
       currentCost: "Current Cost",
-      premiumRealized: "CC Premium (Realized)",
+      premiumRealized: "CC Premium (Collected)",
+      premiumRealizedHint: "{{realized}} realized · includes open legs",
       positions: "CC Positions",
       costOverTime: "Cost Basis Over Time",
       subtitle: "{{strike}} CSP · {{date}}",

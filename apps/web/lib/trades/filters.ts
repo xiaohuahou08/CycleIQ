@@ -22,12 +22,13 @@ export function getClosedCycleIds(trades: Trade[]): Set<string> {
     Object.entries(cycleTrades)
       .filter(([, ts]) => {
         const hasCalledAway = ts.some(
-          (t) =>
-            (t.option_type === "CALL" || t.option_type === "PUT") &&
-            t.status === "CALLED_AWAY"
+          (t) => t.option_type === "CALL" && t.status === "CALLED_AWAY"
         );
         const hasOpen = ts.some((t) => t.status === "OPEN");
-        return hasCalledAway || !hasOpen;
+        const hasAssignedStock = ts.some(
+          (t) => t.option_type === "PUT" && t.status === "ASSIGNED"
+        );
+        return hasCalledAway || (!hasOpen && !hasAssignedStock);
       })
       .map(([cycleId]) => cycleId)
   );

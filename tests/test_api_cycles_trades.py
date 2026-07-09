@@ -176,6 +176,28 @@ def test_put_assigned_sets_stock_cost_basis_csp(client):
 
 def test_put_called_away_clears_stock_cost_basis(client):
     h = auth_headers("cccccccc-cccc-cccc-cccc-cccccccccccc")
+    put_payload = {
+        "ticker": "HIMS",
+        "option_type": "PUT",
+        "strike": 28,
+        "expiry": "2026-06-15",
+        "trade_date": "2026-03-15",
+        "premium": 1.2,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    put_created = client.post("/api/trades", json=put_payload, headers=h)
+    assert put_created.status_code == 201
+    put_id = put_created.get_json()["id"]
+    cycle_id = put_created.get_json()["cycle_id"]
+
+    assign = client.put(
+        f"/api/trades/{put_id}",
+        json={"status": "ASSIGNED", "trade_date": "2026-04-01", "strike": 28},
+        headers=h,
+    )
+    assert assign.status_code == 200
+
     payload = {
         "ticker": "HIMS",
         "option_type": "CALL",
@@ -185,6 +207,7 @@ def test_put_called_away_clears_stock_cost_basis(client):
         "premium": 1.5,
         "contracts": 1,
         "status": "OPEN",
+        "cycle_id": cycle_id,
     }
     created = client.post("/api/trades", json=payload, headers=h)
     assert created.status_code == 201
@@ -586,6 +609,63 @@ def test_dashboard_expired_cc_reduces_stock_effective_cost(client):
     expected_cost = (basis - cc_reduction / 100) * 100
     assert kpis["total_cc_basis_reduction"] == pytest.approx(cc_reduction, abs=0.01)
     assert kpis["total_stock_effective_cost"] == pytest.approx(expected_cost, abs=0.01)
+
+
+def test_create_open_cc_rejects_without_assigned_stock(client):
+    h = auth_headers("cccccccc-cccc-cccc-cccc-cccccccccccc")
+    payload = {
+        "ticker": "AAPL",
+        "option_type": "CALL",
+        "strike": 160,
+        "expiry": "2027-01-15",
+        "trade_date": "2026-06-20",
+        "premium": 1.5,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    r = client.post("/api/trades", json=payload, headers=h)
+    assert r.status_code == 400
+    assert "assigned stock" in r.get_json().get("error", "").lower()
+
+
+def test_create_open_cc_rejects_when_contracts_exceed_shares(client):
+    h = auth_headers("dddddddd-dddd-dddd-dddd-dddddddddddd")
+    put_payload = {
+        "ticker": "UNH",
+        "option_type": "PUT",
+        "strike": 390,
+        "expiry": "2026-06-20",
+        "trade_date": "2026-04-01",
+        "premium": 2.5,
+        "contracts": 1,
+        "status": "OPEN",
+    }
+    put_created = client.post("/api/trades", json=put_payload, headers=h)
+    assert put_created.status_code == 201
+    put_id = put_created.get_json()["id"]
+    cycle_id = put_created.get_json()["cycle_id"]
+
+    assign = client.put(
+        f"/api/trades/{put_id}",
+        json={"status": "ASSIGNED", "trade_date": "2026-04-29"},
+        headers=h,
+    )
+    assert assign.status_code == 200
+
+    cc_payload = {
+        "ticker": "UNH",
+        "option_type": "CALL",
+        "strike": 400,
+        "expiry": "2026-07-18",
+        "trade_date": "2026-05-01",
+        "premium": 3.0,
+        "contracts": 2,
+        "status": "OPEN",
+        "cycle_id": cycle_id,
+    }
+    r = client.post("/api/trades", json=cc_payload, headers=h)
+    assert r.status_code == 400
+    assert "not enough" in r.get_json().get("error", "").lower()
 
 
 def test_get_preferences_returns_defaults_when_missing(client):
