@@ -236,9 +236,15 @@ function cmpNum(a: number, b: number): number {
   return a === b ? 0 : a < b ? -1 : 1;
 }
 
-function compareTrades(a: Trade, b: Trade, key: SortKey, dir: number): number {
-  const roiA = annualizedRoiPct(a);
-  const roiB = annualizedRoiPct(b);
+function compareTrades(
+  a: Trade,
+  b: Trade,
+  key: SortKey,
+  dir: number,
+  allTrades: Trade[]
+): number {
+  const roiA = annualizedRoiPct(a, allTrades);
+  const roiB = annualizedRoiPct(b, allTrades);
   switch (key) {
     case "ticker":
       return dir * a.ticker.localeCompare(b.ticker);
@@ -642,7 +648,7 @@ export default function TradeList({
   const groups = useMemo(() => {
     const acc: Record<string, Trade[]> = {};
     const sortedFlat = [...trades].sort((a, b) =>
-      compareTrades(a, b, sort.key, sort.dir === "asc" ? 1 : -1)
+      compareTrades(a, b, sort.key, sort.dir === "asc" ? 1 : -1, allTrades)
     );
     for (const t of sortedFlat) {
       const k = getWeekKey(t.expiry);
@@ -650,7 +656,7 @@ export default function TradeList({
       acc[k].push(t);
     }
     return acc;
-  }, [trades, sort]);
+  }, [trades, sort, allTrades]);
 
   const sortedWeekKeys = useMemo(() => {
     const keys = Object.keys(groups);
