@@ -5,6 +5,7 @@ import {
   basisReducingCcPremium,
   buildCcCostBasisRows,
   effectiveCcPremiumForBasis,
+  effectiveStockCostPerShareForTrade,
   isCompletedWheel,
   netLegCashflow,
   resolveTradeCycleId,
@@ -60,6 +61,31 @@ describe("effectiveCcPremiumForBasis", () => {
       trade({ id: "t3", option_type: "CALL", status: "CALLED_AWAY", premium: 4.0 }),
     ];
     assert.equal(effectiveCcPremiumForBasis(legs), 500);
+  });
+});
+
+describe("effectiveStockCostPerShareForTrade", () => {
+  it("returns assignment basis for ASSIGNED CSP", () => {
+    const put = trade({ status: "ASSIGNED", stock_cost_basis_per_share: 387.5 });
+    assert.equal(effectiveStockCostPerShareForTrade(put, [put]), 387.5);
+  });
+
+  it("reduces CC stock cost by OPEN premium on same cycle", () => {
+    const put = trade({
+      id: "put",
+      status: "ASSIGNED",
+      stock_cost_basis_per_share: 387.5,
+      cycle_id: "cycle-1",
+    });
+    const cc = trade({
+      id: "cc",
+      option_type: "CALL",
+      status: "OPEN",
+      premium: 3.0,
+      cycle_id: "cycle-1",
+    });
+    const all = [put, cc];
+    assert.equal(effectiveStockCostPerShareForTrade(cc, all), 384.5);
   });
 });
 

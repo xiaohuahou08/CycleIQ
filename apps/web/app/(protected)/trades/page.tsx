@@ -276,6 +276,7 @@ export default function TradesPage() {
             <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-white">
               <TradeList
                 trades={filtered}
+                allTrades={allTrades}
                 prices={prices}
                 onDeleteTrade={onDeleteTrade}
                 onEditTrade={onEditTrade}
