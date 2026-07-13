@@ -184,6 +184,7 @@ describe("wheelTotalNetPnl", () => {
   it("adds stock sale gain when CC is called away", () => {
     const put = trade({
       status: "ASSIGNED",
+      strike: 390,
       stock_cost_basis_per_share: 387.5,
       premium: 2.5,
     });
@@ -195,11 +196,38 @@ describe("wheelTotalNetPnl", () => {
       premium: 3.0,
     });
     const pnl = wheelTotalNetPnl([put, cc]);
-    // option cashflows: 250 + 300; stock gain: (400 - 387.5) * 100
-    assert.equal(pnl, 550 + 1250);
+    // option cashflows: 250 + 300; stock: (400 - 390) * 100 — use strike, not basis
+    assert.equal(pnl, 550 + 1000);
   });
 
-  it("excludes ROLLED legs from double-counting roll premium", () => {
+  it("includes ROLLED CC premium and does not double-count CSP premium", () => {
+    const put = trade({
+      id: "csp",
+      status: "CALLED_AWAY",
+      strike: 390,
+      premium: 3.1994,
+      stock_cost_basis_per_share: 386.8006,
+    });
+    const rolled = trade({
+      id: "cc-roll",
+      option_type: "CALL",
+      status: "ROLLED",
+      strike: 388,
+      premium: 0.6195,
+    });
+    const ccAway = trade({
+      id: "cc-away",
+      option_type: "CALL",
+      status: "CALLED_AWAY",
+      strike: 390,
+      premium: 1.049,
+    });
+    const pnl = wheelTotalNetPnl([put, rolled, ccAway]);
+    // premiums only (stock strike-to-strike is 0): 319.94 + 61.95 + 104.90
+    assert.equal(Math.round(pnl * 100) / 100, 486.79);
+  });
+
+  it("counts ROLLED CSP premium once via cashflow (stock uses strike)", () => {
     const rolled = trade({
       id: "rolled",
       status: "ROLLED",
@@ -214,7 +242,7 @@ describe("wheelTotalNetPnl", () => {
       stock_cost_basis_per_share: 387.5,
     });
     const pnl = wheelTotalNetPnl([rolled, assigned]);
-    assert.equal(pnl, 200);
+    assert.equal(pnl, 100 + 200);
   });
 });
 

@@ -102,24 +102,20 @@ function stockSalePnl(trades: Trade[]): number {
     const assignedPuts = tt.filter(
       (t) =>
         t.option_type === "PUT" &&
-        (t.status === "ASSIGNED" || t.status === "CALLED_AWAY") &&
-        assignmentStockBasisPerShare(t) != null
+        (t.status === "ASSIGNED" || t.status === "CALLED_AWAY")
     );
     if (assignedPuts.length === 0) continue;
 
     const assignedShares = assignedPuts.reduce((s, t) => s + t.contracts * 100, 0);
     if (assignedShares <= 0) continue;
 
-    let basisWeighted = 0;
-    for (const put of assignedPuts) {
-      const basis = assignmentStockBasisPerShare(put);
-      if (basis == null) continue;
-      basisWeighted += basis * put.contracts * 100;
-    }
-    const weightedInitialBasis = basisWeighted / assignedShares;
+    const weightedAssignmentStrike =
+      assignedPuts.reduce((sum, put) => sum + put.strike * put.contracts * 100, 0) /
+      assignedShares;
 
     for (const cc of tt.filter((t) => t.option_type === "CALL" && t.status === "CALLED_AWAY")) {
-      extra += (cc.strike - weightedInitialBasis) * cc.contracts * 100;
+      // Purchase at CSP strike; premiums stay in option cashflows (no basis double-count).
+      extra += (cc.strike - weightedAssignmentStrike) * cc.contracts * 100;
     }
   }
   return extra;

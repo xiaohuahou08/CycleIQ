@@ -117,7 +117,7 @@ export interface DashboardInsights {
     total_stock_effective_cost?: number;
     /** Cumulative CC premium credited against stock holding cost (expired + closed CC legs). */
     total_cc_basis_reduction?: number;
-    /** Realised P&L from stock sales when CC legs were called away (strike − initial stock basis). */
+    /** Realised P&L from stock sales when CC legs were called away (CC strike − CSP strike). */
     stock_sale_pnl?: number;
   };
   charts: {

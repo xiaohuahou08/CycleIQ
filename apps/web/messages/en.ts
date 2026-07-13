@@ -413,7 +413,7 @@ const en = {
       realizedPnl: {
         label: "Realized P&L",
         sub: "Option cashflow + stock sales",
-        tip: "Net option cashflow (premium − fees − buyback) on CLOSED, EXPIRED, ROLLED, CALLED_AWAY, and ASSIGNED legs, plus stock P&L when CC shares are called away (strike − assignment basis).",
+        tip: "Net option cashflow (premium − fees − buyback) on CLOSED, EXPIRED, ROLLED, CALLED_AWAY, and ASSIGNED legs, plus stock P&L when CC shares are called away (CC strike − CSP assignment strike).",
       },
       yearlyIncome: {
         label: "Yearly Income",

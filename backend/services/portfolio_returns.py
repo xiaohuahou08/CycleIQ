@@ -40,13 +40,12 @@ def net_inflow_on_day(day: date, flows: list[CapitalFlowEvent]) -> float:
     return sum(f.amount for f in flows if f.event_date == day)
 
 
-def _assignment_basis_per_share(tt: list[Trade]) -> float | None:
+def _assignment_strike_per_share(tt: list[Trade]) -> float | None:
+    """Weighted CSP assignment strike (purchase price) for call-away stock P&L."""
     assigned_puts = [
         t
         for t in tt
-        if t.option_type == "PUT"
-        and t.status in ("ASSIGNED", "CALLED_AWAY")
-        and t.stock_cost_basis_per_share is not None
+        if t.option_type == "PUT" and t.status in ("ASSIGNED", "CALLED_AWAY")
     ]
     if not assigned_puts:
         return None
@@ -54,22 +53,20 @@ def _assignment_basis_per_share(tt: list[Trade]) -> float | None:
     if assigned_shares <= 0:
         return None
     return (
-        sum(
-            float(t.stock_cost_basis_per_share) * int(t.contracts) * 100
-            for t in assigned_puts
-        )
+        sum(float(t.strike) * int(t.contracts) * 100 for t in assigned_puts)
         / assigned_shares
     )
 
 
-def _leg_realized_pnl(t: Trade, assignment_basis_per_share: float | None) -> float:
+def _leg_realized_pnl(t: Trade, assignment_strike_per_share: float | None) -> float:
     pnl = _realized_cashflow(t)
     if (
         t.option_type == "CALL"
         and t.status == "CALLED_AWAY"
-        and assignment_basis_per_share is not None
+        and assignment_strike_per_share is not None
     ):
-        pnl += (float(t.strike) - assignment_basis_per_share) * int(t.contracts) * 100
+        # Stock sold at CC strike vs bought at CSP strike (premiums in cashflow only).
+        pnl += (float(t.strike) - assignment_strike_per_share) * int(t.contracts) * 100
     return pnl
 
 
@@ -83,10 +80,10 @@ class _PnlTimeline:
         by_ticker: dict[str, list[Trade]] = defaultdict(list)
         for t in trades:
             by_ticker[t.ticker].append(t)
-        assignment_basis = {
-            ticker: basis
+        assignment_strike = {
+            ticker: strike
             for ticker, tt in by_ticker.items()
-            if (basis := _assignment_basis_per_share(tt)) is not None
+            if (strike := _assignment_strike_per_share(tt)) is not None
         }
 
         deltas: dict[date, float] = defaultdict(float)
@@ -97,7 +94,7 @@ class _PnlTimeline:
             if completion > today:
                 continue
             deltas[completion] += _leg_realized_pnl(
-                t, assignment_basis.get(t.ticker)
+                t, assignment_strike.get(t.ticker)
             )
 
         dates = sorted(deltas.keys())
