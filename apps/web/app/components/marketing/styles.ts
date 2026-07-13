@@ -11,7 +11,7 @@ export { Button, buttonVariants } from "@/components/ui/button";
 export { Badge, badgeVariants } from "@/components/ui/badge";
 export { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
-export type MarketingPage = "home" | "pricing" | "contact";
+export type MarketingPage = "home" | "pricing" | "about" | "faq" | "contact";
 
 export const MARKETING_LABEL_CLS = "text-sm font-medium text-slate-700";
 export const MARKETING_INPUT_CLS =

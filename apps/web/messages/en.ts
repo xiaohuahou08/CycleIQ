@@ -155,6 +155,8 @@ const en = {
     reports: "Reports",
     home: "Home",
     pricing: "Pricing",
+    about: "About",
+    faq: "FAQ",
     contact: "Contact Us",
     signInRegister: "Sign in / Register",
     signIn: "Sign in",
@@ -246,6 +248,119 @@ const en = {
         title: "Start tracking your wheel today",
         body: "Free to use. No broker connection. Log your first CSP in minutes.",
       },
+      disclaimer:
+        "CycleIQ is a trade journaling and analytics tool. It is not a broker, investment adviser, or signal service. Nothing on this site is financial, investment, or trading advice. Options trading involves substantial risk of loss.",
+    },
+    about: {
+      metaTitle: "About CycleIQ",
+      metaDescription:
+        "Learn what CycleIQ is: a wheel-strategy tracker for cash-secured puts and covered calls. We help you journal trades, link cycles, and review premium and P&L — not trade for you.",
+      badge: "About CycleIQ",
+      title: "Built for traders who run the wheel.",
+      titleAccent: "Clear books, clearer decisions.",
+      subtitle:
+        "CycleIQ is a focused web app for retail options traders who sell cash-secured puts and covered calls. We turn scattered fills into readable wheel cycles so you can see premium, cost basis, and outcomes in one place.",
+      mission: {
+        title: "Our mission",
+        p1: "Most brokers show option legs in isolation. Spreadsheets break the moment you roll, get assigned, or run several tickers at once. CycleIQ exists to close that gap: a durable journal purpose-built for the options wheel lifecycle.",
+        p2: "We are not trying to be an all-in-one trading platform. We focus on accurate records, cycle state, and the metrics wheel traders actually use day to day.",
+      },
+      what: {
+        title: "What CycleIQ does",
+        p1: "When you use CycleIQ, you can:",
+        i1: "Log CSP and covered-call trades manually — strike, expiry, premium, contracts, and fees",
+        i2: "Link legs into wheel cycles, including rolls, assignments, and call-aways",
+        i3: "Review dashboard KPIs such as realized P&L, premium, win rate, and capital deployed",
+        i4: "Track covered-call cost basis on open assigned positions",
+      },
+      not: {
+        title: "What CycleIQ is not",
+        p1: "Transparency matters for anyone evaluating the product — and for advertising destination standards:",
+        i1: "Not a brokerage: we do not place, route, or execute orders",
+        i2: "Not investment advice: we do not recommend tickers, strikes, or trades",
+        i3: "Not a copy-trading or signal product: you enter and own your own data",
+      },
+      pillars: {
+        p1: {
+          title: "For retail wheel traders",
+          body: "If you already sell CSPs and CCs and need cleaner books, CycleIQ is designed around that workflow.",
+        },
+        p2: {
+          title: "Manual-first by design",
+          body: "No broker API required. You control what gets logged, which keeps setup simple and data ownership clear.",
+        },
+        p3: {
+          title: "Straightforward pricing",
+          body: "Basic is free with a monthly trade cap. Premium is $1/month for unlimited logging via Stripe.",
+        },
+      },
+      support: {
+        title: "How to reach us",
+        p1: "Questions about your account, billing, or how cycles work? Email support or use the contact form. We typically reply within 1–2 business days.",
+        faqLink: "Read the FAQ",
+        contactLink: "Contact form",
+      },
+      disclaimer:
+        "CycleIQ provides software for record-keeping and analysis only. Past performance shown in your dashboard reflects your own logged activity and is not a guarantee of future results. Options trading can result in the loss of capital.",
+      cta: {
+        title: "See CycleIQ in practice",
+        body: "Create a free Basic account and log your first CSP in minutes.",
+      },
+    },
+    faq: {
+      metaTitle: "FAQ",
+      metaDescription:
+        "Answers about CycleIQ: what the wheel tracker does, pricing, data privacy, brokers, and support. Learn how cash-secured put and covered-call journaling works.",
+      badge: "Help center",
+      title: "Questions about CycleIQ.",
+      titleAccent: "Plain answers.",
+      subtitle:
+        "Product scope, pricing, privacy, and support — including what CycleIQ does not do. If you still need help, email us or use the contact form.",
+      listTitle: "Frequently asked questions",
+      stillNeedHelp: "Still need help? Reach support directly.",
+      contactLink: "Contact form",
+      cta: {
+        title: "Ready to start?",
+        body: "Basic is free. No broker connection required.",
+      },
+      items: {
+        what: {
+          q: "What is CycleIQ?",
+          a: "CycleIQ is a web application for journaling and analyzing options wheel strategies. You log cash-secured puts (CSPs) and covered calls (CCs); the app links related legs into cycles and shows premium, realized P&L, cost basis, and position status.",
+        },
+        broker: {
+          q: "Is CycleIQ a broker? Do you connect to my brokerage?",
+          a: "No. CycleIQ is not a broker and does not execute trades. Trade entry is manual — no broker API is required. Your brokerage remains the system of record for orders and positions.",
+        },
+        advice: {
+          q: "Does CycleIQ give trading or investment advice?",
+          a: "No. CycleIQ does not provide financial, investment, or trading advice, and it does not generate trade signals. Metrics and charts reflect the data you enter so you can review your own activity.",
+        },
+        wheel: {
+          q: "What is the options wheel strategy?",
+          a: "In common retail use, the wheel means selling cash-secured puts, accepting assignment of shares when puts finish in the money, then selling covered calls against those shares until they are called away — then repeating. CycleIQ tracks that CSP → assignment → CC lifecycle as one cycle per wheel.",
+        },
+        pricing: {
+          q: "How does pricing work?",
+          a: "Basic is free and includes up to 20 new trades per calendar month (UTC); editing existing trades does not count toward the limit. Premium is $1 per month via Stripe and allows unlimited new trades. Cancel Premium anytime from Settings → Billing.",
+        },
+        data: {
+          q: "Where is my data stored and who can see it?",
+          a: "Account authentication is handled by Supabase Auth. Trade and portfolio data you enter is stored to power your dashboards and reports. We do not sell your personal information. Details are in the Privacy Policy.",
+        },
+        cancel: {
+          q: "Can I cancel Premium or delete my account?",
+          a: "Yes. Premium subscriptions can be canceled from Settings → Billing; you keep Basic access subject to the monthly trade cap. For account deletion or data requests, contact support using the email on the Contact page.",
+        },
+        support: {
+          q: "How do I get help?",
+          a: "Email {{email}} or use the Contact page. We aim to respond within 1–2 business days. For billing or account issues, include the email on your CycleIQ account.",
+        },
+        privacy: {
+          q: "Where can I read the legal policies?",
+          a: "See our Privacy Policy and Terms of Service for how we handle data and the rules for using CycleIQ.",
+        },
+      },
     },
     pricing: {
       metaDescription:
@@ -281,6 +396,24 @@ const en = {
         tradeLimit: "Unlimited new trades per month.",
       },
       footer: "Premium is billed monthly via Stripe. Cancel anytime from Settings → Billing.",
+      faq: {
+        title: "Pricing questions",
+        subtitle: "How plans, limits, and billing work.",
+        items: {
+          limit: {
+            q: "What counts toward the Basic 20-trade limit?",
+            a: "Only newly created trades in the current UTC calendar month. Editing, expiring, rolling, or assigning an existing trade does not consume an extra slot.",
+          },
+          payment: {
+            q: "How is Premium billed?",
+            a: "Premium is $1 USD per month, billed through Stripe checkout. You can cancel anytime; access reverts to Basic at the end of the paid period.",
+          },
+          features: {
+            q: "Do Basic and Premium include the same features?",
+            a: "Yes. Both plans include wheel cycles, dashboard analytics, and the full trade workflow. Premium only removes the monthly new-trade cap.",
+          },
+        },
+      },
       cta: {
         title: "Start tracking your wheel today",
         body: "Basic is free — log your first CSP in minutes. No broker connection required.",
@@ -827,6 +960,11 @@ const en = {
     titleAccent: "Send us a message.",
     subtitle:
       "Questions about CycleIQ, your account, or the wheel strategy tracker? Fill out the form below and we'll reply to your email as soon as we can.",
+    emailLabel: "Email support",
+    responseTime: "We typically reply within 1–2 business days.",
+    faqHint: "Looking for quick answers?",
+    faqLink: "Browse the FAQ",
+    aboutLink: "About CycleIQ",
     form: {
       name: "Name",
       email: "Email",
