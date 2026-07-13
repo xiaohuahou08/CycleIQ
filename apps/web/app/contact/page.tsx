@@ -4,7 +4,6 @@ import MarketingShell from "@/app/components/marketing/MarketingShell";
 import { MARKETING_PAGE_PAD } from "@/app/components/marketing/styles";
 import { getServerTranslations } from "@/lib/i18n/server";
 import { createPageMetadata } from "@/lib/seo/metadata";
-import { SUPPORT_EMAIL } from "@/lib/seo/site";
 import ContactForm from "./ContactForm";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -41,37 +40,16 @@ export default async function ContactPage() {
               <span className="text-emerald-600"> {t("titleAccent")}</span>
             </h1>
             <p className="mt-5 text-base leading-relaxed text-slate-600">{t("subtitle")}</p>
-          </div>
-
-          <div className="mx-auto mt-8 grid max-w-xl grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 text-left shadow-sm ring-1 ring-slate-900/5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {t("emailLabel")}
-              </p>
-              <a
-                href={`mailto:${SUPPORT_EMAIL}`}
-                className="mt-2 block text-sm font-medium text-emerald-700 underline decoration-emerald-200 underline-offset-2 hover:text-emerald-800"
-              >
-                {SUPPORT_EMAIL}
-              </a>
-              <p className="mt-2 text-xs leading-relaxed text-slate-500">{t("responseTime")}</p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 text-left shadow-sm ring-1 ring-slate-900/5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {t("faqHint")}
-              </p>
-              <Link
-                href="/faq"
-                className="mt-2 inline-block text-sm font-medium text-emerald-700 hover:text-emerald-800"
-              >
-                {t("faqLink")} →
+            <p className="mt-4 text-sm text-slate-500">
+              {t("faqHint")}{" "}
+              <Link href="/faq" className="font-medium text-emerald-700 hover:text-emerald-800">
+                {t("faqLink")}
               </Link>
-              <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                <Link href="/about" className="hover:text-slate-700">
-                  {t("aboutLink")}
-                </Link>
-              </p>
-            </div>
+              {" · "}
+              <Link href="/about" className="font-medium text-emerald-700 hover:text-emerald-800">
+                {t("aboutLink")}
+              </Link>
+            </p>
           </div>
 
           <ContactForm />

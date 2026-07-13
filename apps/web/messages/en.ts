@@ -960,8 +960,6 @@ const en = {
     titleAccent: "Send us a message.",
     subtitle:
       "Questions about CycleIQ, your account, or the wheel strategy tracker? Fill out the form below and we'll reply to your email as soon as we can.",
-    emailLabel: "Email support",
-    responseTime: "We typically reply within 1–2 business days.",
     faqHint: "Looking for quick answers?",
     faqLink: "Browse the FAQ",
     aboutLink: "About CycleIQ",
