@@ -184,13 +184,15 @@ export function effectiveStockCostPerShareForTrade(
 }
 
 /**
- * Wheel total realized P&L: terminal option cashflows + stock gain/loss on call-away.
- * ROLLED legs are excluded — their net premium is already embedded in the assignment
- * put's `prior_roll_premium_per_share` (cost basis), so counting them again double-counts.
+ * Wheel total realized P&L: option cashflows (all legs, including ROLLED) + stock
+ * gain/loss on call-away.
+ *
+ * Stock P&L uses assignment **strike** (shares bought at CSP strike), not
+ * premium-reduced cost basis — premiums are already in option cashflows, so using
+ * basis here would double-count CSP / roll premium.
  */
 export function wheelTotalNetPnl(legs: Trade[]): number {
-  const optionLegs = legs.filter((t) => t.status !== "ROLLED");
-  let total = optionLegs.reduce((sum, t) => sum + netLegCashflow(t), 0);
+  let total = legs.reduce((sum, t) => sum + netLegCashflow(t), 0);
 
   const stockPuts = legs.filter(
     (t) =>
@@ -200,17 +202,15 @@ export function wheelTotalNetPnl(legs: Trade[]): number {
   const assignedShares = stockPuts.reduce((s, t) => s + t.contracts * 100, 0);
   if (assignedShares <= 0) return total;
 
-  let basisWeighted = 0;
-  for (const put of stockPuts) {
-    const basis = assignmentStockBasisPerShare(put);
-    if (basis == null) continue;
-    basisWeighted += basis * put.contracts * 100;
-  }
-  const initialBasisPerShare = basisWeighted / assignedShares;
+  const strikeWeighted = stockPuts.reduce(
+    (sum, put) => sum + put.strike * put.contracts * 100,
+    0
+  );
+  const avgAssignmentStrike = strikeWeighted / assignedShares;
 
   for (const cc of legs.filter((t) => t.option_type === "CALL" && t.status === "CALLED_AWAY")) {
     const sharesCalled = cc.contracts * 100;
-    total += (cc.strike - initialBasisPerShare) * sharesCalled;
+    total += (cc.strike - avgAssignmentStrike) * sharesCalled;
   }
 
   return total;

@@ -134,7 +134,8 @@ def register_dashboard_routes(dashboard_bp):
         #     (EXPIRED and CLOSED/bought-back CCs reduce the holding cost permanently;
         #      ROLLED CCs are excluded — their net premium is captured when the new leg settles)
         #  2. Compute stock sale P&L for CALLED_AWAY CCs:
-        #     gain = (callaway_strike − initial_stock_basis) × shares_called
+        #     gain = (callaway_strike − CSP assignment strike) × shares_called
+        #     (premiums counted separately in option cashflows; do not use cost basis)
         # ─────────────────────────────────────────────────────────────────────
         by_ticker: dict[str, list] = defaultdict(list)
         for t in trades:
@@ -182,14 +183,21 @@ def register_dashboard_routes(dashboard_bp):
             effective_basis_per_share = max(0.0, weighted_initial_basis - cc_reduction_per_share)
             ticker_effective_basis[ticker] = effective_basis_per_share
 
-            # Stock sale P&L: when CC is called away, shares are sold at the strike price.
-            # Gain = (callaway_strike − initial_stock_basis) × shares_called
-            # (The CC option premium is already counted in realized_pnl via _realized_cashflow.)
+            # Stock sale P&L: shares bought at CSP strike, sold at CC strike.
+            # Use assignment strike (not premium-reduced basis) so CSP premium is
+            # not double-counted — premiums stay in option cashflows only.
+            # Gain = (callaway_strike − CSP assignment strike) × shares_called
             called_away_ccs = [t for t in tt if t.option_type == "CALL" and t.status == "CALLED_AWAY"]
             called_away_shares = sum(int(t.contracts) * 100 for t in called_away_ccs)
+            weighted_assignment_strike = (
+                sum(float(t.strike) * int(t.contracts) * 100 for t in assigned_puts)
+                / assigned_shares
+            )
             for cc in called_away_ccs:
                 shares_called = int(cc.contracts) * 100
-                extra_stock_sale_pnl += (float(cc.strike) - weighted_initial_basis) * shares_called
+                extra_stock_sale_pnl += (
+                    float(cc.strike) - weighted_assignment_strike
+                ) * shares_called
 
             remaining_shares = assigned_shares - called_away_shares
             if remaining_shares > 0:

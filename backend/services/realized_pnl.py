@@ -57,6 +57,12 @@ def _effective_completion_date(t: Trade) -> date:
 
 
 def _stock_sale_pnl_as_of(trades: list[Trade], as_of: date) -> float:
+    """Stock P&L when CC shares are called away.
+
+    Gain = (callaway_strike − CSP assignment strike) × shares.
+    Uses the put **strike** (purchase price), not premium-reduced cost basis —
+    CSP/roll premiums are already counted in option cashflows.
+    """
     by_ticker: dict[str, list[Trade]] = defaultdict(list)
     for t in trades:
         by_ticker[t.ticker].append(t)
@@ -68,7 +74,6 @@ def _stock_sale_pnl_as_of(trades: list[Trade], as_of: date) -> float:
             for t in tt
             if t.option_type == "PUT"
             and t.status in ("ASSIGNED", "CALLED_AWAY")
-            and t.stock_cost_basis_per_share is not None
             and _effective_completion_date(t) <= as_of
         ]
         if not assigned_puts:
@@ -78,11 +83,8 @@ def _stock_sale_pnl_as_of(trades: list[Trade], as_of: date) -> float:
         if assigned_shares <= 0:
             continue
 
-        weighted_initial_basis = (
-            sum(
-                float(t.stock_cost_basis_per_share) * int(t.contracts) * 100
-                for t in assigned_puts
-            )
+        weighted_assignment_strike = (
+            sum(float(t.strike) * int(t.contracts) * 100 for t in assigned_puts)
             / assigned_shares
         )
 
@@ -95,7 +97,7 @@ def _stock_sale_pnl_as_of(trades: list[Trade], as_of: date) -> float:
         ]
         for cc in called_away_ccs:
             shares_called = int(cc.contracts) * 100
-            extra += (float(cc.strike) - weighted_initial_basis) * shares_called
+            extra += (float(cc.strike) - weighted_assignment_strike) * shares_called
 
     return extra
 
