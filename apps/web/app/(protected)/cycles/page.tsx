@@ -521,11 +521,14 @@ export default function CyclesPage() {
               const arcRForHorz = (cardW + cardGap) / horzDiff;
               const arcRForVert = (cardH + cardGap) / vertDiff;
               const arcR = count <= 1 ? 190 : Math.max(220, Math.ceil(Math.max(arcRForHorz, arcRForVert)));
+              const ringPad = 22;
+              const ringR = arcR + ringPad;
 
-              const W = Math.max(720, Math.ceil((arcR + cardW / 2 + 56) * 2));
+              // Canvas must contain the full dashed ring (not just the center node).
+              const W = Math.max(720, Math.ceil((ringR + cardW / 2 + 48) * 2));
               const cx = W / 2;
               const cy = arcR + cardH / 2 + 64; // top card 64 px from top
-              const H = Math.ceil(cy + 230);    // room for centre circle + label
+              const H = Math.ceil(cy + ringR + 36); // room below centre for full dashed ring
 
               const startDeg = -90 - fanDeg / 2;
               const totalNet = wheelTotalNetPnl(legs);
@@ -564,7 +567,7 @@ export default function CyclesPage() {
                     {/* LAYER 1 (behind cards): guide ring + spokes */}
                     <svg className="pointer-events-none absolute inset-0" style={{ zIndex: 0 }} width={W} height={H}>
                       {arcR > 0 && (
-                        <circle cx={cx} cy={cy} r={arcR + 22}
+                        <circle cx={cx} cy={cy} r={ringR}
                           fill="none" stroke={ringStroke} strokeDasharray={completed ? "6 4" : "4 6"} strokeWidth={completed ? 2 : 1} />
                       )}
                       {positions.map((pos, i) => (
