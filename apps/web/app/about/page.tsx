@@ -4,7 +4,6 @@ import MarketingShell from "@/app/components/marketing/MarketingShell";
 import { MARKETING_PAGE_PAD } from "@/app/components/marketing/styles";
 import { getServerTranslations } from "@/lib/i18n/server";
 import { createPageMetadata } from "@/lib/seo/metadata";
-import { SUPPORT_EMAIL } from "@/lib/seo/site";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getServerTranslations("marketing");
@@ -100,14 +99,6 @@ export default async function AboutPage() {
           <div className="mx-auto mt-12 max-w-3xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm ring-1 ring-slate-900/5">
             <h2 className="text-lg font-semibold text-slate-900">{t("about.support.title")}</h2>
             <p className="mt-3 text-sm leading-relaxed text-slate-600">{t("about.support.p1")}</p>
-            <p className="mt-3 text-sm text-slate-600">
-              <a
-                href={`mailto:${SUPPORT_EMAIL}`}
-                className="font-medium text-emerald-700 underline decoration-emerald-200 underline-offset-2 hover:text-emerald-800"
-              >
-                {SUPPORT_EMAIL}
-              </a>
-            </p>
             <p className="mt-4 text-sm text-slate-600">
               <Link href="/faq" className="font-medium text-emerald-700 hover:text-emerald-800">
                 {t("about.support.faqLink")}

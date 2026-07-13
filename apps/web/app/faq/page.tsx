@@ -6,7 +6,7 @@ import { MARKETING_PAGE_PAD } from "@/app/components/marketing/styles";
 import { getServerTranslations } from "@/lib/i18n/server";
 import { createPageMetadata } from "@/lib/seo/metadata";
 import { JsonLd } from "@/lib/seo/json-ld";
-import { getSiteUrl, SUPPORT_EMAIL } from "@/lib/seo/site";
+import { getSiteUrl } from "@/lib/seo/site";
 
 const FAQ_KEYS = [
   "what",
@@ -29,10 +29,6 @@ export async function generateMetadata(): Promise<Metadata> {
   });
 }
 
-function withEmail(text: string): string {
-  return text.replaceAll("{{email}}", SUPPORT_EMAIL);
-}
-
 export default async function FaqPage() {
   const t = await getServerTranslations("marketing");
   const tNav = await getServerTranslations("nav");
@@ -40,7 +36,7 @@ export default async function FaqPage() {
 
   const items = FAQ_KEYS.map((key) => {
     const question = t(`faq.items.${key}.q`);
-    const rawAnswer = withEmail(t(`faq.items.${key}.a`));
+    const rawAnswer = t(`faq.items.${key}.a`);
 
     if (key === "privacy") {
       return {
@@ -85,7 +81,7 @@ export default async function FaqPage() {
       name: t(`faq.items.${key}.q`),
       acceptedAnswer: {
         "@type": "Answer",
-        text: withEmail(t(`faq.items.${key}.a`)),
+        text: t(`faq.items.${key}.a`),
       },
     })),
     url: `${siteUrl}/faq`,
@@ -120,21 +116,11 @@ export default async function FaqPage() {
               <MarketingFaq title={t("faq.listTitle")} items={items} />
             </div>
 
-            <div className="mx-auto mt-12 max-w-3xl rounded-xl border border-slate-200 bg-slate-50/60 p-6 text-center text-sm text-slate-600">
-              <p>{t("faq.stillNeedHelp")}</p>
-              <p className="mt-3">
-                <a
-                  href={`mailto:${SUPPORT_EMAIL}`}
-                  className="font-medium text-emerald-700 underline decoration-emerald-200 underline-offset-2 hover:text-emerald-800"
-                >
-                  {SUPPORT_EMAIL}
-                </a>
-                {" · "}
-                <Link href="/contact" className="font-medium text-emerald-700 hover:text-emerald-800">
-                  {t("faq.contactLink")}
-                </Link>
-              </p>
-            </div>
+            <p className="mx-auto mt-10 max-w-3xl text-center text-sm text-slate-500">
+              <Link href="/contact" className="font-medium text-emerald-700 hover:text-emerald-800">
+                {t("faq.contactLink")}
+              </Link>
+            </p>
           </div>
         </section>
       </MarketingShell>
