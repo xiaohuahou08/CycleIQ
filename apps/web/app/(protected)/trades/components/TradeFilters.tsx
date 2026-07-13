@@ -49,8 +49,8 @@ const STATUS_ROW: ReadonlyArray<{
 ];
 
 function countActiveFilters(filters: FilterState): number {
+  // CSP/CC is a view mode, not a clearable filter — only count status/search/date.
   let count = 0;
-  if (filters.type !== DEFAULT_FILTERS.type) count++;
   if (filters.status !== DEFAULT_FILTERS.status) count++;
   if (filters.search.trim()) count++;
   if (filters.dateRangeType === "CUSTOM" || filters.startDate || filters.endDate) count++;
@@ -117,7 +117,8 @@ export default function TradeFilters({
   };
 
   const clearFilters = () => {
-    onFilterChange(DEFAULT_FILTERS);
+    // Keep CSP/CC mode; only reset status, search, and date range.
+    onFilterChange({ ...DEFAULT_FILTERS, type: filters.type });
   };
 
   const applySinceLastMonth = () => {
