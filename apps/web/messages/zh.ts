@@ -951,8 +951,6 @@ const zh = {
     titleAccent: "给我们留言。",
     subtitle:
       "对 CycleIQ、您的账户或滚轮策略追踪有疑问？填写下方表单，我们将尽快回复您的邮箱。",
-    emailLabel: "邮件支持",
-    responseTime: "我们通常在 1–2 个工作日内回复。",
     faqHint: "需要快速答案？",
     faqLink: "浏览常见问题",
     aboutLink: "关于 CycleIQ",
