@@ -296,7 +296,7 @@ const en = {
       },
       support: {
         title: "How to reach us",
-        p1: "Questions about your account, billing, or how cycles work? Email support or use the contact form. We typically reply within 1–2 business days.",
+        p1: "Questions about your account, billing, or how cycles work? Use the contact form — we typically reply within 1–2 business days.",
         faqLink: "Read the FAQ",
         contactLink: "Contact form",
       },
@@ -310,15 +310,14 @@ const en = {
     faq: {
       metaTitle: "FAQ",
       metaDescription:
-        "Answers about CycleIQ: what the wheel tracker does, pricing, data privacy, brokers, and support. Learn how cash-secured put and covered-call journaling works.",
+        "Answers about CycleIQ: what the wheel tracker does, pricing, privacy, and support. Learn how cash-secured put and covered-call journaling works.",
       badge: "Help center",
       title: "Questions about CycleIQ.",
       titleAccent: "Plain answers.",
       subtitle:
-        "Product scope, pricing, privacy, and support — including what CycleIQ does not do. If you still need help, email us or use the contact form.",
+        "What CycleIQ is for, how pricing works, and how to get help — without the jargon.",
       listTitle: "Frequently asked questions",
-      stillNeedHelp: "Still need help? Reach support directly.",
-      contactLink: "Contact form",
+      contactLink: "Contact Us",
       cta: {
         title: "Ready to start?",
         body: "Basic is free. No broker connection required.",
@@ -326,39 +325,39 @@ const en = {
       items: {
         what: {
           q: "What is CycleIQ?",
-          a: "CycleIQ is a web application for journaling and analyzing options wheel strategies. You log cash-secured puts (CSPs) and covered calls (CCs); the app links related legs into cycles and shows premium, realized P&L, cost basis, and position status.",
+          a: "CycleIQ is a journal for the options wheel. You log cash-secured puts and covered calls; we group them into cycles and show premium, P&L, cost basis, and what’s still open.",
         },
         broker: {
           q: "Is CycleIQ a broker? Do you connect to my brokerage?",
-          a: "No. CycleIQ is not a broker and does not execute trades. Trade entry is manual — no broker API is required. Your brokerage remains the system of record for orders and positions.",
+          a: "No. CycleIQ does not place orders or sync with your broker. You enter trades yourself. Your broker remains the source of truth for fills and positions.",
         },
         advice: {
-          q: "Does CycleIQ give trading or investment advice?",
-          a: "No. CycleIQ does not provide financial, investment, or trading advice, and it does not generate trade signals. Metrics and charts reflect the data you enter so you can review your own activity.",
+          q: "Does CycleIQ give trading advice?",
+          a: "No. CycleIQ does not recommend trades, strikes, or tickers, and it does not send signals. Charts and metrics only reflect what you logged.",
         },
         wheel: {
-          q: "What is the options wheel strategy?",
-          a: "In common retail use, the wheel means selling cash-secured puts, accepting assignment of shares when puts finish in the money, then selling covered calls against those shares until they are called away — then repeating. CycleIQ tracks that CSP → assignment → CC lifecycle as one cycle per wheel.",
+          q: "What is the options wheel?",
+          a: "A common wheel flow is: sell a cash-secured put → get assigned shares if it expires in the money → sell covered calls against those shares until they are called away → repeat. CycleIQ tracks that story as one cycle.",
         },
         pricing: {
           q: "How does pricing work?",
-          a: "Basic is free and includes up to 20 new trades per calendar month (UTC); editing existing trades does not count toward the limit. Premium is $1 per month via Stripe and allows unlimited new trades. Cancel Premium anytime from Settings → Billing.",
+          a: "Basic is free and lets you add up to 20 new trades each month (the counter resets at the start of every month). Editing an existing trade does not use an extra slot. Premium is $1/month for unlimited new trades, billed via Stripe. Cancel anytime in Settings → Billing.",
         },
         data: {
-          q: "Where is my data stored and who can see it?",
-          a: "Account authentication is handled by Supabase Auth. Trade and portfolio data you enter is stored to power your dashboards and reports. We do not sell your personal information. Details are in the Privacy Policy.",
+          q: "Is my data private?",
+          a: "Yes. Your account and the trades you enter are used to run your CycleIQ dashboard. We do not sell your personal information. More detail is in the Privacy Policy.",
         },
         cancel: {
           q: "Can I cancel Premium or delete my account?",
-          a: "Yes. Premium subscriptions can be canceled from Settings → Billing; you keep Basic access subject to the monthly trade cap. For account deletion or data requests, contact support using the email on the Contact page.",
+          a: "Yes. Cancel Premium anytime in Settings → Billing; you’ll keep Basic with the monthly trade limit. To delete your account or ask about your data, use the Contact page.",
         },
         support: {
           q: "How do I get help?",
-          a: "Email {{email}} or use the Contact page. We aim to respond within 1–2 business days. For billing or account issues, include the email on your CycleIQ account.",
+          a: "Use the Contact page form. Include the email on your CycleIQ account if the question is about billing or access.",
         },
         privacy: {
-          q: "Where can I read the legal policies?",
-          a: "See our Privacy Policy and Terms of Service for how we handle data and the rules for using CycleIQ.",
+          q: "Where are the legal policies?",
+          a: "You can read our Privacy Policy and Terms of Service anytime.",
         },
       },
     },
@@ -369,7 +368,7 @@ const en = {
       title: "Basic or Premium.",
       titleAccent: "Your wheel, your pace.",
       subtitle:
-        "Start on Basic for free with 20 new trades each calendar month. Move to Premium when you need unlimited trade logging for $1 per month.",
+        "Start on Basic for free with 20 new trades each month. Move to Premium when you need unlimited trade logging for $1 per month.",
       shared: {
         f1: "Full wheel cycle tracking (CSP → CC → call-away)",
         f2: "Dashboard KPIs and lifecycle visualization",
@@ -385,7 +384,7 @@ const en = {
         tagline: "For getting started",
         price: "$0",
         priceNote: "forever",
-        tradeLimit: "20 new trades per calendar month (UTC). Editing existing trades does not count.",
+        tradeLimit: "20 new trades each month. Editing existing trades does not count.",
         cta: "Get started free",
       },
       premium: {
@@ -393,7 +392,7 @@ const en = {
         tagline: "For active wheel traders",
         price: "$1",
         priceNote: "per month",
-        tradeLimit: "Unlimited new trades per month.",
+        tradeLimit: "Unlimited new trades each month.",
       },
       footer: "Premium is billed monthly via Stripe. Cancel anytime from Settings → Billing.",
       faq: {
@@ -402,11 +401,11 @@ const en = {
         items: {
           limit: {
             q: "What counts toward the Basic 20-trade limit?",
-            a: "Only newly created trades in the current UTC calendar month. Editing, expiring, rolling, or assigning an existing trade does not consume an extra slot.",
+            a: "Only new trades you create in the current month. The counter resets at the start of each month. Editing, expiring, rolling, or assigning an existing trade does not use an extra slot.",
           },
           payment: {
             q: "How is Premium billed?",
-            a: "Premium is $1 USD per month, billed through Stripe checkout. You can cancel anytime; access reverts to Basic at the end of the paid period.",
+            a: "Premium is $1 USD per month through Stripe. You can cancel anytime; access returns to Basic after the paid period ends.",
           },
           features: {
             q: "Do Basic and Premium include the same features?",

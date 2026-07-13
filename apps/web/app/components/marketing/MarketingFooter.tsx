@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { CycleIQMark } from "@/app/components/icons";
 import { useTranslations } from "@/lib/i18n/locale-context";
-import { SUPPORT_EMAIL } from "@/lib/seo/site";
 
 export default function MarketingFooter() {
   const { t } = useTranslations("nav");
@@ -51,15 +50,6 @@ export default function MarketingFooter() {
             <Link href="/terms" className="transition hover:text-slate-300">
               {t("terms")}
             </Link>
-            <span className="text-slate-700" aria-hidden>
-              ·
-            </span>
-            <a
-              href={`mailto:${SUPPORT_EMAIL}`}
-              className="transition hover:text-slate-300"
-            >
-              {SUPPORT_EMAIL}
-            </a>
           </nav>
         </div>
       </div>
