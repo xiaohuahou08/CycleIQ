@@ -331,6 +331,9 @@ export default function HomePageClient() {
                 {t("home.ctaSignIn")}
               </Link>
             </div>
+            <p className="mx-auto mt-8 max-w-2xl text-center text-xs leading-relaxed text-slate-500">
+              {t("home.disclaimer")}
+            </p>
           </div>
         </section>
       </main>
