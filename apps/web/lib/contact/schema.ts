@@ -20,15 +20,16 @@ export const contactFormSchema = z.object({
 export type ContactFormValues = z.infer<typeof contactFormSchema>;
 
 export function parseContactForm(body: unknown):
-  | { ok: true; data: ContactFormValues }
+  | { ok: true; data: ContactFormValues; spam?: false }
+  | { ok: true; spam: true }
   | { ok: false; error: string } {
   const result = contactFormSchema.safeParse(body);
   if (!result.success) {
     const first = result.error.errors[0];
     return { ok: false, error: first?.message ?? "Invalid form data." };
   }
-  if (result.data._gotcha) {
-    return { ok: false, error: "Invalid submission." };
+  if (result.data._gotcha?.trim()) {
+    return { ok: true, spam: true };
   }
   return { ok: true, data: result.data };
 }

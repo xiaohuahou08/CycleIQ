@@ -80,7 +80,7 @@ export default function ContactForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className={`mx-auto mt-10 max-w-xl ${CARD_BASE} p-6 sm:p-8`}>
+    <form onSubmit={onSubmit} className={`relative mx-auto mt-10 max-w-xl ${CARD_BASE} p-6 sm:p-8`}>
       <div className="space-y-5">
         <div>
           <label htmlFor="contact-name" className={MARKETING_LABEL_CLS}>
@@ -146,11 +146,15 @@ export default function ContactForm() {
           />
         </div>
 
-        <div className="sr-only" aria-hidden="true">
-          <label htmlFor="contact-gotcha">{t("gotcha")}</label>
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-[9999px] h-0 w-0 overflow-hidden opacity-0"
+        >
+          <label htmlFor="contact-company-url">Company URL</label>
           <input
-            id="contact-gotcha"
+            id="contact-company-url"
             type="text"
+            name="company_url"
             tabIndex={-1}
             autoComplete="off"
             value={gotcha}

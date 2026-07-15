@@ -35,3 +35,6 @@ dist/
 # IDE
 .vscode/
 .idea/
+
+# Vercel CLI local link metadata
+.vercel/
