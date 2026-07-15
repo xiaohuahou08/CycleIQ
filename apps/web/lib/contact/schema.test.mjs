@@ -26,14 +26,17 @@ test("parseContactForm rejects short message", () => {
   assert.equal(result.ok, false);
 });
 
-test("parseContactForm rejects honeypot", () => {
+test("parseContactForm treats honeypot as quiet spam", () => {
   const result = parseContactForm({
     name: "Jane Doe",
     email: "jane@example.com",
     message: "This is a long enough message.",
     _gotcha: "spam",
   });
-  assert.equal(result.ok, false);
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.spam, true);
+  }
 });
 
 test("parseContactForm treats empty subject as undefined", () => {
