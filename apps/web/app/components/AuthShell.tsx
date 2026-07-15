@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, type ReactNode } from "react";
+import Link from "next/link";
 import { LayoutDashboard, RefreshCw, TrendingUp } from "lucide-react";
 import AppLoadingScreen from "@/app/components/AppLoadingScreen";
 import { CycleIQMark, iconMd, iconStroke } from "@/app/components/icons";
@@ -24,6 +25,49 @@ interface AuthShellProps {
   subtitle?: string;
   children: ReactNode;
   footer?: ReactNode;
+}
+
+function AuthSiteLinks({ variant }: { variant: "light" | "dark" }) {
+  const { t } = useTranslations("nav");
+  const muted = "text-slate-500";
+  const hover = variant === "dark" ? "hover:text-slate-200" : "hover:text-slate-800";
+  const sep = variant === "dark" ? "text-slate-700" : "text-slate-300";
+
+  return (
+    <div className="space-y-2.5 text-center">
+      <nav
+        className={`flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs ${muted}`}
+        aria-label="Site"
+      >
+        <Link href="/about" className={`transition ${hover}`}>
+          {t("about")}
+        </Link>
+        <Link href="/faq" className={`transition ${hover}`}>
+          {t("faq")}
+        </Link>
+        <Link href="/pricing" className={`transition ${hover}`}>
+          {t("pricing")}
+        </Link>
+        <Link href="/contact" className={`transition ${hover}`}>
+          {t("contact")}
+        </Link>
+      </nav>
+      <nav
+        className={`flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs ${muted}`}
+        aria-label="Legal"
+      >
+        <Link href="/privacy" className={`transition ${hover}`}>
+          {t("privacy")}
+        </Link>
+        <span className={sep} aria-hidden>
+          ·
+        </span>
+        <Link href="/terms" className={`transition ${hover}`}>
+          {t("terms")}
+        </Link>
+      </nav>
+    </div>
+  );
 }
 
 export default function AuthShell({ title, subtitle, children, footer }: AuthShellProps) {
@@ -54,10 +98,10 @@ export default function AuthShell({ title, subtitle, children, footer }: AuthShe
           aria-hidden
         />
 
-        <div className="relative flex items-center gap-3">
+        <Link href="/" className="relative flex items-center gap-3 text-white">
           <CycleIQMark className="h-10 w-10 text-emerald-400" />
           <span className="text-xl font-bold tracking-tight">CycleIQ</span>
-        </div>
+        </Link>
 
         <div className="relative mt-10 max-w-md lg:mt-0">
           <p className="text-sm font-semibold uppercase tracking-wider text-emerald-400/90">
@@ -83,9 +127,12 @@ export default function AuthShell({ title, subtitle, children, footer }: AuthShe
           </ul>
         </div>
 
-        <p className="relative mt-10 hidden text-xs text-slate-500 lg:block">
-          {t("shell.copyright", { year: new Date().getFullYear() })}
-        </p>
+        <div className="relative mt-10 hidden space-y-3 lg:block">
+          <AuthSiteLinks variant="dark" />
+          <p className="text-xs text-slate-500">
+            {t("shell.copyright", { year: new Date().getFullYear() })}
+          </p>
+        </div>
       </section>
 
       <section className="flex flex-1 items-center justify-center bg-slate-50/80 px-4 py-10 sm:px-8 lg:px-12">
@@ -100,6 +147,9 @@ export default function AuthShell({ title, subtitle, children, footer }: AuthShe
             {children}
           </div>
           {footer ? <div className="mt-5 text-center">{footer}</div> : null}
+          <div className="mt-6 lg:hidden">
+            <AuthSiteLinks variant="light" />
+          </div>
         </div>
       </section>
     </main>
