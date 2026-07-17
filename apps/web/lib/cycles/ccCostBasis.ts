@@ -183,6 +183,64 @@ export function effectiveStockCostPerShareForTrade(
   return Math.max(0, weightedInitial - reductionPerShare);
 }
 
+/** Open assigned shares and weighted CSP strike per ticker (matches backend stock_mtm). */
+export function openAssignedPositions(
+  trades: Trade[]
+): Array<{ ticker: string; openShares: number; avgAssignmentStrike: number }> {
+  const byTicker = new Map<string, Trade[]>();
+  for (const t of trades) {
+    const ticker = t.ticker.trim().toUpperCase();
+    const list = byTicker.get(ticker);
+    if (list) list.push(t);
+    else byTicker.set(ticker, [t]);
+  }
+
+  const positions: Array<{
+    ticker: string;
+    openShares: number;
+    avgAssignmentStrike: number;
+  }> = [];
+
+  for (const [ticker, tt] of byTicker) {
+    const stockPuts = tt.filter(
+      (t) =>
+        t.option_type === "PUT" &&
+        (t.status === "ASSIGNED" || t.status === "CALLED_AWAY")
+    );
+    const assignedShares = stockPuts.reduce((s, t) => s + t.contracts * 100, 0);
+    if (assignedShares <= 0) continue;
+
+    const strikeWeighted = stockPuts.reduce(
+      (sum, put) => sum + put.strike * put.contracts * 100,
+      0
+    );
+    const avgAssignmentStrike = strikeWeighted / assignedShares;
+    const calledAwayShares = tt
+      .filter((t) => t.option_type === "CALL" && t.status === "CALLED_AWAY")
+      .reduce((s, t) => s + t.contracts * 100, 0);
+    const openShares = assignedShares - calledAwayShares;
+    if (openShares > 0) {
+      positions.push({ ticker, openShares, avgAssignmentStrike });
+    }
+  }
+
+  return positions;
+}
+
+/** `(live − CSP strike) × openShares` across held tickers; missing quotes contribute 0. */
+export function computeUnrealizedStockMtm(
+  trades: Trade[],
+  prices: Record<string, number>
+): number {
+  let total = 0;
+  for (const { ticker, openShares, avgAssignmentStrike } of openAssignedPositions(trades)) {
+    const live = prices[ticker];
+    if (live == null || !Number.isFinite(live)) continue;
+    total += (live - avgAssignmentStrike) * openShares;
+  }
+  return total;
+}
+
 /**
  * Wheel total P&L: option cashflows (all legs, including ROLLED) + stock
  * gain/loss on call-away, plus optional mark-to-market on still-held shares.

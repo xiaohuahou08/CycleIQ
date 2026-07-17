@@ -10,6 +10,8 @@ import {
   netLegCashflow,
   resolveTradeCycleId,
   wheelTotalNetPnl,
+  openAssignedPositions,
+  computeUnrealizedStockMtm,
 } from "./ccCostBasis.ts";
 
 function trade(overrides) {
@@ -299,6 +301,21 @@ describe("wheelTotalNetPnl", () => {
       premium: 3.0,
     });
     assert.equal(wheelTotalNetPnl([put, ccAway], 450), 550 + 1000);
+  });
+});
+
+describe("computeUnrealizedStockMtm", () => {
+  it("marks open assigned shares vs CSP strike", () => {
+    const put = trade({ ticker: "googl", status: "ASSIGNED", strike: 367.5, premium: 1.45 });
+    assert.deepEqual(openAssignedPositions([put]), [
+      { ticker: "GOOGL", openShares: 100, avgAssignmentStrike: 367.5 },
+    ]);
+    assert.equal(computeUnrealizedStockMtm([put], { GOOGL: 345.5 }), (345.5 - 367.5) * 100);
+  });
+
+  it("skips tickers without a quote", () => {
+    const put = trade({ status: "ASSIGNED", strike: 390 });
+    assert.equal(computeUnrealizedStockMtm([put], {}), 0);
   });
 });
 
