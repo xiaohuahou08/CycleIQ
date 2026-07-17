@@ -16,7 +16,9 @@ from backend.services.capital_invested import (
     compute_total_capital_pool,
 )
 from backend.services.portfolio_returns import compute_time_weighted_return
+from backend.services.quotes import fetch_yahoo_prices
 from backend.services.realized_pnl import compute_realized_pnl
+from backend.services.stock_mtm import compute_unrealized_stock_mtm, tickers_needing_quotes
 
 
 def register_dashboard_routes(dashboard_bp):
@@ -225,7 +227,13 @@ def register_dashboard_routes(dashboard_bp):
         total_capital_invested = open_csp_capital + total_stock_effective_cost
         capital_budget = get_capital_budget(user_id)
         realized_pnl = compute_realized_pnl(trades, today)
-        total_capital = compute_total_capital_pool(capital_budget, trades, today)
+        quote_tickers = tickers_needing_quotes(trades)
+        live_prices = fetch_yahoo_prices(quote_tickers) if quote_tickers else {}
+        unrealized_stock_mtm = compute_unrealized_stock_mtm(trades, live_prices)
+        total_pnl = realized_pnl + unrealized_stock_mtm
+        total_capital = compute_total_capital_pool(
+            capital_budget, trades, today, unrealized_mtm=unrealized_stock_mtm
+        )
         capital_utilization = capital_utilization_pct(total_capital_invested, total_capital)
         active_trades = len(open_trades)
 
@@ -292,7 +300,13 @@ def register_dashboard_routes(dashboard_bp):
 
         capital_flows = capital_flow_events_for_user(user_id)
         time_weighted_return_pct, cumulative_total_return_pct, twr_unreliable = (
-            compute_time_weighted_return(trades, capital_flows, capital_budget, today)
+            compute_time_weighted_return(
+                trades,
+                capital_flows,
+                capital_budget,
+                today,
+                unrealized_mtm=unrealized_stock_mtm,
+            )
         )
 
         daily_bucket: dict[str, float] = {}
@@ -312,7 +326,11 @@ def register_dashboard_routes(dashboard_bp):
             return [{"label": k, "value": round(bucket[k], 2)} for k in keys]
 
         capital_trend = build_capital_trend_charts(
-            trades, capital_budget, today, flows=capital_flows
+            trades,
+            capital_budget,
+            today,
+            flows=capital_flows,
+            unrealized_mtm=unrealized_stock_mtm,
         )
 
         return jsonify(
@@ -324,6 +342,8 @@ def register_dashboard_routes(dashboard_bp):
                     "capital_utilization_pct": round(capital_utilization, 1),
                     "total_premium": round(total_premium, 2),
                     "realized_pnl": round(realized_pnl, 2),
+                    "unrealized_stock_mtm": round(unrealized_stock_mtm, 2),
+                    "total_pnl": round(total_pnl, 2),
                     # Keep legacy key for compatibility; equivalent to open premium annualized yield.
                     "avg_annual_roi": round(open_premium_annualized_yield, 1),
                     "open_premium_annualized_yield": round(open_premium_annualized_yield, 1),

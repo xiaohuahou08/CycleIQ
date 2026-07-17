@@ -95,6 +95,10 @@ export interface DashboardInsights {
     capital_utilization_pct: number;
     total_premium: number;
     realized_pnl: number;
+    /** Unrealized MTM on open assigned shares: (live − CSP strike) × shares. */
+    unrealized_stock_mtm?: number;
+    /** realized_pnl + unrealized_stock_mtm (matches Cycles wheel center when quotes available). */
+    total_pnl?: number;
     avg_annual_roi: number;
     open_premium_annualized_yield: number;
     realized_annual_roi: number;

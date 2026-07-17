@@ -184,14 +184,20 @@ export function effectiveStockCostPerShareForTrade(
 }
 
 /**
- * Wheel total realized P&L: option cashflows (all legs, including ROLLED) + stock
- * gain/loss on call-away.
+ * Wheel total P&L: option cashflows (all legs, including ROLLED) + stock
+ * gain/loss on call-away, plus optional mark-to-market on still-held shares.
  *
  * Stock P&L uses assignment **strike** (shares bought at CSP strike), not
  * premium-reduced cost basis — premiums are already in option cashflows, so using
  * basis here would double-count CSP / roll premium.
+ *
+ * When `livePrice` is provided and shares remain after call-aways, adds
+ * `(livePrice − avgAssignmentStrike) × openShares` for STOCK_HELD / CC_OPEN display.
  */
-export function wheelTotalNetPnl(legs: Trade[]): number {
+export function wheelTotalNetPnl(
+  legs: Trade[],
+  livePrice?: number | null
+): number {
   let total = legs.reduce((sum, t) => sum + netLegCashflow(t), 0);
 
   const stockPuts = legs.filter(
@@ -208,9 +214,20 @@ export function wheelTotalNetPnl(legs: Trade[]): number {
   );
   const avgAssignmentStrike = strikeWeighted / assignedShares;
 
+  let calledAwayShares = 0;
   for (const cc of legs.filter((t) => t.option_type === "CALL" && t.status === "CALLED_AWAY")) {
     const sharesCalled = cc.contracts * 100;
+    calledAwayShares += sharesCalled;
     total += (cc.strike - avgAssignmentStrike) * sharesCalled;
+  }
+
+  const openShares = assignedShares - calledAwayShares;
+  if (
+    openShares > 0 &&
+    livePrice != null &&
+    Number.isFinite(livePrice)
+  ) {
+    total += (livePrice - avgAssignmentStrike) * openShares;
   }
 
   return total;

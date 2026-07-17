@@ -714,11 +714,14 @@ export default function DashboardInsights({
         />
         <StatCard
           label={t("kpi.realizedPnl.label")}
-          value={fmtCurrency(kpis?.realized_pnl ?? 0, intlLocale)}
-          sub={t("kpi.realizedPnl.sub")}
+          value={fmtCurrency(kpis?.total_pnl ?? kpis?.realized_pnl ?? 0, intlLocale)}
+          sub={t("kpi.realizedPnl.sub", {
+            realized: fmtCurrency(kpis?.realized_pnl ?? 0, intlLocale),
+            mtm: fmtCurrency(kpis?.unrealized_stock_mtm ?? 0, intlLocale),
+          })}
           tip={t("kpi.realizedPnl.tip")}
           accent={KPI_ACCENT.profit}
-          valueClassName={profitLossClass(kpis?.realized_pnl ?? 0)}
+          valueClassName={profitLossClass(kpis?.total_pnl ?? kpis?.realized_pnl ?? 0)}
           metricDetailsLabel={metricDetailsLabel}
         />
         <StatCard
@@ -753,11 +756,17 @@ export default function DashboardInsights({
           sub={
             kpis?.time_weighted_return_unreliable
               ? t("kpi.periodReturn.subUnreliable", {
-                  amount: fmtCurrency(kpis?.realized_pnl ?? 0, intlLocale),
+                  amount: fmtCurrency(
+                    kpis?.total_pnl ?? kpis?.realized_pnl ?? 0,
+                    intlLocale
+                  ),
                   twr: fmtPercent(kpis?.time_weighted_return_pct ?? 0),
                 })
               : t("kpi.periodReturn.sub", {
-                  amount: fmtCurrency(kpis?.realized_pnl ?? 0, intlLocale),
+                  amount: fmtCurrency(
+                    kpis?.total_pnl ?? kpis?.realized_pnl ?? 0,
+                    intlLocale
+                  ),
                   twr: fmtPercent(kpis?.time_weighted_return_pct ?? 0),
                 })
           }

@@ -535,7 +535,7 @@ const en = {
       totalCapital: {
         label: "Total Capital",
         sub: "{{deployed}} deployed ({{pct}}%) · budget {{budget}} + P&L",
-        tip: "Total capital = starting budget + cumulative realized P&L (profits add, losses subtract). Deployed = open CSP + stock held. New trades cannot push deployed capital above total capital.",
+        tip: "Total capital = starting budget + cumulative realized P&L + unrealized stock mark-to-market on shares still held after CSP assignment. Deployed = open CSP + stock held (cost basis). New trades cannot push deployed capital above total capital.",
       },
       totalPremium: {
         label: "Total Premium",
@@ -543,9 +543,9 @@ const en = {
         tip: "Sum of premium × contracts × 100 for every trade (includes open, rolled, and bought-back legs). Not net cash after fees or buybacks.",
       },
       realizedPnl: {
-        label: "Realized P&L",
-        sub: "Option cashflow + stock sales",
-        tip: "Net option cashflow (premium − fees − buyback) on CLOSED, EXPIRED, ROLLED, CALLED_AWAY, and ASSIGNED legs, plus stock P&L when CC shares are called away (CC strike − CSP assignment strike).",
+        label: "Net P&L",
+        sub: "Realized {{realized}} · stock MTM {{mtm}}",
+        tip: "Net P&L = realized option/stock cashflows (CLOSED, EXPIRED, ROLLED, CALLED_AWAY, ASSIGNED + call-away stock P&L) plus unrealized mark-to-market on open assigned shares: (live price − CSP assignment strike) × shares still held. Matches the Cycles wheel center when a quote is available.",
       },
       yearlyIncome: {
         label: "Yearly Income",
@@ -564,9 +564,9 @@ const en = {
       },
       periodReturn: {
         label: "Period Return",
-        sub: "Realized {{amount}} · TWR {{twr}}",
-        subUnreliable: "Realized {{amount}} · TWR {{twr}} · large flows — trust realized $",
-        tip: "Main value = return on starting capital for the period: (end − start − net deposits) ÷ start. Subtitle shows dollars earned (realized P&L) and time-weighted return (TWR), which adjusts for deposit/withdrawal timing. When large flows make TWR unreliable, focus on realized $ and period return %.",
+        sub: "Net P&L {{amount}} · TWR {{twr}}",
+        subUnreliable: "Net P&L {{amount}} · TWR {{twr}} · large flows — trust net $",
+        tip: "Main value = return on starting capital for the period: (end − start − net deposits) ÷ start. End NAV includes unrealized stock MTM as of today. Subtitle shows net P&L (realized + open-share MTM) and time-weighted return (TWR). When large flows make TWR unreliable, focus on net $ and period return %.",
       },
       winRate: {
         label: "Win Rate",
@@ -591,7 +591,7 @@ const en = {
       monthlyPremium: "Monthly Premium (by open date)",
       capitalTrend: "Total Capital Trend",
       capitalTrendTip:
-        "Budget (adjusted for deposits/withdrawals) + cumulative realized P&L at each period end. {{budgetLine}} {{rangeHint}}",
+        "Budget (adjusted for deposits/withdrawals) + cumulative realized P&L at each period end; the latest point also includes unrealized stock MTM. {{budgetLine}} {{rangeHint}}",
       capitalTrendBudgetLine: "Dashed line = current budget ({{amount}}).",
       capitalTrendNoBudget: "No budget reference line when deposit/withdrawal history exists.",
       capitalTrendRangeYtd: "Year to date, snapshot at each week/month end.",
@@ -885,10 +885,7 @@ const en = {
       contracts: "Default contracts",
       contractsHint: "Number of contracts pre-filled when opening a new trade.",
       budget: "Total capital budget",
-      budgetLockedHint:
-        "Locked after deposits or withdrawals exist. Change capital in Capital Management below.",
-      budgetHint:
-        "Initial capital only. After your first deposit or withdrawal, use Capital Management below.",
+      budgetHint: "Your total capital available for wheel strategy positions.",
       dte: "Default DTE (days to expiry)",
       dteHint: "The expiry date pre-filled when opening a new trade.",
       days: "days",
@@ -896,43 +893,12 @@ const en = {
       saved: "Saved.",
       error: "Failed to save. Please try again.",
     },
-    capital: {
-      title: "Capital Management",
-      description:
-        "Record deposits and withdrawals with dates. Total capital and time-weighted return use these cash flows.",
-      currentBudget: "Current capital budget",
-      currentBudgetHint:
-        "Budget after all recorded flows. Total capital on Dashboard = budget + realized P&L.",
-      deposit: "Deposit",
-      withdraw: "Withdraw",
-      empty: "No deposits or withdrawals yet.",
-      modal: {
-        edit: "Edit capital flow",
-        deposit: "Record deposit",
-        withdrawal: "Record withdrawal",
-        depositAmount: "Deposit amount",
-        withdrawalAmount: "Withdrawal amount",
-        body: "Updates your capital budget and feeds time-weighted return calculations.",
-      },
-      error: {
-        amount: "Enter an amount greater than zero.",
-        date: "Select a date.",
-        save: "Failed to save.",
-        load: "Failed to load capital flows.",
-        delete: "Failed to delete entry.",
-      },
-      confirmDelete: "Remove this {{type}} from {{date}}?",
-      type: {
-        deposit: "deposit",
-        withdrawal: "withdrawal",
-      },
-    },
     danger: {
       title: "Danger zone",
       description: "Irreversible actions for your trading data.",
       reset: {
         label: "Reset all trading data",
-        hint: "Permanently delete every trade and wheel cycle. Capital deposits/withdrawals and trading defaults are kept.",
+        hint: "Permanently delete every trade and wheel cycle. Capital budget and trading defaults are kept.",
         button: "Reset data",
       },
       confirm: {

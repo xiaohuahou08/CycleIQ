@@ -62,6 +62,24 @@ def test_time_weighted_return_from_trades_no_flows():
     assert unreliable is False
 
 
+def test_time_weighted_return_includes_today_unrealized_mtm():
+    trade = _put(
+        trade_date=date(2026, 4, 1),
+        closed_at=date(2026, 4, 2),
+        premium=5.0,
+        contracts=1,
+        strike=100.0,
+    )
+    budget = 100_000.0
+    # Extra $500 MTM on as-of day → total return 1.0%
+    twr, total_ret, unreliable = compute_time_weighted_return(
+        [trade], [], budget, date(2026, 4, 5), unrealized_mtm=500.0
+    )
+    assert total_ret == pytest.approx(1.0, abs=0.01)
+    assert twr == pytest.approx(1.0, abs=0.01)
+    assert unreliable is False
+
+
 def test_twr_unreliable_when_signs_differ_after_large_flows():
     assert _twr_unreliable(26.93, -50.0, 1000.0, 100.0) is True
     assert _twr_unreliable(26.93, -50.0, 10.0, 100.0) is False

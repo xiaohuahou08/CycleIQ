@@ -244,6 +244,62 @@ describe("wheelTotalNetPnl", () => {
     const pnl = wheelTotalNetPnl([rolled, assigned]);
     assert.equal(pnl, 100 + 200);
   });
+
+  it("adds mark-to-market stock PnL when live price is provided after assignment", () => {
+    const put = trade({
+      status: "ASSIGNED",
+      strike: 390,
+      premium: 2.5,
+      stock_cost_basis_per_share: 387.5,
+    });
+    // option cashflow 250 + (395 - 390) * 100
+    assert.equal(wheelTotalNetPnl([put], 395), 250 + 500);
+  });
+
+  it("ignores live price when none is provided after assignment", () => {
+    const put = trade({
+      status: "ASSIGNED",
+      strike: 390,
+      premium: 2.5,
+    });
+    assert.equal(wheelTotalNetPnl([put]), 250);
+    assert.equal(wheelTotalNetPnl([put], null), 250);
+  });
+
+  it("does not mark-to-market shares already called away", () => {
+    const put = trade({
+      status: "ASSIGNED",
+      strike: 390,
+      premium: 2.5,
+      contracts: 2,
+    });
+    const ccAway = trade({
+      id: "cc-away",
+      option_type: "CALL",
+      status: "CALLED_AWAY",
+      strike: 400,
+      premium: 3.0,
+      contracts: 1,
+    });
+    // option: 500 + 300; realized stock on 100 shares: (400-390)*100; MTM on remaining 100: (395-390)*100
+    assert.equal(wheelTotalNetPnl([put, ccAway], 395), 800 + 1000 + 500);
+  });
+
+  it("does not add MTM when all assigned shares were called away", () => {
+    const put = trade({
+      status: "ASSIGNED",
+      strike: 390,
+      premium: 2.5,
+    });
+    const ccAway = trade({
+      id: "cc-away",
+      option_type: "CALL",
+      status: "CALLED_AWAY",
+      strike: 400,
+      premium: 3.0,
+    });
+    assert.equal(wheelTotalNetPnl([put, ccAway], 450), 550 + 1000);
+  });
 });
 
 describe("isCompletedWheel", () => {

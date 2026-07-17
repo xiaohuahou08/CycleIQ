@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CircleDollarSign, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
 import PageHeader from "@/app/components/PageHeader";
 import RefreshingSpinner from "@/app/components/RefreshingSpinner";
@@ -24,13 +24,6 @@ function fmtDate(iso: string, intlLocale: string): string {
     day: "2-digit",
     year: "numeric",
   }).format(new Date(y, (m ?? 1) - 1, d ?? 1));
-}
-
-function fmtMoney(value: number, intlLocale: string): string {
-  return value.toLocaleString(intlLocale, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
 }
 
 function labelForStatus(
@@ -95,16 +88,6 @@ function TickerLogo({ ticker, size = "sm" }: { ticker: string; size?: "sm" | "lg
       className={`object-cover ring-1 ring-slate-200/80 ${dim}`}
       onError={() => setUrlIndex((prev) => prev + 1)}
       loading="lazy"
-    />
-  );
-}
-
-function MoneyIcon() {
-  return (
-    <CircleDollarSign
-      className={`${iconSm} text-slate-500`}
-      strokeWidth={iconStroke}
-      aria-hidden
     />
   );
 }
@@ -188,6 +171,7 @@ export default function CyclesPage() {
   const [viewTab, setViewTab] = useState<"WHEELS" | "CC_COST_BASIS">("WHEELS");
   const [tab, setTab] = useState<"ALL" | "ACTIVE" | "COMPLETED">("ACTIVE");
   const [searchTicker, setSearchTicker] = useState("");
+  const [prices, setPrices] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!token) return;
@@ -279,6 +263,33 @@ export default function CyclesPage() {
         : [],
     [selectedWheel]
   );
+
+  const heldStockTickers = useMemo(() => {
+    const tickers = new Set<string>();
+    for (const wheel of wheels) {
+      if (wheel.state === "STOCK_HELD" || wheel.state === "CC_OPEN") {
+        tickers.add(wheel.ticker);
+      }
+    }
+    return Array.from(tickers).sort((a, b) => a.localeCompare(b));
+  }, [wheels]);
+
+  useEffect(() => {
+    if (heldStockTickers.length === 0) return;
+    const symbols = heldStockTickers.join(",");
+    let cancelled = false;
+    fetch(`/api/quote?symbols=${encodeURIComponent(symbols)}`)
+      .then((r) => r.json())
+      .then((data: Record<string, number>) => {
+        if (!cancelled) setPrices(data);
+      })
+      .catch(() => {
+        /* center falls back to option cashflows only */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [heldStockTickers]);
 
   if (isAuthLoading) return null;
 
@@ -531,7 +542,10 @@ export default function CyclesPage() {
               const H = Math.ceil(cy + ringR + 36); // room below centre for full dashed ring
 
               const startDeg = -90 - fanDeg / 2;
-              const totalNet = wheelTotalNetPnl(legs);
+              const totalNet = wheelTotalNetPnl(
+                legs,
+                !completed ? (prices[selectedWheel.ticker] ?? null) : null
+              );
 
               const positions = legs.map((_, i) => {
                 const angleDeg = count <= 1 ? -90 : startDeg + (i / (count - 1)) * fanDeg;

@@ -3,8 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowDownCircle, ArrowUpCircle, Pencil, Trash2 } from "lucide-react";
-import { iconSm, iconStroke } from "@/app/components/icons";
 import {
   createCheckoutSession,
   createPortalSession,
@@ -12,25 +10,16 @@ import {
   syncBillingAfterCheckout,
   type BillingStatus,
 } from "@/lib/api/billing";
-import {
-  createCapitalFlow,
-  deleteCapitalFlow,
-  formatFlowAmount,
-  getCapitalFlows,
-  updateCapitalFlow,
-  type CapitalFlow,
-} from "@/lib/api/capitalFlows";
 import { resetTradingData } from "@/lib/api/account";
 import { useProtectedAuth } from "../auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { authCallbackUrl } from "@/lib/auth-url";
 import { getUserDisplayName } from "@/lib/auth/user-profile";
-import PageHeader from "@/app/components/PageHeader";
 import DataSyncBanner from "@/app/components/DataSyncBanner";
 import { useToast } from "@/app/components/Toast";
 import { CARD_BASE } from "@/app/components/ui/styles";
 import { Button } from "@/components/ui/button";
-import { useTradeDefaults, TRADE_DEFAULTS_UPDATED_EVENT } from "@/lib/hooks/useTradeDefaults";
+import { useTradeDefaults } from "@/lib/hooks/useTradeDefaults";
 import { useLocale, useTranslations } from "@/lib/i18n/locale-context";
 
 // ─── Section shell ────────────────────────────────────────────────────────────
@@ -261,7 +250,6 @@ function AccountSection({
   const { showToast } = useToast();
   const { t } = useTranslations("settings");
   const { t: tToast } = useTranslations("toast");
-  const { t: tCommon } = useTranslations("common");
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -326,7 +314,7 @@ function AccountSection({
 }
 
 // ─── Trading defaults section ─────────────────────────────────────────────────
-function TradingDefaultsSection({ hasCapitalFlows }: { hasCapitalFlows: boolean }) {
+function TradingDefaultsSection() {
   const { defaults, setDefaults, loading, saving } = useTradeDefaults();
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -414,28 +402,17 @@ function TradingDefaultsSection({ hasCapitalFlows }: { hasCapitalFlows: boolean 
         />
       </FieldRow>
 
-      <FieldRow
-        label={t("defaults.budget")}
-        hint={
-          hasCapitalFlows ? t("defaults.budgetLockedHint") : t("defaults.budgetHint")
-        }
-      >
+      <FieldRow label={t("defaults.budget")} hint={t("defaults.budgetHint")}>
         <div className="flex items-center gap-2">
           <span className="text-sm text-slate-500">$</span>
-          {hasCapitalFlows ? (
-            <span className="inline-flex w-28 items-center rounded-lg bg-slate-100 px-2.5 py-1.5 text-sm font-medium text-slate-800">
-              {Number(totalCapitalBudget).toLocaleString()}
-            </span>
-          ) : (
-            <input
-              type="number"
-              min="1"
-              step="100"
-              value={totalCapitalBudget}
-              onChange={(e) => setTotalCapitalBudget(e.target.value)}
-              className="w-28 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-            />
-          )}
+          <input
+            type="number"
+            min="1"
+            step="100"
+            value={totalCapitalBudget}
+            onChange={(e) => setTotalCapitalBudget(e.target.value)}
+            className="w-28 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+          />
         </div>
       </FieldRow>
 
@@ -469,373 +446,6 @@ function TradingDefaultsSection({ hasCapitalFlows }: { hasCapitalFlows: boolean 
         {saveError && <span className="text-sm text-red-600">{saveError}</span>}
       </div>
     </Section>
-  );
-}
-
-function localTodayIsoDate(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function formatDisplayDate(iso: string, intlLocale: string): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  if (!y || !m || !d) return iso;
-  return new Date(y, m - 1, d).toLocaleDateString(intlLocale, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-// ─── Capital management ───────────────────────────────────────────────────────
-function CapitalFlowModal({
-  type,
-  open,
-  onClose,
-  onSubmit,
-  submitting,
-  initial,
-}: {
-  type: "deposit" | "withdrawal";
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (amount: number, eventDate: string) => Promise<void>;
-  submitting: boolean;
-  initial?: CapitalFlow;
-}) {
-  const { t } = useTranslations("settings");
-  const { t: tCommon } = useTranslations("common");
-  const [amount, setAmount] = useState("");
-  const [eventDate, setEventDate] = useState(localTodayIsoDate());
-  const [error, setError] = useState<string | null>(null);
-  const isEdit = initial != null;
-
-  useEffect(() => {
-    if (open) {
-      if (initial) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setAmount(String(Math.abs(initial.amount)));
-         
-        setEventDate(initial.event_date);
-      } else {
-         
-        setAmount("");
-         
-        setEventDate(localTodayIsoDate());
-      }
-       
-      setError(null);
-    }
-  }, [open, type, initial]);
-
-  if (!open) return null;
-
-  const title = isEdit
-    ? t("capital.modal.edit")
-    : type === "deposit"
-      ? t("capital.modal.deposit")
-      : t("capital.modal.withdrawal");
-  const label =
-    type === "deposit" ? t("capital.modal.depositAmount") : t("capital.modal.withdrawalAmount");
-
-  const handleSubmit = async () => {
-    setError(null);
-    const parsed = Number(amount);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
-      setError(t("capital.error.amount"));
-      return;
-    }
-    if (!eventDate) {
-      setError(t("capital.error.date"));
-      return;
-    }
-    try {
-      await onSubmit(parsed, eventDate);
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("capital.error.save"));
-    }
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 animate-fade-in"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="animate-scale-in w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-        <p className="mt-1 text-sm text-slate-500">{t("capital.modal.body")}</p>
-        <div className="mt-4 space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-slate-700">{label}</label>
-            <div className="mt-1 flex items-center gap-2">
-              <span className="text-sm text-slate-500">$</span>
-              <input
-                type="number"
-                min="1"
-                step="100"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                autoFocus
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700">{tCommon("columns.date")}</label>
-            <input
-              type="date"
-              value={eventDate}
-              max={localTodayIsoDate()}
-              onChange={(e) => setEventDate(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-            />
-          </div>
-        </div>
-        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-        <div className="mt-6 flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-          >
-            {tCommon("actions.cancel")}
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleSubmit()}
-            disabled={submitting}
-            className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-60 ${
-              type === "deposit"
-                ? "bg-emerald-600 hover:bg-emerald-700"
-                : "bg-amber-600 hover:bg-amber-700"
-            }`}
-          >
-            {submitting ? tCommon("actions.saving") : tCommon("actions.save")}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CapitalManagementSection({
-  onFlowsChange,
-}: {
-  onFlowsChange: (hasFlows: boolean) => void;
-}) {
-  const { token } = useProtectedAuth();
-  const { defaults, loading: defaultsLoading } = useTradeDefaults();
-  const { t } = useTranslations("settings");
-  const { t: tCommon } = useTranslations("common");
-  const { intlLocale } = useLocale();
-  const [flows, setFlows] = useState<CapitalFlow[]>([]);
-  const [loadingFlows, setLoadingFlows] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [modal, setModal] = useState<"deposit" | "withdrawal" | null>(null);
-  const [editingFlow, setEditingFlow] = useState<CapitalFlow | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const refreshFlows = async () => {
-    if (!token) {
-      setFlows([]);
-      onFlowsChange(false);
-      setLoadingFlows(false);
-      return;
-    }
-    setLoadingFlows(true);
-    try {
-      const data = await getCapitalFlows(token);
-      setFlows(data);
-      onFlowsChange(data.length > 0);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("capital.error.load"));
-    } finally {
-      setLoadingFlows(false);
-    }
-  };
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void refreshFlows();
-  }, [token]);
-
-  const handleSubmitFlow = async (amount: number, eventDate: string) => {
-    if (!token || (!modal && !editingFlow)) return;
-    setSubmitting(true);
-    try {
-      const flowType = editingFlow?.type ?? modal!;
-      if (editingFlow) {
-        await updateCapitalFlow(token, editingFlow.id, {
-          type: flowType,
-          amount,
-          event_date: eventDate,
-        });
-      } else {
-        await createCapitalFlow(token, { type: modal!, amount, event_date: eventDate });
-      }
-      window.dispatchEvent(new Event(TRADE_DEFAULTS_UPDATED_EVENT));
-      await refreshFlows();
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const openEdit = (flow: CapitalFlow) => {
-    setEditingFlow(flow);
-    setModal(flow.type);
-  };
-
-  const closeModal = () => {
-    setModal(null);
-    setEditingFlow(null);
-  };
-
-  const handleDelete = async (flow: CapitalFlow) => {
-    if (!token) return;
-    const typeLabel = flow.type === "deposit" ? t("capital.type.deposit") : t("capital.type.withdrawal");
-    if (
-      !window.confirm(
-        t("capital.confirmDelete", {
-          type: typeLabel,
-          date: formatDisplayDate(flow.event_date, intlLocale),
-        })
-      )
-    ) {
-      return;
-    }
-    setDeletingId(flow.id);
-    try {
-      await deleteCapitalFlow(token, flow.id);
-      window.dispatchEvent(new Event(TRADE_DEFAULTS_UPDATED_EVENT));
-      await refreshFlows();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("capital.error.delete"));
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  return (
-    <>
-      <CapitalFlowModal
-        type={modal ?? "deposit"}
-        open={modal !== null}
-        onClose={closeModal}
-        onSubmit={handleSubmitFlow}
-        submitting={submitting}
-        initial={editingFlow ?? undefined}
-      />
-      <Section title={t("capital.title")} description={t("capital.description")}>
-        <FieldRow label={t("capital.currentBudget")} hint={t("capital.currentBudgetHint")}>
-          <span className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-800">
-            {defaultsLoading ? "…" : formatFlowAmount(defaults.totalCapitalBudget)}
-          </span>
-        </FieldRow>
-
-        <div className="flex flex-wrap gap-3 py-3">
-          <button
-            type="button"
-            onClick={() => setModal("deposit")}
-            disabled={!token}
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <ArrowDownCircle className={iconSm} strokeWidth={iconStroke} aria-hidden />
-            {t("capital.deposit")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setModal("withdrawal")}
-            disabled={!token}
-            className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <ArrowUpCircle className={iconSm} strokeWidth={iconStroke} aria-hidden />
-            {t("capital.withdraw")}
-          </button>
-        </div>
-
-        {error && <p className="text-sm text-red-600">{error}</p>}
-
-        <div className="mt-2 overflow-hidden rounded-lg border border-slate-200">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-4 py-2 text-left font-medium text-slate-600">{tCommon("columns.date")}</th>
-                <th className="px-4 py-2 text-left font-medium text-slate-600">{tCommon("columns.type")}</th>
-                <th className="px-4 py-2 text-right font-medium text-slate-600">{tCommon("columns.amount")}</th>
-                <th className="px-4 py-2 text-right font-medium text-slate-600">
-                  <span className="sr-only">{tCommon("a11y.actions")}</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
-              {loadingFlows ? (
-                <tr>
-                  <td colSpan={4} className="px-4 py-6">
-                    <div className="flex justify-center">
-                      <DataSyncBanner active compact />
-                    </div>
-                  </td>
-                </tr>
-              ) : flows.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
-                    {t("capital.empty")}
-                  </td>
-                </tr>
-              ) : (
-                flows.map((flow) => (
-                  <tr key={flow.id}>
-                    <td className="px-4 py-2.5 text-slate-900">
-                      {formatDisplayDate(flow.event_date, intlLocale)}
-                    </td>
-                    <td className="px-4 py-2.5 capitalize text-slate-700">
-                      {t(`capital.type.${flow.type}`)}
-                    </td>
-                    <td
-                      className={`px-4 py-2.5 text-right font-medium ${
-                        flow.type === "deposit" ? "text-emerald-700" : "text-amber-700"
-                      }`}
-                    >
-                      {flow.type === "deposit" ? "+" : "−"}
-                      {formatFlowAmount(flow.amount)}
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <div className="inline-flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => openEdit(flow)}
-                          className="inline-flex items-center rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                          aria-label={tCommon("a11y.editEntry")}
-                        >
-                          <Pencil className="h-4 w-4" strokeWidth={iconStroke} aria-hidden />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void handleDelete(flow)}
-                          disabled={deletingId === flow.id}
-                          className="inline-flex items-center rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-red-600 disabled:opacity-50"
-                          aria-label={tCommon("a11y.deleteEntry")}
-                        >
-                          <Trash2 className="h-4 w-4" strokeWidth={iconStroke} aria-hidden />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Section>
-    </>
   );
 }
 
@@ -934,7 +544,6 @@ function DangerZoneSection() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const { email, displayName, onLogout } = useProtectedAuth();
-  const [hasCapitalFlows, setHasCapitalFlows] = useState(false);
   const { t: tCommon } = useTranslations("common");
 
   return (
@@ -944,8 +553,7 @@ export default function SettingsPage() {
           <BillingSection />
         </Suspense>
         <AccountSection email={email} displayName={displayName} />
-        <TradingDefaultsSection hasCapitalFlows={hasCapitalFlows} />
-        <CapitalManagementSection onFlowsChange={setHasCapitalFlows} />
+        <TradingDefaultsSection />
         <DangerZoneSection />
 
         <div className="flex flex-col items-center gap-4 pt-2 pb-4">
