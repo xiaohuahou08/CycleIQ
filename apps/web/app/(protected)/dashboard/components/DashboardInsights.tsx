@@ -736,7 +736,7 @@ export default function DashboardInsights({
   const charts = insights?.charts;
   const capitalTrend = useMemo(() => {
     const trend = normalizeCapitalTrend(charts);
-    if (frontendMtm == null) return trend;
+    if (frontendMtm == null || !trend) return trend;
     const backendMtm = baseKpis?.unrealized_stock_mtm ?? 0;
     const delta = unrealizedMtm - backendMtm;
     if (delta === 0) return trend;
