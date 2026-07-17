@@ -698,6 +698,7 @@ export default function DashboardInsights({
             deployed: fmtCurrency(capitalInvested, intlLocale),
             pct: capitalUtilPct.toFixed(0),
             budget: fmtCurrency(capitalBudget, intlLocale),
+            netPnl: fmtCurrency(kpis?.total_pnl ?? kpis?.realized_pnl ?? 0, intlLocale),
           })}
           tip={t("kpi.totalCapital.tip")}
           accent={overBudget ? KPI_ACCENT.loss : KPI_ACCENT.capital}

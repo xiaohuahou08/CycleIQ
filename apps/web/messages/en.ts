@@ -180,8 +180,8 @@ const en = {
       preview: {
         dashboard: "Dashboard",
         kpi: {
-          realizedPnl: "Realized P&L",
-          realizedPnlSub: "Options + call-away stock",
+          realizedPnl: "Net P&L",
+          realizedPnlSub: "Realized + stock MTM",
           totalPremium: "Total Premium",
           totalPremiumSub: "Gross, all legs",
           winRate: "Win Rate",
@@ -534,8 +534,8 @@ const en = {
     kpi: {
       totalCapital: {
         label: "Total Capital",
-        sub: "{{deployed}} deployed ({{pct}}%) · budget {{budget}} + P&L",
-        tip: "Total capital = starting budget + cumulative realized P&L + unrealized stock mark-to-market on shares still held after CSP assignment. Deployed = open CSP + stock held (cost basis). New trades cannot push deployed capital above total capital.",
+        sub: "{{deployed}} deployed ({{pct}}%) · {{budget}} + {{netPnl}} net P&L",
+        tip: "Total capital = starting budget + net P&L (same as the Net P&L card). Net P&L = realized option/stock cashflows plus unrealized stock MTM on shares still held after CSP assignment: (live price − CSP assignment strike) × open shares. Live quotes refresh when the dashboard loads; without a quote, stock MTM is omitted. Deployed = open CSP notional + stock held at cost basis. Utilization = deployed ÷ total capital.",
       },
       totalPremium: {
         label: "Total Premium",
@@ -545,7 +545,7 @@ const en = {
       realizedPnl: {
         label: "Net P&L",
         sub: "Realized {{realized}} · stock MTM {{mtm}}",
-        tip: "Net P&L = realized option/stock cashflows (CLOSED, EXPIRED, ROLLED, CALLED_AWAY, ASSIGNED + call-away stock P&L) plus unrealized mark-to-market on open assigned shares: (live price − CSP assignment strike) × shares still held. Matches the Cycles wheel center when a quote is available.",
+        tip: "Net P&L = realized option/stock cashflows (CLOSED, EXPIRED, ROLLED, CALLED_AWAY, ASSIGNED legs + call-away stock P&L) plus unrealized MTM on open assigned shares: (live price − CSP assignment strike) × shares still held. Matches the Cycles wheel center when a quote is available; if no quote loads, stock MTM shows $0.",
       },
       yearlyIncome: {
         label: "Yearly Income",
@@ -566,7 +566,7 @@ const en = {
         label: "Period Return",
         sub: "Net P&L {{amount}} · TWR {{twr}}",
         subUnreliable: "Net P&L {{amount}} · TWR {{twr}} · large flows — trust net $",
-        tip: "Main value = return on starting capital for the period: (end − start − net deposits) ÷ start. End NAV includes unrealized stock MTM as of today. Subtitle shows net P&L (realized + open-share MTM) and time-weighted return (TWR). When large flows make TWR unreliable, focus on net $ and period return %.",
+        tip: "Main value = return on starting capital for the period: (end NAV − start NAV − net deposits) ÷ start NAV. The period starts at your first trade or capital flow (not the chart range). End NAV uses budget + net P&L as of today (includes open-share MTM when a quote is available). Subtitle shows net P&L dollars and time-weighted return (TWR). Historical TWR days use realized P&L only; today's end point adds stock MTM.",
       },
       winRate: {
         label: "Win Rate",
@@ -591,9 +591,9 @@ const en = {
       monthlyPremium: "Monthly Premium (by open date)",
       capitalTrend: "Total Capital Trend",
       capitalTrendTip:
-        "Budget (adjusted for deposits/withdrawals) + cumulative realized P&L at each period end; the latest point also includes unrealized stock MTM. {{budgetLine}} {{rangeHint}}",
+        "Each point = budget + cumulative realized P&L at that date. The latest point also adds open-share MTM from today's quote (same as Total Capital). Earlier points do not include historical stock marks. {{budgetLine}} {{rangeHint}}",
       capitalTrendBudgetLine: "Dashed line = current budget ({{amount}}).",
-      capitalTrendNoBudget: "No budget reference line when deposit/withdrawal history exists.",
+      capitalTrendNoBudget: "No budget reference line when your starting budget changed during the period.",
       capitalTrendRangeYtd: "Year to date, snapshot at each week/month end.",
       capitalTrendRange1y: "Trailing 12 months, snapshot at each week/month end.",
       granularity: {
@@ -652,7 +652,6 @@ const en = {
     },
     filters: {
       searchPlaceholder: "Search ticker…",
-      clearFilters: "Clear filters",
       addTrade: "+ Add trade",
       sinceLastMonth: "Since last month",
       custom: "Custom",
@@ -885,7 +884,7 @@ const en = {
       contracts: "Default contracts",
       contractsHint: "Number of contracts pre-filled when opening a new trade.",
       budget: "Total capital budget",
-      budgetHint: "Your total capital available for wheel strategy positions.",
+      budgetHint: "Starting capital budget. Dashboard total capital = this budget + net P&L (realized + open-share MTM).",
       dte: "Default DTE (days to expiry)",
       dteHint: "The expiry date pre-filled when opening a new trade.",
       days: "days",

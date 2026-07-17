@@ -182,8 +182,8 @@ const zh = {
       preview: {
         dashboard: "仪表盘",
         kpi: {
-          realizedPnl: "已实现盈亏",
-          realizedPnlSub: "期权 + 被行权股票",
+          realizedPnl: "净盈亏",
+          realizedPnlSub: "已实现 + 股票未实现盈亏",
           totalPremium: "总权利金",
           totalPremiumSub: "毛额，所有腿",
           winRate: "胜率",
@@ -533,8 +533,8 @@ const zh = {
     kpi: {
       totalCapital: {
         label: "总资本",
-        sub: "已部署 {{deployed}}（{{pct}}%）· 预算 {{budget}} + 盈亏",
-        tip: "总资本 = 初始预算 + 累计已实现盈亏 + CSP 指派后仍持有股票的未实现市值损益。已部署 = 开放 CSP + 持有股票（成本口径）。新交易不能使已部署资本超过总资本。",
+        sub: "已部署 {{deployed}}（{{pct}}%）· {{budget}} + {{netPnl}} 净盈亏",
+        tip: "总资本 = 初始预算 + 净盈亏（与「净盈亏」卡片相同）。净盈亏 = 已实现期权/股票现金流 + CSP 指派后仍持有股票的未实现盈亏：（现价 − CSP 指派行权价）× 剩余股数。打开仪表盘时会刷新行情；若无行情，股票未实现盈亏按 0 计。已部署 = 开放 CSP 名义金额 + 持有股票（成本口径）。利用率 = 已部署 ÷ 总资本。",
       },
       totalPremium: {
         label: "总权利金",
@@ -543,8 +543,8 @@ const zh = {
       },
       realizedPnl: {
         label: "净盈亏",
-        sub: "已实现 {{realized}} · 股票市值 {{mtm}}",
-        tip: "净盈亏 = 已实现期权/股票现金流（已平仓、已到期、已展期、被行权、已指派 + CC 被行权股票盈亏）加上仍持有指派股票的未实现市值：（现价 − CSP 指派行权价）× 剩余股数。有行情时与 Cycles 滚轮中心一致。",
+        sub: "已实现 {{realized}} · 股票盈亏 {{mtm}}",
+        tip: "净盈亏 = 已实现期权/股票现金流（已平仓、已到期、已展期、被行权、已指派 + CC 被行权股票盈亏）加上仍持有指派股票的未实现盈亏：（现价 − CSP 指派行权价）× 剩余股数。有行情时与 Cycles 滚轮中心一致；若无行情，股票未实现盈亏显示为 $0。",
       },
       yearlyIncome: {
         label: "年收入预估",
@@ -565,7 +565,7 @@ const zh = {
         label: "期间收益率",
         sub: "净盈亏 {{amount}} · TWR {{twr}}",
         subUnreliable: "净盈亏 {{amount}} · TWR {{twr}} · 大额资金流——请以净盈亏金额为准",
-        tip: "主值 = 期间起始资本收益率：（期末 − 期初 − 净存入）÷ 期初。期末净值含截至今日的未实现股票市值损益。副标题显示净盈亏（已实现 + 持仓市值）与时间加权收益率（TWR）。当大额资金流使 TWR 不可靠时，请关注净盈亏金额与期间收益率。",
+        tip: "主值 = 期间起始资本收益率：（期末净值 − 期初净值 − 净存入）÷ 期初。统计期自首笔交易或首笔资金流起（非图表所选区间）。期末净值 = 预算 + 截至今日的净盈亏（有行情时含持仓未实现盈亏）。副标题显示净盈亏金额与时间加权收益率（TWR）。历史 TWR 各日仅用已实现盈亏；仅今日期末点加上股票未实现盈亏。",
       },
       winRate: {
         label: "胜率",
@@ -590,9 +590,9 @@ const zh = {
       monthlyPremium: "月权利金（按开仓日）",
       capitalTrend: "总资本趋势",
       capitalTrendTip:
-        "预算（已调整存取）+ 各期末累计已实现盈亏；最新一点另含未实现股票市值损益。{{budgetLine}} {{rangeHint}}",
+        "各点 = 该日预算 + 累计已实现盈亏。最新一点另加今日行情下的持仓股票未实现盈亏（与总资本一致）。更早各点不含历史股价。{{budgetLine}} {{rangeHint}}",
       capitalTrendBudgetLine: "虚线 = 当前预算（{{amount}}）。",
-      capitalTrendNoBudget: "存在存取记录时不显示预算参考线。",
+      capitalTrendNoBudget: "期间内初始预算有变化时不显示预算参考线。",
       capitalTrendRangeYtd: "年初至今，各周/月末快照。",
       capitalTrendRange1y: "过去 12 个月，各周/月末快照。",
       granularity: {
@@ -649,7 +649,6 @@ const zh = {
     },
     filters: {
       searchPlaceholder: "搜索标的…",
-      clearFilters: "清除筛选",
       addTrade: "+ 添加交易",
       sinceLastMonth: "自上月起",
       custom: "自定义",
@@ -879,7 +878,7 @@ const zh = {
       contracts: "默认合约数",
       contractsHint: "新开仓时预填的合约数。",
       budget: "总资本预算",
-      budgetHint: "可用于 Wheel 策略的总资本。",
+      budgetHint: "初始资本预算。仪表盘总资本 = 此预算 + 净盈亏（已实现 + 持仓未实现盈亏）。",
       dte: "默认剩余天数（DTE）",
       dteHint: "新开仓时预填的到期日。",
       days: "天",

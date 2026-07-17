@@ -19,7 +19,7 @@ def open_assigned_positions(
     """
     by_ticker: dict[str, list[Trade]] = defaultdict(list)
     for t in trades:
-        by_ticker[t.ticker].append(t)
+        by_ticker[str(t.ticker).strip().upper()].append(t)
 
     positions: list[tuple[str, int, float]] = []
     for ticker, tt in by_ticker.items():
@@ -63,9 +63,10 @@ def compute_unrealized_stock_mtm(
 
     Tickers without a finite price are skipped (contribute 0).
     """
+    normalized_prices = {str(ticker).strip().upper(): price for ticker, price in prices.items()}
     total = 0.0
     for ticker, open_shares, avg_strike in open_assigned_positions(trades):
-        price = prices.get(ticker)
+        price = normalized_prices.get(ticker)
         if price is None or not isinstance(price, (int, float)):
             continue
         live = float(price)

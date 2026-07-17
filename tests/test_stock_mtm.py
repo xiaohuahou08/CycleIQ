@@ -58,6 +58,13 @@ def test_mtm_with_live_price():
     assert compute_unrealized_stock_mtm(trades, {"AAPL": 185.0}) == pytest.approx(500.0)
 
 
+def test_mtm_normalizes_ticker_case():
+    trades = [_put(ticker="aapl")]
+    assert tickers_needing_quotes(trades) == ["AAPL"]
+    assert compute_unrealized_stock_mtm(trades, {"AAPL": 185.0}) == pytest.approx(500.0)
+    assert compute_unrealized_stock_mtm(trades, {"aapl": 185.0}) == pytest.approx(500.0)
+
+
 def test_mtm_skipped_without_quote():
     trades = [_put()]
     assert compute_unrealized_stock_mtm(trades, {}) == pytest.approx(0.0)
