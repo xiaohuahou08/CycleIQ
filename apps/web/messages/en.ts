@@ -534,7 +534,7 @@ const en = {
     kpi: {
       totalCapital: {
         label: "Total Capital",
-        sub: "{{deployed}} deployed ({{pct}}%) · {{budget}} + {{netPnl}} net P&L",
+        sub: "{{deployed}} deployed ({{pct}}%) · {{budget}} {{netPnl}} net P&L",
         tip: "Total capital = starting budget + net P&L (same as the Net P&L card). Net P&L = realized option/stock cashflows plus unrealized stock MTM on shares still held after CSP assignment: (live price − CSP assignment strike) × open shares. Live quotes refresh when the dashboard loads; without a quote, stock MTM is omitted. Deployed = open CSP notional + stock held at cost basis. Utilization = deployed ÷ total capital.",
       },
       totalPremium: {

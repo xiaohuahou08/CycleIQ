@@ -117,6 +117,13 @@ function fmtCurrency(value: number, intlLocale: string): string {
   }).format(value);
 }
 
+/** Explicit +/− prefix so budget ± P&L never reads as "+ -US$…". */
+function fmtSignedCurrency(value: number, intlLocale: string): string {
+  const abs = fmtCurrency(Math.abs(value), intlLocale);
+  if (value < 0) return `− ${abs}`;
+  return `+ ${abs}`;
+}
+
 function fmtPercent(value: number): string {
   return `${value.toFixed(1)}%`;
 }
@@ -659,13 +666,17 @@ function StatCard({
   return (
     <Card className="card-hover-lift relative overflow-visible gap-0 rounded-2xl py-0 ring-1 ring-slate-900/[0.04]">
       <div className={`absolute left-0 top-0 h-1 w-full rounded-t-2xl ${accent}`} />
-      <div className="flex items-start justify-between gap-2 p-4">
-        <div className="min-w-0 flex-1">
+      <div className="flex items-start justify-between gap-1.5 p-3 sm:gap-2 sm:p-4">
+        <div className="min-w-0 flex-1 overflow-hidden">
           <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
-          <p className={`animate-count-up mt-2 text-2xl font-bold tabular-nums ${valueClassName ?? "text-slate-800"}`}>
+          <p
+            className={`animate-count-up mt-1.5 font-bold tabular-nums leading-tight tracking-tight sm:mt-2 ${valueClassName ?? "text-slate-800"} text-[clamp(0.95rem,3.6vw,1.5rem)] sm:text-xl md:text-2xl`}
+          >
             {value}
           </p>
-          <p className="mt-1 text-xs text-slate-500">{sub}</p>
+          <p className="mt-1 break-words text-[11px] leading-snug text-slate-500 sm:text-xs">
+            {sub}
+          </p>
         </div>
         {tip && <StatCardHelp tip={tip} ariaLabel={metricDetailsLabel} />}
       </div>
@@ -764,7 +775,7 @@ export default function DashboardInsights({
             deployed: fmtCurrency(capitalInvested, intlLocale),
             pct: capitalUtilPct.toFixed(0),
             budget: fmtCurrency(capitalBudget, intlLocale),
-            netPnl: fmtCurrency(totalPnl, intlLocale),
+            netPnl: fmtSignedCurrency(totalPnl, intlLocale),
           })}
           tip={t("kpi.totalCapital.tip")}
           accent={overBudget ? KPI_ACCENT.loss : KPI_ACCENT.capital}
@@ -784,7 +795,7 @@ export default function DashboardInsights({
           value={fmtCurrency(totalPnl, intlLocale)}
           sub={t("kpi.realizedPnl.sub", {
             realized: fmtCurrency(realizedPnl, intlLocale),
-            mtm: fmtCurrency(unrealizedMtm, intlLocale),
+            mtm: fmtSignedCurrency(unrealizedMtm, intlLocale),
           })}
           tip={t("kpi.realizedPnl.tip")}
           accent={KPI_ACCENT.profit}

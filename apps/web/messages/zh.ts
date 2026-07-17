@@ -533,7 +533,7 @@ const zh = {
     kpi: {
       totalCapital: {
         label: "总资本",
-        sub: "已部署 {{deployed}}（{{pct}}%）· {{budget}} + {{netPnl}} 净盈亏",
+        sub: "已部署 {{deployed}}（{{pct}}%）· {{budget}} {{netPnl}} 净盈亏",
         tip: "总资本 = 初始预算 + 净盈亏（与「净盈亏」卡片相同）。净盈亏 = 已实现期权/股票现金流 + CSP 指派后仍持有股票的未实现盈亏：（现价 − CSP 指派行权价）× 剩余股数。打开仪表盘时会刷新行情；若无行情，股票未实现盈亏按 0 计。已部署 = 开放 CSP 名义金额 + 持有股票（成本口径）。利用率 = 已部署 ÷ 总资本。",
       },
       totalPremium: {
