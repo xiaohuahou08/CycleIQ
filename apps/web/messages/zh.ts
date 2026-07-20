@@ -827,6 +827,7 @@ const zh = {
       premiumRealizedHint: "已实现 {{realized}} · 含持仓中 CC",
       positions: "CC 持仓",
       costOverTime: "成本基础走势",
+      filteredToWheel: "仅显示此滚轮的 CC 成本基础",
       subtitle: "{{strike}} CSP · {{date}}",
     },
     leg: {

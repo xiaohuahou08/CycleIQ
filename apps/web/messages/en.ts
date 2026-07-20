@@ -833,6 +833,7 @@ const en = {
       premiumRealizedHint: "{{realized}} realized · includes open legs",
       positions: "CC Positions",
       costOverTime: "Cost Basis Over Time",
+      filteredToWheel: "Showing CC cost basis for this wheel only",
       subtitle: "{{strike}} CSP · {{date}}",
     },
     leg: {

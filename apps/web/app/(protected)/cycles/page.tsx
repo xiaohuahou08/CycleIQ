@@ -234,13 +234,27 @@ export default function CyclesPage() {
     );
   }, [searchTicker, tabCycles]);
 
+  const selectedWheel = useMemo(
+    () => wheels.find((cycle) => cycle.id === selectedWheelId) ?? null,
+    [selectedWheelId, wheels]
+  );
+
   const ccCostBasisRows = useMemo(() => {
-    return buildCcCostBasisRows(wheels, trades)
+    let rows = buildCcCostBasisRows(wheels, trades);
+    if (selectedWheelId) {
+      const sourceCycleId = selectedWheel?.source_cycle_id;
+      rows = rows.filter(
+        (row) =>
+          row.wheelId === selectedWheelId ||
+          (sourceCycleId != null && row.wheelId === sourceCycleId)
+      );
+    }
+    return rows
       .filter((row) =>
         row.ticker.toLowerCase().includes(searchTicker.trim().toLowerCase())
       )
       .sort((a, b) => b.reductionPct - a.reductionPct);
-  }, [searchTicker, trades, wheels]);
+  }, [searchTicker, selectedWheel?.source_cycle_id, selectedWheelId, trades, wheels]);
 
   const ccHeadline = useMemo(() => {
     const positionsTracked = ccCostBasisRows.length;
@@ -252,10 +266,6 @@ export default function CyclesPage() {
     return { positionsTracked, totalCcPremium, avgReduction };
   }, [ccCostBasisRows]);
 
-  const selectedWheel = useMemo(
-    () => visibleCycles.find((cycle) => cycle.id === selectedWheelId) ?? null,
-    [selectedWheelId, visibleCycles]
-  );
   const selectedWheelLegs = useMemo(
     () =>
       selectedWheel
@@ -358,6 +368,25 @@ export default function CyclesPage() {
           </div>
         ) : viewTab === "CC_COST_BASIS" ? (
           <div className="mt-5 space-y-4">
+            {selectedWheel && (
+              <div className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <button
+                  type="button"
+                  onClick={() => setViewTab("WHEELS")}
+                  className="rounded-full p-1 text-slate-600 hover:bg-white hover:text-slate-900"
+                  title={tCommon("actions.back")}
+                >
+                  ←
+                </button>
+                <TickerLogo ticker={selectedWheel.ticker} />
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {t("wheelTitle", { ticker: selectedWheel.ticker })}
+                  </p>
+                  <p className="text-xs text-slate-600">{t("cc.filteredToWheel")}</p>
+                </div>
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative min-w-[8.5rem] max-w-[14rem] flex-1">
                 <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-500">
