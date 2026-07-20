@@ -149,7 +149,7 @@ describe("buildCcCostBasisRows", () => {
     });
     const wheels = [
       {
-        id: "wheel-active",
+        id: "cycle-1",
         ticker: "UNH",
         state: "CC_OPEN",
         trades: [assignedPut],
@@ -166,6 +166,58 @@ describe("buildCcCostBasisRows", () => {
     assert.equal(rows[0].ccPremiumRealized, 0);
     assert.equal(rows[0].currentCost, 98);
     assert.equal(rows[0].ccPositions, 1);
+  });
+
+  it("does not mix CC cost basis across separate wheels on the same ticker", () => {
+    const openCsp = trade({
+      id: "csp-open",
+      ticker: "HIMS",
+      status: "OPEN",
+      strike: 33,
+      premium: 1.79,
+      cycle_id: "cycle-csp",
+    });
+    const assignedPut = trade({
+      id: "put-assigned",
+      ticker: "HIMS",
+      status: "ASSIGNED",
+      strike: 34,
+      premium: 0.56,
+      stock_cost_basis_per_share: 33.4406,
+      cycle_id: "cycle-cc",
+    });
+    const openCc = trade({
+      id: "cc-open",
+      ticker: "HIMS",
+      option_type: "CALL",
+      status: "OPEN",
+      strike: 34,
+      premium: 1.24,
+      commission_fee: 0.06,
+      cycle_id: "cycle-cc",
+    });
+    const wheels = [
+      {
+        id: "cycle-csp",
+        ticker: "HIMS",
+        state: "CSP_OPEN",
+        trades: [openCsp],
+      },
+      {
+        id: "cycle-cc",
+        ticker: "HIMS",
+        state: "CC_OPEN",
+        trades: [assignedPut, openCc],
+      },
+    ];
+    const allTrades = [openCsp, assignedPut, openCc];
+
+    const rows = buildCcCostBasisRows(wheels, allTrades);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].wheelId, "cycle-cc");
+    assert.equal(rows[0].initialCost, 33.4406);
+    assert.equal(rows[0].currentCost, 32.2012);
+    assert.equal(rows[0].ccPremiumTotal, 123.94);
   });
 
   it("includes orphan assigned puts not linked to a wheel split", () => {

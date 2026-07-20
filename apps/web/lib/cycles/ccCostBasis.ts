@@ -333,13 +333,18 @@ export function effectiveCcPremiumForBasis(trades: Trade[]): number {
     .reduce((sum, t) => sum + netLegCashflow(t), 0);
 }
 
-function tradesScopedToWheel(wheelTrades: Trade[], allTrades: Trade[]): Trade[] {
-  const tickers = new Set(wheelTrades.map((t) => t.ticker.toUpperCase()));
+function tradesScopedToWheel(
+  wheelId: string,
+  wheelTrades: Trade[],
+  allTrades: Trade[]
+): Trade[] {
   const cycleIds = new Set<string>();
-  for (const t of [...wheelTrades, ...allTrades]) {
-    if (t.cycle_id && tickers.has(t.ticker.toUpperCase())) {
-      cycleIds.add(t.cycle_id);
-    }
+  if (wheelId && !wheelId.startsWith("orphan:")) {
+    cycleIds.add(wheelId);
+  }
+  for (const t of wheelTrades) {
+    const cycleId = t.cycle_id ?? resolveTradeCycleId(t, allTrades);
+    if (cycleId) cycleIds.add(cycleId);
   }
   if (cycleIds.size === 0) return wheelTrades;
   const scoped = allTrades.filter((t) => t.cycle_id != null && cycleIds.has(t.cycle_id));
@@ -403,7 +408,7 @@ export function buildCcCostBasisRows(
 
   for (const wheel of wheels) {
     if (isCompletedWheel(wheel.state)) continue;
-    const scopedTrades = tradesScopedToWheel(wheel.trades, allTrades);
+    const scopedTrades = tradesScopedToWheel(wheel.id, wheel.trades, allTrades);
     const row = buildCcCostBasisRow(
       wheel.id,
       wheel.ticker,
