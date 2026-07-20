@@ -138,9 +138,15 @@ def compute_total_capital_invested_as_of(trades: list[Trade], as_of: date) -> fl
     )
 
 
-def compute_total_capital_pool(budget: float, trades: list[Trade], as_of: date) -> float:
-    """Total capital = starting budget + cumulative realized P&L (profits add, losses subtract)."""
-    return float(budget) + compute_realized_pnl_as_of(trades, as_of)
+def compute_total_capital_pool(
+    budget: float,
+    trades: list[Trade],
+    as_of: date,
+    *,
+    unrealized_mtm: float = 0.0,
+) -> float:
+    """Total capital = budget + realized P&L (+ optional open-share MTM)."""
+    return float(budget) + compute_realized_pnl_as_of(trades, as_of) + float(unrealized_mtm or 0.0)
 
 
 def _month_end(year: int, month: int, cap: date) -> date:
@@ -238,13 +244,21 @@ def build_capital_trend_charts(
     budget: float,
     today: date | None = None,
     flows: list[CapitalFlowEvent] | None = None,
+    *,
+    unrealized_mtm: float = 0.0,
 ) -> dict[str, list[dict]]:
     today = today or date.today()
     flow_events = flows or []
-    return {
-        "weekly": build_weekly_capital_series(trades, budget, today, flow_events),
-        "monthly": build_monthly_capital_series(trades, budget, today, flows=flow_events),
-    }
+    weekly = build_weekly_capital_series(trades, budget, today, flow_events)
+    monthly = build_monthly_capital_series(trades, budget, today, flows=flow_events)
+    mtm = float(unrealized_mtm or 0.0)
+    if mtm != 0.0:
+        # Only the latest snapshot includes live marks (no historical prices).
+        if weekly:
+            weekly[-1] = {**weekly[-1], "value": round(weekly[-1]["value"] + mtm, 2)}
+        if monthly:
+            monthly[-1] = {**monthly[-1], "value": round(monthly[-1]["value"] + mtm, 2)}
+    return {"weekly": weekly, "monthly": monthly}
 
 
 def compute_stock_effective_cost(trades: list[Trade], today: date | None = None) -> float:

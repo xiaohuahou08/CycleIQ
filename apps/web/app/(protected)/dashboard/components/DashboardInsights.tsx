@@ -1,16 +1,21 @@
 "use client";
 
-import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Info } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
 import { CARD_BASE, KPI_ACCENT, profitLossClass } from "@/app/components/ui/styles";
 import { Card } from "@/components/ui/card";
+import {
+  computeUnrealizedStockMtm,
+  openAssignedPositions,
+} from "@/lib/cycles/ccCostBasis";
 import { useLocale, useTranslations } from "@/lib/i18n/locale-context";
 import type {
   CapitalTrendCharts,
   DashboardInsights as DashboardInsightsData,
   DashboardSeriesPoint,
+  Trade,
 } from "@/lib/api/trades";
 
 type TrendGranularity = "week" | "month";
@@ -110,6 +115,13 @@ function fmtCurrency(value: number, intlLocale: string): string {
     currency: "USD",
     maximumFractionDigits: 2,
   }).format(value);
+}
+
+/** Explicit +/− prefix so budget ± P&L never reads as "+ -US$…". */
+function fmtSignedCurrency(value: number, intlLocale: string): string {
+  const abs = fmtCurrency(Math.abs(value), intlLocale);
+  if (value < 0) return `− ${abs}`;
+  return `+ ${abs}`;
 }
 
 function fmtPercent(value: number): string {
@@ -654,13 +666,17 @@ function StatCard({
   return (
     <Card className="card-hover-lift relative overflow-visible gap-0 rounded-2xl py-0 ring-1 ring-slate-900/[0.04]">
       <div className={`absolute left-0 top-0 h-1 w-full rounded-t-2xl ${accent}`} />
-      <div className="flex items-start justify-between gap-2 p-4">
-        <div className="min-w-0 flex-1">
+      <div className="flex items-start justify-between gap-1.5 p-3 sm:gap-2 sm:p-4">
+        <div className="min-w-0 flex-1 overflow-hidden">
           <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
-          <p className={`animate-count-up mt-2 text-2xl font-bold tabular-nums ${valueClassName ?? "text-slate-800"}`}>
+          <p
+            className={`animate-count-up mt-1.5 font-bold tabular-nums leading-tight tracking-tight sm:mt-2 ${valueClassName ?? "text-slate-800"} text-[clamp(0.95rem,3.6vw,1.5rem)] sm:text-xl md:text-2xl`}
+          >
             {value}
           </p>
-          <p className="mt-1 text-xs text-slate-500">{sub}</p>
+          <p className="mt-1 break-words text-[11px] leading-snug text-slate-500 sm:text-xs">
+            {sub}
+          </p>
         </div>
         {tip && <StatCardHelp tip={tip} ariaLabel={metricDetailsLabel} />}
       </div>
@@ -670,8 +686,10 @@ function StatCard({
 
 export default function DashboardInsights({
   insights,
+  trades = [],
 }: {
   insights: DashboardInsightsData | null;
+  trades?: Trade[];
 }) {
   const { t } = useTranslations("dashboard");
   const { t: tCommon } = useTranslations("common");
@@ -679,14 +697,73 @@ export default function DashboardInsights({
   const metricDetailsLabel = tCommon("a11y.metricDetails");
   const noDataLabel = tCommon("empty.noData");
 
-  const kpis = insights?.kpis;
-  const charts = insights?.charts;
-  const capitalTrend = normalizeCapitalTrend(charts);
-  const capitalInvested = kpis?.total_capital_invested ?? 0;
-  const totalCapital = kpis?.total_capital ?? kpis?.capital_budget ?? 0;
-  const capitalBudget = kpis?.capital_budget ?? 0;
-  const capitalUtilPct = kpis?.capital_utilization_pct ?? 0;
+  const heldTickers = useMemo(
+    () => openAssignedPositions(trades).map((p) => p.ticker),
+    [trades]
+  );
+  const [livePrices, setLivePrices] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (heldTickers.length === 0) return;
+    const symbols = heldTickers.join(",");
+    let cancelled = false;
+    fetch(`/api/quote?symbols=${encodeURIComponent(symbols)}`)
+      .then((r) => r.json())
+      .then((data: Record<string, number>) => {
+        if (!cancelled) setLivePrices(data);
+      })
+      .catch(() => {
+        /* keep backend MTM / realized-only fallback */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [heldTickers]);
+
+  const frontendMtm = useMemo(() => {
+    if (heldTickers.length === 0) return null;
+    if (!heldTickers.some((t) => livePrices[t] != null && Number.isFinite(livePrices[t]))) {
+      return null;
+    }
+    return computeUnrealizedStockMtm(trades, livePrices);
+  }, [heldTickers, livePrices, trades]);
+
+  const baseKpis = insights?.kpis;
+  const realizedPnl = baseKpis?.realized_pnl ?? 0;
+  const capitalBudget = baseKpis?.capital_budget ?? 0;
+  const capitalInvested = baseKpis?.total_capital_invested ?? 0;
+
+  // Prefer Vercel /api/quote MTM (same path as Cycles). Backend Yahoo from Render often fails.
+  const unrealizedMtm = frontendMtm ?? baseKpis?.unrealized_stock_mtm ?? 0;
+  const totalPnl = realizedPnl + unrealizedMtm;
+  const totalCapital =
+    frontendMtm != null
+      ? capitalBudget + realizedPnl + unrealizedMtm
+      : (baseKpis?.total_capital ?? capitalBudget);
+  const capitalUtilPct =
+    totalCapital > 0 ? (capitalInvested / totalCapital) * 100 : (baseKpis?.capital_utilization_pct ?? 0);
   const overBudget = totalCapital > 0 && capitalInvested > totalCapital;
+
+  const charts = insights?.charts;
+  const capitalTrend = useMemo(() => {
+    const trend = normalizeCapitalTrend(charts);
+    if (frontendMtm == null || !trend) return trend;
+    const backendMtm = baseKpis?.unrealized_stock_mtm ?? 0;
+    const delta = unrealizedMtm - backendMtm;
+    if (delta === 0) return trend;
+    const bump = (points: DashboardSeriesPoint[]) =>
+      points.length === 0
+        ? points
+        : points.map((p, i) =>
+            i === points.length - 1 ? { ...p, value: p.value + delta } : p
+          );
+    return {
+      weekly: bump(trend.weekly),
+      monthly: bump(trend.monthly),
+    };
+  }, [charts, frontendMtm, baseKpis?.unrealized_stock_mtm, unrealizedMtm]);
+
+  const kpis = baseKpis;
 
   return (
     <div className="space-y-4">
@@ -698,6 +775,7 @@ export default function DashboardInsights({
             deployed: fmtCurrency(capitalInvested, intlLocale),
             pct: capitalUtilPct.toFixed(0),
             budget: fmtCurrency(capitalBudget, intlLocale),
+            netPnl: fmtSignedCurrency(totalPnl, intlLocale),
           })}
           tip={t("kpi.totalCapital.tip")}
           accent={overBudget ? KPI_ACCENT.loss : KPI_ACCENT.capital}
@@ -714,11 +792,14 @@ export default function DashboardInsights({
         />
         <StatCard
           label={t("kpi.realizedPnl.label")}
-          value={fmtCurrency(kpis?.realized_pnl ?? 0, intlLocale)}
-          sub={t("kpi.realizedPnl.sub")}
+          value={fmtCurrency(totalPnl, intlLocale)}
+          sub={t("kpi.realizedPnl.sub", {
+            realized: fmtCurrency(realizedPnl, intlLocale),
+            mtm: fmtSignedCurrency(unrealizedMtm, intlLocale),
+          })}
           tip={t("kpi.realizedPnl.tip")}
           accent={KPI_ACCENT.profit}
-          valueClassName={profitLossClass(kpis?.realized_pnl ?? 0)}
+          valueClassName={profitLossClass(totalPnl)}
           metricDetailsLabel={metricDetailsLabel}
         />
         <StatCard
@@ -753,11 +834,11 @@ export default function DashboardInsights({
           sub={
             kpis?.time_weighted_return_unreliable
               ? t("kpi.periodReturn.subUnreliable", {
-                  amount: fmtCurrency(kpis?.realized_pnl ?? 0, intlLocale),
+                  amount: fmtCurrency(totalPnl, intlLocale),
                   twr: fmtPercent(kpis?.time_weighted_return_pct ?? 0),
                 })
               : t("kpi.periodReturn.sub", {
-                  amount: fmtCurrency(kpis?.realized_pnl ?? 0, intlLocale),
+                  amount: fmtCurrency(totalPnl, intlLocale),
                   twr: fmtPercent(kpis?.time_weighted_return_pct ?? 0),
                 })
           }

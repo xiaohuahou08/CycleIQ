@@ -80,7 +80,7 @@ export default function DashboardPage() {
                   ) : null}
                 </div>
               ) : null}
-              <DashboardInsights insights={insights} />
+              <DashboardInsights insights={insights} trades={allTrades} />
               <ActivePositionsTable trades={activeTrades} />
             </>
           )}

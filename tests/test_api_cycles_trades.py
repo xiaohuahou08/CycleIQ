@@ -329,7 +329,11 @@ def test_invalid_trade_status(client):
     assert r.status_code == 400
 
 
-def test_dashboard_insights_api(client):
+def test_dashboard_insights_api(client, monkeypatch):
+    monkeypatch.setattr(
+        "backend.routes.dashboard.fetch_yahoo_prices",
+        lambda tickers: {},
+    )
     h = auth_headers("33333333-3333-3333-3333-333333333333")
     set_capital_budget(client, h, 100_000)
     trades = [
@@ -414,8 +418,12 @@ def test_capital_trend_reflects_past_deposit(client):
         assert monthly[feb_label] - monthly[jan_label] == pytest.approx(25_000, abs=1)
 
 
-def test_dashboard_insights_includes_assigned_csp_premium(client):
+def test_dashboard_insights_includes_assigned_csp_premium(client, monkeypatch):
     """ASSIGNED CSP premium counts toward realized P&L (matches Cycles wheel)."""
+    monkeypatch.setattr(
+        "backend.routes.dashboard.fetch_yahoo_prices",
+        lambda tickers: {},
+    )
     h = auth_headers("55555555-5555-5555-5555-555555555555")
     created = client.post(
         "/api/trades",
@@ -443,6 +451,47 @@ def test_dashboard_insights_includes_assigned_csp_premium(client):
     body = client.get("/api/dashboard/insights", headers=h).get_json()
     # premium 2.0 × 1 contract × 100
     assert body["kpis"]["realized_pnl"] == pytest.approx(200.0)
+    assert body["kpis"]["unrealized_stock_mtm"] == pytest.approx(0.0)
+    assert body["kpis"]["total_pnl"] == pytest.approx(200.0)
+
+
+def test_dashboard_insights_includes_assigned_stock_mtm(client, monkeypatch):
+    """Open assigned shares mark to market in total capital / net P&L."""
+    monkeypatch.setattr(
+        "backend.routes.dashboard.fetch_yahoo_prices",
+        lambda tickers: {"AAPL": 185.0},
+    )
+    h = auth_headers("77777777-7777-7777-7777-777777777777")
+    set_capital_budget(client, h, 100_000)
+    created = client.post(
+        "/api/trades",
+        json={
+            "ticker": "AAPL",
+            "option_type": "PUT",
+            "strike": 180,
+            "expiry": "2026-06-20",
+            "trade_date": "2026-04-01",
+            "premium": 2.0,
+            "contracts": 1,
+            "status": "OPEN",
+        },
+        headers=h,
+    )
+    assert created.status_code == 201
+    tid = created.get_json()["id"]
+    assert client.put(
+        f"/api/trades/{tid}",
+        json={"status": "ASSIGNED", "trade_date": "2026-04-29"},
+        headers=h,
+    ).status_code == 200
+
+    body = client.get("/api/dashboard/insights", headers=h).get_json()
+    # realized premium 200 + MTM (185−180)×100 = 500 → total_pnl 700
+    assert body["kpis"]["realized_pnl"] == pytest.approx(200.0)
+    assert body["kpis"]["unrealized_stock_mtm"] == pytest.approx(500.0)
+    assert body["kpis"]["total_pnl"] == pytest.approx(700.0)
+    assert body["kpis"]["total_capital"] == pytest.approx(100_700.0)
+    assert body["charts"]["capital_trend"]["monthly"][-1]["value"] == pytest.approx(100_700.0)
 
 
 def test_expire_trade_endpoint_sets_metadata(client):
@@ -563,8 +612,12 @@ def test_call_away_cc_updates_assigned_put_and_cycle_exit(client):
     assert cycle["state"] == "EXIT"
 
 
-def test_dashboard_expired_cc_reduces_stock_effective_cost(client):
+def test_dashboard_expired_cc_reduces_stock_effective_cost(client, monkeypatch):
     """Expired CC premium lowers total_stock_effective_cost for held stock."""
+    monkeypatch.setattr(
+        "backend.routes.dashboard.fetch_yahoo_prices",
+        lambda tickers: {},
+    )
     h = auth_headers("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
 
     put_payload = {
@@ -804,7 +857,7 @@ def test_delete_capital_flow_reverses_budget(client):
     assert prefs["total_capital_budget"] == pytest.approx(10000)
 
 
-def test_preferences_budget_locked_when_flows_exist(client):
+def test_preferences_budget_editable_when_flows_exist(client):
     h = auth_headers()
     client.post(
         "/api/me/capital-flows",
@@ -816,8 +869,8 @@ def test_preferences_budget_locked_when_flows_exist(client):
         json={"total_capital_budget": 50_000, "default_contracts": 1, "default_dte": 45},
         headers=h,
     )
-    assert res.status_code == 400
-    assert "Capital Management" in res.get_json()["error"]
+    assert res.status_code == 200
+    assert res.get_json()["total_capital_budget"] == pytest.approx(50_000)
 
 
 def test_put_capital_flow_update(client):

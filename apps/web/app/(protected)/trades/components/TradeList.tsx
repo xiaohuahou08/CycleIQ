@@ -424,7 +424,7 @@ function TradeRow({
                 </span>
               </span>
             );
-          })() : <span className="text-slate-500">?</span>}
+          })() : <span className="text-slate-500">-</span>}
         </td>
         <td
           className={`whitespace-nowrap px-5 py-3.5 tabular-nums text-base ${
@@ -434,7 +434,7 @@ function TradeRow({
           {exp.label}
         </td>
         <td className="whitespace-nowrap px-5 py-3.5 tabular-nums font-medium text-slate-800">
-          {trade.status === "OPEN" ? getDte(trade.expiry) : <span className="font-normal text-slate-500">?</span>}
+          {trade.status === "OPEN" ? getDte(trade.expiry) : <span className="font-normal text-slate-500">-</span>}
         </td>
         <td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-base font-semibold text-emerald-700">
           {fmtPremiumTotal(trade)}

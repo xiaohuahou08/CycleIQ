@@ -10,6 +10,8 @@ import {
   netLegCashflow,
   resolveTradeCycleId,
   wheelTotalNetPnl,
+  openAssignedPositions,
+  computeUnrealizedStockMtm,
 } from "./ccCostBasis.ts";
 
 function trade(overrides) {
@@ -147,7 +149,7 @@ describe("buildCcCostBasisRows", () => {
     });
     const wheels = [
       {
-        id: "wheel-active",
+        id: "cycle-1",
         ticker: "UNH",
         state: "CC_OPEN",
         trades: [assignedPut],
@@ -164,6 +166,58 @@ describe("buildCcCostBasisRows", () => {
     assert.equal(rows[0].ccPremiumRealized, 0);
     assert.equal(rows[0].currentCost, 98);
     assert.equal(rows[0].ccPositions, 1);
+  });
+
+  it("does not mix CC cost basis across separate wheels on the same ticker", () => {
+    const openCsp = trade({
+      id: "csp-open",
+      ticker: "HIMS",
+      status: "OPEN",
+      strike: 33,
+      premium: 1.79,
+      cycle_id: "cycle-csp",
+    });
+    const assignedPut = trade({
+      id: "put-assigned",
+      ticker: "HIMS",
+      status: "ASSIGNED",
+      strike: 34,
+      premium: 0.56,
+      stock_cost_basis_per_share: 33.4406,
+      cycle_id: "cycle-cc",
+    });
+    const openCc = trade({
+      id: "cc-open",
+      ticker: "HIMS",
+      option_type: "CALL",
+      status: "OPEN",
+      strike: 34,
+      premium: 1.24,
+      commission_fee: 0.06,
+      cycle_id: "cycle-cc",
+    });
+    const wheels = [
+      {
+        id: "cycle-csp",
+        ticker: "HIMS",
+        state: "CSP_OPEN",
+        trades: [openCsp],
+      },
+      {
+        id: "cycle-cc",
+        ticker: "HIMS",
+        state: "CC_OPEN",
+        trades: [assignedPut, openCc],
+      },
+    ];
+    const allTrades = [openCsp, assignedPut, openCc];
+
+    const rows = buildCcCostBasisRows(wheels, allTrades);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].wheelId, "cycle-cc");
+    assert.equal(rows[0].initialCost, 33.4406);
+    assert.equal(rows[0].currentCost, 32.2012);
+    assert.equal(rows[0].ccPremiumTotal, 123.94);
   });
 
   it("includes orphan assigned puts not linked to a wheel split", () => {
@@ -243,6 +297,77 @@ describe("wheelTotalNetPnl", () => {
     });
     const pnl = wheelTotalNetPnl([rolled, assigned]);
     assert.equal(pnl, 100 + 200);
+  });
+
+  it("adds mark-to-market stock PnL when live price is provided after assignment", () => {
+    const put = trade({
+      status: "ASSIGNED",
+      strike: 390,
+      premium: 2.5,
+      stock_cost_basis_per_share: 387.5,
+    });
+    // option cashflow 250 + (395 - 390) * 100
+    assert.equal(wheelTotalNetPnl([put], 395), 250 + 500);
+  });
+
+  it("ignores live price when none is provided after assignment", () => {
+    const put = trade({
+      status: "ASSIGNED",
+      strike: 390,
+      premium: 2.5,
+    });
+    assert.equal(wheelTotalNetPnl([put]), 250);
+    assert.equal(wheelTotalNetPnl([put], null), 250);
+  });
+
+  it("does not mark-to-market shares already called away", () => {
+    const put = trade({
+      status: "ASSIGNED",
+      strike: 390,
+      premium: 2.5,
+      contracts: 2,
+    });
+    const ccAway = trade({
+      id: "cc-away",
+      option_type: "CALL",
+      status: "CALLED_AWAY",
+      strike: 400,
+      premium: 3.0,
+      contracts: 1,
+    });
+    // option: 500 + 300; realized stock on 100 shares: (400-390)*100; MTM on remaining 100: (395-390)*100
+    assert.equal(wheelTotalNetPnl([put, ccAway], 395), 800 + 1000 + 500);
+  });
+
+  it("does not add MTM when all assigned shares were called away", () => {
+    const put = trade({
+      status: "ASSIGNED",
+      strike: 390,
+      premium: 2.5,
+    });
+    const ccAway = trade({
+      id: "cc-away",
+      option_type: "CALL",
+      status: "CALLED_AWAY",
+      strike: 400,
+      premium: 3.0,
+    });
+    assert.equal(wheelTotalNetPnl([put, ccAway], 450), 550 + 1000);
+  });
+});
+
+describe("computeUnrealizedStockMtm", () => {
+  it("marks open assigned shares vs CSP strike", () => {
+    const put = trade({ ticker: "googl", status: "ASSIGNED", strike: 367.5, premium: 1.45 });
+    assert.deepEqual(openAssignedPositions([put]), [
+      { ticker: "GOOGL", openShares: 100, avgAssignmentStrike: 367.5 },
+    ]);
+    assert.equal(computeUnrealizedStockMtm([put], { GOOGL: 345.5 }), (345.5 - 367.5) * 100);
+  });
+
+  it("skips tickers without a quote", () => {
+    const put = trade({ status: "ASSIGNED", strike: 390 });
+    assert.equal(computeUnrealizedStockMtm([put], {}), 0);
   });
 });
 

@@ -183,15 +183,79 @@ export function effectiveStockCostPerShareForTrade(
   return Math.max(0, weightedInitial - reductionPerShare);
 }
 
+/** Open assigned shares and weighted CSP strike per ticker (matches backend stock_mtm). */
+export function openAssignedPositions(
+  trades: Trade[]
+): Array<{ ticker: string; openShares: number; avgAssignmentStrike: number }> {
+  const byTicker = new Map<string, Trade[]>();
+  for (const t of trades) {
+    const ticker = t.ticker.trim().toUpperCase();
+    const list = byTicker.get(ticker);
+    if (list) list.push(t);
+    else byTicker.set(ticker, [t]);
+  }
+
+  const positions: Array<{
+    ticker: string;
+    openShares: number;
+    avgAssignmentStrike: number;
+  }> = [];
+
+  for (const [ticker, tt] of byTicker) {
+    const stockPuts = tt.filter(
+      (t) =>
+        t.option_type === "PUT" &&
+        (t.status === "ASSIGNED" || t.status === "CALLED_AWAY")
+    );
+    const assignedShares = stockPuts.reduce((s, t) => s + t.contracts * 100, 0);
+    if (assignedShares <= 0) continue;
+
+    const strikeWeighted = stockPuts.reduce(
+      (sum, put) => sum + put.strike * put.contracts * 100,
+      0
+    );
+    const avgAssignmentStrike = strikeWeighted / assignedShares;
+    const calledAwayShares = tt
+      .filter((t) => t.option_type === "CALL" && t.status === "CALLED_AWAY")
+      .reduce((s, t) => s + t.contracts * 100, 0);
+    const openShares = assignedShares - calledAwayShares;
+    if (openShares > 0) {
+      positions.push({ ticker, openShares, avgAssignmentStrike });
+    }
+  }
+
+  return positions;
+}
+
+/** `(live − CSP strike) × openShares` across held tickers; missing quotes contribute 0. */
+export function computeUnrealizedStockMtm(
+  trades: Trade[],
+  prices: Record<string, number>
+): number {
+  let total = 0;
+  for (const { ticker, openShares, avgAssignmentStrike } of openAssignedPositions(trades)) {
+    const live = prices[ticker];
+    if (live == null || !Number.isFinite(live)) continue;
+    total += (live - avgAssignmentStrike) * openShares;
+  }
+  return total;
+}
+
 /**
- * Wheel total realized P&L: option cashflows (all legs, including ROLLED) + stock
- * gain/loss on call-away.
+ * Wheel total P&L: option cashflows (all legs, including ROLLED) + stock
+ * gain/loss on call-away, plus optional mark-to-market on still-held shares.
  *
  * Stock P&L uses assignment **strike** (shares bought at CSP strike), not
  * premium-reduced cost basis — premiums are already in option cashflows, so using
  * basis here would double-count CSP / roll premium.
+ *
+ * When `livePrice` is provided and shares remain after call-aways, adds
+ * `(livePrice − avgAssignmentStrike) × openShares` for STOCK_HELD / CC_OPEN display.
  */
-export function wheelTotalNetPnl(legs: Trade[]): number {
+export function wheelTotalNetPnl(
+  legs: Trade[],
+  livePrice?: number | null
+): number {
   let total = legs.reduce((sum, t) => sum + netLegCashflow(t), 0);
 
   const stockPuts = legs.filter(
@@ -208,9 +272,20 @@ export function wheelTotalNetPnl(legs: Trade[]): number {
   );
   const avgAssignmentStrike = strikeWeighted / assignedShares;
 
+  let calledAwayShares = 0;
   for (const cc of legs.filter((t) => t.option_type === "CALL" && t.status === "CALLED_AWAY")) {
     const sharesCalled = cc.contracts * 100;
+    calledAwayShares += sharesCalled;
     total += (cc.strike - avgAssignmentStrike) * sharesCalled;
+  }
+
+  const openShares = assignedShares - calledAwayShares;
+  if (
+    openShares > 0 &&
+    livePrice != null &&
+    Number.isFinite(livePrice)
+  ) {
+    total += (livePrice - avgAssignmentStrike) * openShares;
   }
 
   return total;
@@ -258,13 +333,18 @@ export function effectiveCcPremiumForBasis(trades: Trade[]): number {
     .reduce((sum, t) => sum + netLegCashflow(t), 0);
 }
 
-function tradesScopedToWheel(wheelTrades: Trade[], allTrades: Trade[]): Trade[] {
-  const tickers = new Set(wheelTrades.map((t) => t.ticker.toUpperCase()));
+function tradesScopedToWheel(
+  wheelId: string,
+  wheelTrades: Trade[],
+  allTrades: Trade[]
+): Trade[] {
   const cycleIds = new Set<string>();
-  for (const t of [...wheelTrades, ...allTrades]) {
-    if (t.cycle_id && tickers.has(t.ticker.toUpperCase())) {
-      cycleIds.add(t.cycle_id);
-    }
+  if (wheelId && !wheelId.startsWith("orphan:")) {
+    cycleIds.add(wheelId);
+  }
+  for (const t of wheelTrades) {
+    const cycleId = t.cycle_id ?? resolveTradeCycleId(t, allTrades);
+    if (cycleId) cycleIds.add(cycleId);
   }
   if (cycleIds.size === 0) return wheelTrades;
   const scoped = allTrades.filter((t) => t.cycle_id != null && cycleIds.has(t.cycle_id));
@@ -328,7 +408,7 @@ export function buildCcCostBasisRows(
 
   for (const wheel of wheels) {
     if (isCompletedWheel(wheel.state)) continue;
-    const scopedTrades = tradesScopedToWheel(wheel.trades, allTrades);
+    const scopedTrades = tradesScopedToWheel(wheel.id, wheel.trades, allTrades);
     const row = buildCcCostBasisRow(
       wheel.id,
       wheel.ticker,

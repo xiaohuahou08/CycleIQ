@@ -182,8 +182,8 @@ const zh = {
       preview: {
         dashboard: "仪表盘",
         kpi: {
-          realizedPnl: "已实现盈亏",
-          realizedPnlSub: "期权 + 被行权股票",
+          realizedPnl: "净盈亏",
+          realizedPnlSub: "已实现 + 股票未实现盈亏",
           totalPremium: "总权利金",
           totalPremiumSub: "毛额，所有腿",
           winRate: "胜率",
@@ -533,8 +533,8 @@ const zh = {
     kpi: {
       totalCapital: {
         label: "总资本",
-        sub: "已部署 {{deployed}}（{{pct}}%）· 预算 {{budget}} + 盈亏",
-        tip: "总资本 = 初始预算 + 累计已实现盈亏（盈利增加，亏损减少）。已部署 = 开放 CSP + 持有股票。新交易不能使已部署资本超过总资本。",
+        sub: "已部署 {{deployed}}（{{pct}}%）· {{budget}} {{netPnl}} 净盈亏",
+        tip: "总资本 = 初始预算 + 净盈亏（与「净盈亏」卡片相同）。净盈亏 = 已实现期权/股票现金流 + CSP 指派后仍持有股票的未实现盈亏：（现价 − CSP 指派行权价）× 剩余股数。打开仪表盘时会刷新行情；若无行情，股票未实现盈亏按 0 计。已部署 = 开放 CSP 名义金额 + 持有股票（成本口径）。利用率 = 已部署 ÷ 总资本。",
       },
       totalPremium: {
         label: "总权利金",
@@ -542,9 +542,9 @@ const zh = {
         tip: "每笔交易的权利金 × 合约数 × 100 之和（含持仓、展期与回购腿）。非扣除费用或回购后的净现金。",
       },
       realizedPnl: {
-        label: "已实现盈亏",
-        sub: "期权现金流 + 股票卖出",
-        tip: "已平仓、已到期、已展期、被行权与已指派腿的净期权现金流（权利金 − 费用 − 回购），加上 CC 被行权时的股票盈亏（CC 行权价 − CSP 指派行权价）。",
+        label: "净盈亏",
+        sub: "已实现 {{realized}} · 股票盈亏 {{mtm}}",
+        tip: "净盈亏 = 已实现期权/股票现金流（已平仓、已到期、已展期、被行权、已指派 + CC 被行权股票盈亏）加上仍持有指派股票的未实现盈亏：（现价 − CSP 指派行权价）× 剩余股数。有行情时与 Cycles 滚轮中心一致；若无行情，股票未实现盈亏显示为 $0。",
       },
       yearlyIncome: {
         label: "年收入预估",
@@ -563,9 +563,9 @@ const zh = {
       },
       periodReturn: {
         label: "期间收益率",
-        sub: "已实现 {{amount}} · TWR {{twr}}",
-        subUnreliable: "已实现 {{amount}} · TWR {{twr}} · 大额资金流——请以已实现金额为准",
-        tip: "主值 = 期间起始资本收益率：（期末 − 期初 − 净存入）÷ 期初。副标题显示赚取金额（已实现盈亏）与时间加权收益率（TWR），TWR 会调整存取时点。当大额资金流使 TWR 不可靠时，请关注已实现金额与期间收益率。",
+        sub: "净盈亏 {{amount}} · TWR {{twr}}",
+        subUnreliable: "净盈亏 {{amount}} · TWR {{twr}} · 大额资金流——请以净盈亏金额为准",
+        tip: "主值 = 期间起始资本收益率：（期末净值 − 期初净值 − 净存入）÷ 期初。统计期自首笔交易或首笔资金流起（非图表所选区间）。期末净值 = 预算 + 截至今日的净盈亏（有行情时含持仓未实现盈亏）。副标题显示净盈亏金额与时间加权收益率（TWR）。历史 TWR 各日仅用已实现盈亏；仅今日期末点加上股票未实现盈亏。",
       },
       winRate: {
         label: "胜率",
@@ -590,9 +590,9 @@ const zh = {
       monthlyPremium: "月权利金（按开仓日）",
       capitalTrend: "总资本趋势",
       capitalTrendTip:
-        "预算（已调整存取）+ 各期末累计已实现盈亏。{{budgetLine}} {{rangeHint}}",
+        "各点 = 该日预算 + 累计已实现盈亏。最新一点另加今日行情下的持仓股票未实现盈亏（与总资本一致）。更早各点不含历史股价。{{budgetLine}} {{rangeHint}}",
       capitalTrendBudgetLine: "虚线 = 当前预算（{{amount}}）。",
-      capitalTrendNoBudget: "存在存取记录时不显示预算参考线。",
+      capitalTrendNoBudget: "期间内初始预算有变化时不显示预算参考线。",
       capitalTrendRangeYtd: "年初至今，各周/月末快照。",
       capitalTrendRange1y: "过去 12 个月，各周/月末快照。",
       granularity: {
@@ -649,7 +649,6 @@ const zh = {
     },
     filters: {
       searchPlaceholder: "搜索标的…",
-      clearFilters: "清除筛选",
       addTrade: "+ 添加交易",
       sinceLastMonth: "自上月起",
       custom: "自定义",
@@ -828,6 +827,7 @@ const zh = {
       premiumRealizedHint: "已实现 {{realized}} · 含持仓中 CC",
       positions: "CC 持仓",
       costOverTime: "成本基础走势",
+      filteredToWheel: "仅显示此滚轮的 CC 成本基础",
       subtitle: "{{strike}} CSP · {{date}}",
     },
     leg: {
@@ -879,8 +879,7 @@ const zh = {
       contracts: "默认合约数",
       contractsHint: "新开仓时预填的合约数。",
       budget: "总资本预算",
-      budgetLockedHint: "存在存取记录后锁定。请在下方资本管理中修改。",
-      budgetHint: "仅初始资本。首次存取后，请使用下方资本管理。",
+      budgetHint: "初始资本预算。仪表盘总资本 = 此预算 + 净盈亏（已实现 + 持仓未实现盈亏）。",
       dte: "默认剩余天数（DTE）",
       dteHint: "新开仓时预填的到期日。",
       days: "天",
@@ -888,41 +887,12 @@ const zh = {
       saved: "已保存。",
       error: "保存失败，请重试。",
     },
-    capital: {
-      title: "资本管理",
-      description: "按日期记录存入与取出。总资本与时间加权收益率使用这些现金流。",
-      currentBudget: "当前资本预算",
-      currentBudgetHint: "所有记录流水后的预算。仪表盘总资本 = 预算 + 已实现盈亏。",
-      deposit: "存入",
-      withdraw: "取出",
-      empty: "暂无存取记录。",
-      modal: {
-        edit: "编辑资本流水",
-        deposit: "记录存入",
-        withdrawal: "记录取出",
-        depositAmount: "存入金额",
-        withdrawalAmount: "取出金额",
-        body: "更新资本预算并计入时间加权收益率计算。",
-      },
-      error: {
-        amount: "请输入大于零的金额。",
-        date: "请选择日期。",
-        save: "保存失败。",
-        load: "加载资本流水失败。",
-        delete: "删除记录失败。",
-      },
-      confirmDelete: "删除 {{date}} 的这笔{{type}}？",
-      type: {
-        deposit: "存入",
-        withdrawal: "取出",
-      },
-    },
     danger: {
       title: "危险区域",
       description: "针对交易数据的不可逆操作。",
       reset: {
         label: "重置全部交易数据",
-        hint: "永久删除所有交易与滚轮周期。资本存取与交易默认值将保留。",
+        hint: "永久删除所有交易与滚轮周期。资本预算与交易默认值将保留。",
         button: "重置数据",
       },
       confirm: {

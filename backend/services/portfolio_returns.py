@@ -213,9 +213,15 @@ def compute_time_weighted_return(
     flows: list[CapitalFlowEvent],
     current_budget: float,
     today: date | None = None,
+    *,
+    unrealized_mtm: float = 0.0,
 ) -> tuple[float, float, bool]:
     """
     Daily time-weighted return from total capital (budget + realized P&L).
+
+    When ``unrealized_mtm`` is set, it is added only to today's end NAV so
+    period return (and the final TWR day) reflect open assigned-share marks.
+    Historical days stay realized-only (no price history).
 
     Returns (twr_pct, cumulative_total_return_pct, unreliable_flag).
     """
@@ -232,6 +238,7 @@ def compute_time_weighted_return(
         f.amount for f in flows if start <= f.event_date <= today
     )
     begin_nav = 0.0
+    mtm = float(unrealized_mtm or 0.0)
 
     for day in event_days:
         inflow = net_inflow_on_day(day, flows)
@@ -241,6 +248,8 @@ def compute_time_weighted_return(
         nav_end = nav_at_end_of_day(
             day, current_budget, flows, trades, pnl_timeline=pnl_timeline
         )
+        if day == today and mtm != 0.0:
+            nav_end += mtm
         if day == start:
             begin_nav = nav_start if nav_start > 0 else nav_end - inflow
         daily_points.append((nav_start, inflow, nav_end))

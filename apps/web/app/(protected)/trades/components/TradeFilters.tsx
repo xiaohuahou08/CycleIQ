@@ -28,13 +28,6 @@ export interface FilterState {
   endDate?: string;
 }
 
-const DEFAULT_FILTERS: FilterState = {
-  type: "PUT",
-  status: "OPEN",
-  search: "",
-  dateRangeType: "1M",
-};
-
 const STATUS_ROW: ReadonlyArray<{
   key: string;
   labelKey: string;
@@ -47,15 +40,6 @@ const STATUS_ROW: ReadonlyArray<{
   { key: "CALLED_AWAY", labelKey: "away", Icon: TrendingUp },
   { key: "ROLLED", labelKey: "rolled", Icon: RotateCw },
 ];
-
-function countActiveFilters(filters: FilterState): number {
-  // CSP/CC is a view mode, not a clearable filter — only count status/search/date.
-  let count = 0;
-  if (filters.status !== DEFAULT_FILTERS.status) count++;
-  if (filters.search.trim()) count++;
-  if (filters.dateRangeType === "CUSTOM" || filters.startDate || filters.endDate) count++;
-  return count;
-}
 
 interface TradeFiltersProps {
   filters: FilterState;
@@ -82,7 +66,6 @@ export default function TradeFilters({
   const { t: tCommon } = useTranslations("common");
   const [suggestOpen, setSuggestOpen] = useState(false);
   const searchWrapRef = useRef<HTMLDivElement>(null);
-  const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
 
   const matchingTickers = useMemo(() => {
     const raw = filters.search.trim();
@@ -114,11 +97,6 @@ export default function TradeFilters({
 
   const apply = (patch: Partial<FilterState>) => {
     onFilterChange((prev) => ({ ...prev, ...patch }));
-  };
-
-  const clearFilters = () => {
-    // Keep CSP/CC mode; only reset status, search, and date range.
-    onFilterChange({ ...DEFAULT_FILTERS, type: filters.type });
   };
 
   const applySinceLastMonth = () => {
@@ -212,19 +190,6 @@ export default function TradeFilters({
               {tCommon("strategy.cc")}
             </button>
           </div>
-
-          {activeFilterCount > 0 && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700"
-            >
-              {t("filters.clearFilters")}
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-100 px-1.5 text-[10px] font-semibold text-emerald-700">
-                {activeFilterCount}
-              </span>
-            </button>
-          )}
 
           {onAddTrade && (
             <div className="ml-auto flex shrink-0 items-center gap-3">
