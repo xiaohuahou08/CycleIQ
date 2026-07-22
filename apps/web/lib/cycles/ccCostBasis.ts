@@ -147,17 +147,18 @@ function scopeTradesForTrade(trade: Trade, allTrades: Trade[]): Trade[] {
 }
 
 /**
- * Effective stock cost per share for display — ASSIGNED CSP basis or CC wheel
- * cost after premium reduction (OPEN + terminal CC legs).
+ * Effective stock cost per share for display — CSP assignment basis reduced by
+ * CC premium on the same wheel (OPEN + terminal CC legs). Used for both ASSIGNED
+ * puts and CC legs so Trades "Stock Cost" matches Cycles current cost.
  */
 export function effectiveStockCostPerShareForTrade(
   trade: Trade,
   allTrades: Trade[]
 ): number | null {
-  if (trade.option_type === "PUT" && trade.status === "ASSIGNED") {
-    return assignmentStockBasisPerShare(trade);
-  }
-  if (trade.option_type !== "CALL") return null;
+  const isAssignedPut =
+    trade.option_type === "PUT" && trade.status === "ASSIGNED";
+  const isCall = trade.option_type === "CALL";
+  if (!isAssignedPut && !isCall) return null;
 
   const scope = scopeTradesForTrade(trade, allTrades);
   const assignedPuts = scope.filter(
@@ -166,7 +167,9 @@ export function effectiveStockCostPerShareForTrade(
       t.status === "ASSIGNED" &&
       assignmentStockBasisPerShare(t) != null
   );
-  if (assignedPuts.length === 0) return null;
+  if (assignedPuts.length === 0) {
+    return isAssignedPut ? assignmentStockBasisPerShare(trade) : null;
+  }
 
   const assignedShares = assignedPuts.reduce((s, t) => s + t.contracts * 100, 0);
   if (assignedShares <= 0) return null;

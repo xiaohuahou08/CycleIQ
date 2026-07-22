@@ -368,39 +368,22 @@ export default function CyclesPage() {
           </div>
         ) : viewTab === "CC_COST_BASIS" ? (
           <div className="mt-5 space-y-4">
-            {selectedWheel && (
-              <div className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <button
-                  type="button"
-                  onClick={() => setViewTab("WHEELS")}
-                  className="rounded-full p-1 text-slate-600 hover:bg-white hover:text-slate-900"
-                  title={tCommon("actions.back")}
-                >
-                  ←
-                </button>
-                <TickerLogo ticker={selectedWheel.ticker} />
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">
-                    {t("wheelTitle", { ticker: selectedWheel.ticker })}
-                  </p>
-                  <p className="text-xs text-slate-600">{t("cc.filteredToWheel")}</p>
+            {!selectedWheelId && (
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative min-w-[8.5rem] max-w-[14rem] flex-1">
+                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-500">
+                    <Search className={iconSm} strokeWidth={iconStroke} aria-hidden />
+                  </span>
+                  <input
+                    type="text"
+                    value={searchTicker}
+                    onChange={(e) => setSearchTicker(e.target.value.toUpperCase())}
+                    placeholder={t("searchPlaceholder")}
+                    className={SEARCH_INPUT_CLS}
+                  />
                 </div>
               </div>
             )}
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative min-w-[8.5rem] max-w-[14rem] flex-1">
-                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-500">
-                  <Search className={iconSm} strokeWidth={iconStroke} aria-hidden />
-                </span>
-                <input
-                  type="text"
-                  value={searchTicker}
-                  onChange={(e) => setSearchTicker(e.target.value.toUpperCase())}
-                  placeholder={t("searchPlaceholder")}
-                  className={SEARCH_INPUT_CLS}
-                />
-              </div>
-            </div>
             {ccCostBasisRows.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-14 text-center">
                 <p className="text-base font-semibold text-slate-900">{t("cc.empty.title")}</p>
