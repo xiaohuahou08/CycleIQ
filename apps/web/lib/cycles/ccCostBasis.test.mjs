@@ -67,7 +67,7 @@ describe("effectiveCcPremiumForBasis", () => {
 });
 
 describe("effectiveStockCostPerShareForTrade", () => {
-  it("returns assignment basis for ASSIGNED CSP", () => {
+  it("returns assignment basis for ASSIGNED CSP with no CC legs", () => {
     const put = trade({ status: "ASSIGNED", stock_cost_basis_per_share: 387.5 });
     assert.equal(effectiveStockCostPerShareForTrade(put, [put]), 387.5);
   });
@@ -88,6 +88,26 @@ describe("effectiveStockCostPerShareForTrade", () => {
     });
     const all = [put, cc];
     assert.equal(effectiveStockCostPerShareForTrade(cc, all), 384.5);
+  });
+
+  it("reduces ASSIGNED CSP stock cost by CC premium to match Cycles currentCost", () => {
+    const put = trade({
+      id: "put",
+      status: "ASSIGNED",
+      stock_cost_basis_per_share: 33.4406,
+      cycle_id: "cycle-1",
+    });
+    const cc = trade({
+      id: "cc",
+      option_type: "CALL",
+      status: "OPEN",
+      premium: 1.24,
+      commission_fee: 0.06,
+      cycle_id: "cycle-1",
+    });
+    const all = [put, cc];
+    assert.equal(effectiveStockCostPerShareForTrade(put, all), 32.2012);
+    assert.equal(effectiveStockCostPerShareForTrade(cc, all), 32.2012);
   });
 });
 
