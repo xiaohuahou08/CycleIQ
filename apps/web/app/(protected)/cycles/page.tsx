@@ -53,9 +53,6 @@ const SEARCH_INPUT_CLS =
 const PILL_ACTIVE_CLS = PILL_ACTIVE;
 const PILL_IDLE_CLS = PILL_IDLE;
 
-const STAT_LABEL = "text-xs font-medium text-slate-600";
-const STAT_VALUE = "mt-1 text-2xl font-semibold tabular-nums text-slate-900";
-
 const NOW_TS = Date.now();
 
 const LOGO_URL_BUILDERS = [
@@ -256,16 +253,6 @@ export default function CyclesPage() {
       .sort((a, b) => b.reductionPct - a.reductionPct);
   }, [searchTicker, selectedWheel?.source_cycle_id, selectedWheelId, trades, wheels]);
 
-  const ccHeadline = useMemo(() => {
-    const positionsTracked = ccCostBasisRows.length;
-    const totalCcPremium = ccCostBasisRows.reduce((sum, row) => sum + row.ccPremiumTotal, 0);
-    const avgReduction =
-      positionsTracked > 0
-        ? ccCostBasisRows.reduce((sum, row) => sum + row.reductionPct, 0) / positionsTracked
-        : 0;
-    return { positionsTracked, totalCcPremium, avgReduction };
-  }, [ccCostBasisRows]);
-
   const selectedWheelLegs = useMemo(
     () =>
       selectedWheel
@@ -339,25 +326,6 @@ export default function CyclesPage() {
           <RefreshingSpinner className="flex min-h-full w-full items-center justify-center" />
         ) : (
         <div className="px-4 py-4 sm:px-6 sm:py-5">
-          {viewTab === "CC_COST_BASIS" && (
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-              <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
-                <p className={STAT_LABEL}>{t("cc.openPositions")}</p>
-                <p className={STAT_VALUE}>{ccHeadline.positionsTracked}</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
-                <p className={STAT_LABEL}>{t("cc.totalPremium")}</p>
-                <p className={STAT_VALUE}>
-                  ${ccHeadline.totalCcPremium.toFixed(0)}
-                </p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5">
-                <p className={STAT_LABEL}>{t("cc.avgReduction")}</p>
-                <p className={STAT_VALUE}>{ccHeadline.avgReduction.toFixed(1)}%</p>
-              </div>
-            </div>
-          )}
-
         {cycles.length === 0 ? (
           <div className="animate-fade-in mt-5 flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-300 bg-white py-16 text-center ring-1 ring-slate-900/[0.04]">
             <p className="text-base font-semibold text-slate-900">{t("empty.title")}</p>

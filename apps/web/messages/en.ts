@@ -820,9 +820,6 @@ const en = {
     total: "total",
     shares: "{{count}} shares",
     cc: {
-      openPositions: "Open Positions",
-      totalPremium: "Total CC Premium",
-      avgReduction: "Avg Reduction",
       empty: {
         title: "No open stock positions",
         body: "Assigned CSP holdings appear here. Wheels that exited (called away or closed) are not shown.",

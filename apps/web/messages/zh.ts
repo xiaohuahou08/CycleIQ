@@ -814,9 +814,6 @@ const zh = {
     total: "合计",
     shares: "{{count}} 股",
     cc: {
-      openPositions: "开放持仓",
-      totalPremium: "CC 权利金合计",
-      avgReduction: "平均降幅",
       empty: {
         title: "无开放股票持仓",
         body: "CSP 指派后的持股将显示在此。已退出（被行权或平仓）的滚轮不显示。",
