@@ -266,10 +266,15 @@ function parseTrendPointDate(point: DashboardSeriesPoint): Date | null {
 function filterTrendRange(points: DashboardSeriesPoint[], range: TrendRange): DashboardSeriesPoint[] {
   if (points.length === 0) return [];
 
-  const end = new Date();
+  const now = new Date();
+  // Backend may stamp snapshots with America/New_York (or UTC) "today" while the
+  // browser is still on the previous local calendar day — keep one day of slack
+  // so the latest point is not dropped (e.g. last visible week stuck on Sunday).
+  const end = new Date(now);
   end.setHours(23, 59, 59, 999);
+  end.setDate(end.getDate() + 1);
 
-  const start = new Date(end);
+  const start = new Date(now);
   if (range === "ytd") {
     start.setMonth(0, 1);
     start.setHours(0, 0, 0, 0);

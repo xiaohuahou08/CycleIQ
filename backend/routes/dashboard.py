@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, datetime, timezone
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 from flask import jsonify
 
@@ -19,6 +20,13 @@ from backend.services.portfolio_returns import compute_time_weighted_return
 from backend.services.quotes import fetch_yahoo_prices
 from backend.services.realized_pnl import compute_realized_pnl
 from backend.services.stock_mtm import compute_unrealized_stock_mtm, tickers_needing_quotes
+
+# US equity options session calendar — matches retail wheel traders (not Render UTC).
+_TRADING_TZ = ZoneInfo("America/New_York")
+
+
+def _trading_today() -> date:
+    return datetime.now(_TRADING_TZ).date()
 
 
 def register_dashboard_routes(dashboard_bp):
@@ -121,7 +129,7 @@ def register_dashboard_routes(dashboard_bp):
     @require_auth
     def insights(user_id: str):
         trades = Trade.query.filter_by(user_id=user_id).all()
-        today = datetime.now(timezone.utc).date()
+        today = _trading_today()
         # Active open legs only (matches Trades "Today" — expiry has not passed).
         open_trades = [
             t for t in trades if t.status == "OPEN" and t.expiry is not None and t.expiry >= today
