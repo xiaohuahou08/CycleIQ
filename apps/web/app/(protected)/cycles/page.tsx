@@ -336,7 +336,27 @@ export default function CyclesPage() {
           </div>
         ) : viewTab === "CC_COST_BASIS" ? (
           <div className="mt-5 space-y-4">
-            {!selectedWheelId && (
+            {selectedWheel ? (
+              <div className="flex h-[58px] items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-5">
+                <button
+                  type="button"
+                  onClick={() => setViewTab("WHEELS")}
+                  className="rounded-full p-1 text-slate-600 hover:bg-white hover:text-slate-900"
+                  title={tCommon("actions.back")}
+                >
+                  ←
+                </button>
+                <TickerLogo ticker={selectedWheel.ticker} size="lg" />
+                <div>
+                  <p className="text-xl font-semibold leading-none text-slate-900">
+                    {t("wheelTitle", { ticker: selectedWheel.ticker })}
+                  </p>
+                  <p className="mt-0.5 text-sm font-medium text-slate-600">
+                    {t("tab.ccCostBasis")}
+                  </p>
+                </div>
+              </div>
+            ) : (
               <div className="flex flex-wrap items-center gap-3">
                 <div className="relative min-w-[8.5rem] max-w-[14rem] flex-1">
                   <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-500">
