@@ -822,7 +822,7 @@ const zh = {
       currentCost: "当前成本",
       premiumRealized: "CC 权利金（已收取）",
       premiumRealizedHint: "已实现 {{realized}} · 含持仓中 CC",
-      positions: "CC 持仓",
+      legs: "CC 腿数",
       costOverTime: "成本基础走势",
       subtitle: "{{strike}} CSP · {{date}}",
     },

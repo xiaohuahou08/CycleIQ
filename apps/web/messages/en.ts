@@ -828,7 +828,7 @@ const en = {
       currentCost: "Current Cost",
       premiumRealized: "CC Premium (Collected)",
       premiumRealizedHint: "{{realized}} realized · includes open legs",
-      positions: "CC Positions",
+      legs: "CC Legs",
       costOverTime: "Cost Basis Over Time",
       subtitle: "{{strike}} CSP · {{date}}",
     },
