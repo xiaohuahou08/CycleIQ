@@ -5,7 +5,10 @@ export type LearnFigureKind =
   | "contract-anatomy"
   | "long-call"
   | "long-put"
-  | "short-put";
+  | "short-put"
+  | "short-call"
+  | "delta-slope"
+  | "delta-curve";
 
 export interface LearnSection {
   heading: string;
@@ -26,6 +29,8 @@ export interface LearnPostSource {
   slug: string;
   /** ISO date YYYY-MM-DD */
   date: string;
+  /** Diagram used as the list thumbnail. */
+  thumbnail?: LearnFigureKind;
   en: LearnPostLocalized;
   zh: LearnPostLocalized;
 }
@@ -33,6 +38,7 @@ export interface LearnPostSource {
 export interface LearnPost {
   slug: string;
   date: string;
+  thumbnail?: LearnFigureKind;
   title: string;
   description: string;
   sections: LearnSection[];

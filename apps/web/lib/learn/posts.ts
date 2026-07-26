@@ -5,6 +5,7 @@ const POSTS: LearnPostSource[] = [
   {
     slug: "options-101",
     date: "2026-07-26",
+    thumbnail: "long-call",
     en: {
       title: "Options 101: the concepts, explained with pictures",
       description:
@@ -135,8 +136,106 @@ const POSTS: LearnPostSource[] = [
     },
   },
   {
+    slug: "what-is-delta",
+    date: "2026-07-23",
+    thumbnail: "delta-curve",
+    en: {
+      title: "What is delta? The greek that tracks price moves",
+      description:
+        "Delta explains how much an option's price moves when the stock moves $1 — and doubles as a rough probability of finishing in the money and a shares-equivalent hedge ratio.",
+      sections: [
+        {
+          heading: "Delta measures sensitivity to price",
+          paragraphs: [
+            "Delta is the first and most-used option greek. It tells you approximately how much an option's price changes when the underlying stock moves by $1. A delta of 0.30 means the option gains about $0.30 if the stock rises $1 — and loses about that much if it falls.",
+            "Geometrically, delta is the slope of the curve that plots option price against stock price. A steeper slope means the option tracks the stock more closely.",
+          ],
+          figure: "delta-slope",
+          figureCaption: "Delta is the slope of the option-price curve at the current stock price.",
+        },
+        {
+          heading: "The range: calls, puts, and ATM",
+          paragraphs: [
+            "Call deltas run from 0 to 1; put deltas run from -1 to 0, because puts gain value as the stock falls. Traders often drop the decimal and say a '30-delta' option, meaning 0.30.",
+            "An at-the-money option sits near 0.50 delta. Deep in-the-money options approach 1.00 and behave almost like the stock itself; far out-of-the-money options approach 0 and barely move.",
+          ],
+        },
+        {
+          heading: "Delta as a rough probability",
+          paragraphs: [
+            "Delta doubles as a quick estimate of the chance the option finishes in the money at expiration. A 0.30-delta call has roughly a 30% chance of expiring ITM.",
+            "It is an approximation, not a guarantee, but it is a handy way to compare strikes at a glance.",
+          ],
+          figure: "delta-curve",
+          figureCaption: "Call delta by moneyness: near 0 far OTM, about 0.5 ATM, near 1 deep ITM.",
+        },
+        {
+          heading: "Delta as shares of exposure",
+          paragraphs: [
+            "Because one contract controls 100 shares, delta also tells you your share-equivalent exposure. A 0.30-delta call behaves like owning about 30 shares (0.30 × 100).",
+            "This 'hedge ratio' view is why delta is central to managing risk across a whole position.",
+          ],
+        },
+        {
+          heading: "Why wheel sellers watch delta",
+          paragraphs: [
+            "When you sell cash-secured puts, the put's delta is a shorthand for assignment odds. Selling a 0.30-delta put means roughly a 30% chance of being assigned — and usually more premium than a lower-delta strike.",
+            "Choosing a delta is really choosing a trade-off between premium collected and how often you take assignment. New to that flow? See the Wheel strategy basics and Options 101 lessons.",
+          ],
+        },
+      ],
+    },
+    zh: {
+      title: "什么是 Delta？衡量价格变动的希腊字母",
+      description:
+        "Delta 表示标的每变动 1 美元、期权价格大约变动多少；它还可当作到期价内的粗略概率，以及等值股数的对冲比率。",
+      sections: [
+        {
+          heading: "Delta 衡量对价格的敏感度",
+          paragraphs: [
+            "Delta 是最常用的期权希腊字母。它表示当标的股票变动 1 美元时，期权价格大约变动多少。Delta 为 0.30 意味着股价上涨 1 美元时期权约上涨 0.30 美元——下跌时则约反向变动。",
+            "从几何上看，Delta 就是「期权价格对股价」这条曲线的斜率。斜率越陡，期权价格越贴近股价的变动。",
+          ],
+          figure: "delta-slope",
+          figureCaption: "Delta 就是当前股价处、期权价格曲线的斜率。",
+        },
+        {
+          heading: "取值范围：看涨、看跌与平价",
+          paragraphs: [
+            "看涨的 Delta 介于 0 到 1；看跌的 Delta 介于 -1 到 0，因为股价下跌时看跌升值。交易者常省略小数，把 0.30 说成「30 Delta」。",
+            "平价期权的 Delta 约为 0.50。深度价内期权趋近 1.00，走势几乎与股票一致；深度价外期权趋近 0，几乎不动。",
+          ],
+        },
+        {
+          heading: "Delta 作为粗略概率",
+          paragraphs: [
+            "Delta 还可当作期权到期价内概率的快速估计。0.30 Delta 的看涨，到期价内的概率大约为 30%。",
+            "这只是近似，并非保证，但用来一眼比较不同行权价非常方便。",
+          ],
+          figure: "delta-curve",
+          figureCaption: "看涨 Delta 随价值状态变化：深度价外接近 0，平价约 0.5，深度价内接近 1。",
+        },
+        {
+          heading: "Delta 作为等值股数",
+          paragraphs: [
+            "由于一张合约对应 100 股，Delta 也表示你的等值股数敞口。0.30 Delta 的看涨，约等于持有 30 股（0.30 × 100）。",
+            "这种「对冲比率」的视角，正是 Delta 在整体头寸风险管理中处于核心地位的原因。",
+          ],
+        },
+        {
+          heading: "为什么滚轮卖方关注 Delta",
+          paragraphs: [
+            "卖出现金担保看跌时，看跌的 Delta 可粗略代表被指派的概率。卖出 0.30 Delta 的看跌，约有 30% 概率被指派——通常也比更低 Delta 的行权价收到更多权利金。",
+            "选择 Delta，本质上是在「收取的权利金」与「被指派的频率」之间权衡。还不熟悉这套流程？可参阅《滚轮策略入门》与《期权 101》。",
+          ],
+        },
+      ],
+    },
+  },
+  {
     slug: "wheel-basics",
     date: "2026-07-20",
+    thumbnail: "short-put",
     en: {
       title: "Wheel strategy basics: CSP → assignment → CC",
       description:
@@ -155,6 +254,8 @@ const POSTS: LearnPostSource[] = [
             "A CSP means you sell a put and keep enough cash to buy 100 shares per contract at the strike if assigned. You collect premium up front. If the put expires worthless, you keep the premium and may sell another put.",
             "If the stock trades below the strike at expiry (or you are assigned early), you buy the shares at the strike. Your effective stock cost is usually strike minus the premium you already collected (fees adjust that slightly).",
           ],
+          figure: "short-put",
+          figureCaption: "Selling a put: you keep the premium if it expires worthless.",
         },
         {
           heading: "Covered calls",
@@ -162,6 +263,8 @@ const POSTS: LearnPostSource[] = [
             "Once you own the shares, you can sell a covered call against them. You collect more premium and agree to sell the shares at the call strike if assigned.",
             "If the call expires worthless, you keep the shares and the premium — which lowers your holding cost. If the call is assigned (called away), you sell the shares at the call strike and the wheel cycle typically ends.",
           ],
+          figure: "short-call",
+          figureCaption: "Selling a call against your shares: premium kept if it expires worthless.",
         },
         {
           heading: "What to track",
@@ -190,6 +293,8 @@ const POSTS: LearnPostSource[] = [
             "CSP 指卖出看跌期权，并预留足够现金以便在指派时按行权价买入每张合约对应的 100 股。开仓即收取权利金。若看跌价外到期作废，您保留权利金，并可再卖下一张。",
             "若到期时股价低于行权价（或提前被指派），您按行权价买入股票。有效持股成本通常约为「行权价 − 已收权利金」（费用会略作调整）。",
           ],
+          figure: "short-put",
+          figureCaption: "卖出看跌：价外到期即保留权利金。",
         },
         {
           heading: "备兑看涨（CC）",
@@ -197,6 +302,8 @@ const POSTS: LearnPostSource[] = [
             "持有股票后，可对其卖出备兑看涨。您再收取权利金，并约定若被行权则按看涨行权价卖出股票。",
             "若看涨价外到期，您保留股票与权利金——持股成本下降。若看涨被行权（股票被 call away），您以看涨行权价卖出股票，该滚轮周期通常结束。",
           ],
+          figure: "short-call",
+          figureCaption: "对持股卖出看涨：价外到期即保留权利金。",
         },
         {
           heading: "该追踪什么",
@@ -215,6 +322,7 @@ function localize(source: LearnPostSource, locale: Locale): LearnPost {
   return {
     slug: source.slug,
     date: source.date,
+    thumbnail: source.thumbnail,
     title: body.title,
     description: body.description,
     sections: body.sections,
