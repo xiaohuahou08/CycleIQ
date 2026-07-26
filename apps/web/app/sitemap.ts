@@ -1,9 +1,17 @@
 import type { MetadataRoute } from "next";
+import { getPostSitemapEntries } from "@/lib/learn/posts";
 import { getSiteUrl } from "@/lib/seo/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = getSiteUrl();
   const lastModified = new Date();
+
+  const learnPosts = getPostSitemapEntries().map((post) => ({
+    url: `${base}/learn/${post.slug}`,
+    lastModified: new Date(post.date),
+    changeFrequency: "monthly" as const,
+    priority: 0.75,
+  }));
 
   return [
     {
@@ -18,6 +26,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 0.85,
     },
+    {
+      url: `${base}/learn`,
+      lastModified,
+      changeFrequency: "weekly",
+      priority: 0.85,
+    },
+    ...learnPosts,
     {
       url: `${base}/about`,
       lastModified,

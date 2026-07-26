@@ -23,6 +23,9 @@ export default function MarketingFooter() {
             className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-slate-400"
             aria-label="Site"
           >
+            <Link href="/learn" className="transition hover:text-slate-200">
+              {t("learn")}
+            </Link>
             <Link href="/about" className="transition hover:text-slate-200">
               {t("about")}
             </Link>

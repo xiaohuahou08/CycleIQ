@@ -39,6 +39,9 @@ function AuthSiteLinks({ variant }: { variant: "light" | "dark" }) {
         className={`flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs ${muted}`}
         aria-label="Site"
       >
+        <Link href="/learn" className={`transition ${hover}`}>
+          {t("learn")}
+        </Link>
         <Link href="/about" className={`transition ${hover}`}>
           {t("about")}
         </Link>
