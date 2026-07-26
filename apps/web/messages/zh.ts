@@ -157,6 +157,7 @@ const zh = {
     reports: "报告",
     home: "首页",
     pricing: "定价",
+    learn: "期权教学",
     about: "关于",
     faq: "常见问题",
     contact: "联系我们",
@@ -307,6 +308,27 @@ const zh = {
       cta: {
         title: "实际体验 CycleIQ",
         body: "免费创建基础版账户，几分钟内记录第一笔 CSP。",
+      },
+    },
+    learn: {
+      metaTitle: "期权教学",
+      metaDescription:
+        "面向滚轮交易者的实用期权教学：现金担保看跌、指派、备兑看涨与成本基础——为 CycleIQ 用户而写。",
+      badge: "期权教学",
+      title: "学滚轮策略，",
+      titleAccent: "一篇一篇讲清楚。",
+      subtitle:
+        "短文讲解现金担保看跌、指派与备兑看涨。我们会不定时在这里更新新文章。",
+      empty: {
+        title: "暂无文章",
+        body: "请稍后再来——我们会不定期发布面向滚轮交易者的教学短文。",
+      },
+      readMore: "阅读全文",
+      backToList: "全部文章",
+      published: "发布于 {{date}}",
+      cta: {
+        title: "准备好记录您的滚轮了吗？",
+        body: "基础版免费。无需连接券商即可记录 CSP 与 CC。",
       },
     },
     faq: {
@@ -822,7 +844,7 @@ const zh = {
       currentCost: "当前成本",
       premiumRealized: "CC 权利金（已收取）",
       premiumRealizedHint: "已实现 {{realized}} · 含持仓中 CC",
-      positions: "CC 持仓",
+      legs: "CC 腿数",
       costOverTime: "成本基础走势",
       subtitle: "{{strike}} CSP · {{date}}",
     },

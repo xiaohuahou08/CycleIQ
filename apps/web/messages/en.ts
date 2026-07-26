@@ -155,6 +155,7 @@ const en = {
     reports: "Reports",
     home: "Home",
     pricing: "Pricing",
+    learn: "Learn",
     about: "About",
     faq: "FAQ",
     contact: "Contact Us",
@@ -305,6 +306,27 @@ const en = {
       cta: {
         title: "See CycleIQ in practice",
         body: "Create a free Basic account and log your first CSP in minutes.",
+      },
+    },
+    learn: {
+      metaTitle: "Options Learn",
+      metaDescription:
+        "Practical options education for wheel traders: cash-secured puts, assignments, covered calls, and cost basis — written for CycleIQ users.",
+      badge: "Options Learn",
+      title: "Learn the wheel,",
+      titleAccent: "one clear lesson at a time.",
+      subtitle:
+        "Short primers on cash-secured puts, assignments, and covered calls. New posts appear here as we publish them.",
+      empty: {
+        title: "No posts yet",
+        body: "Check back soon — we publish occasional lessons for wheel traders.",
+      },
+      readMore: "Read article",
+      backToList: "All lessons",
+      published: "Published {{date}}",
+      cta: {
+        title: "Ready to journal your wheel?",
+        body: "Basic is free. Log CSPs and CCs without a broker connection.",
       },
     },
     faq: {
@@ -828,7 +850,7 @@ const en = {
       currentCost: "Current Cost",
       premiumRealized: "CC Premium (Collected)",
       premiumRealizedHint: "{{realized}} realized · includes open legs",
-      positions: "CC Positions",
+      legs: "CC Legs",
       costOverTime: "Cost Basis Over Time",
       subtitle: "{{strike}} CSP · {{date}}",
     },

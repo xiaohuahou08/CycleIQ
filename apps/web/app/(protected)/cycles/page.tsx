@@ -415,7 +415,7 @@ export default function CyclesPage() {
                       </p>
                     </div>
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-slate-600">{t("cc.positions")}</p>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-slate-600">{t("cc.legs")}</p>
                       <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">{row.ccPositions}</p>
                       <p className="text-xs text-slate-600">{t("shares", { count: row.assignedShares })}</p>
                     </div>

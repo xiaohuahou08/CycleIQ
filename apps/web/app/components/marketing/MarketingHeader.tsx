@@ -12,14 +12,18 @@ interface MarketingHeaderProps {
   activePage?: MarketingPage;
 }
 
-const NAV_ITEMS: { href: string; page: MarketingPage; key: "home" | "pricing" | "about" | "faq" | "contact" }[] =
-  [
-    { href: "/", page: "home", key: "home" },
-    { href: "/pricing", page: "pricing", key: "pricing" },
-    { href: "/about", page: "about", key: "about" },
-    { href: "/faq", page: "faq", key: "faq" },
-    { href: "/contact", page: "contact", key: "contact" },
-  ];
+const NAV_ITEMS: {
+  href: string;
+  page: MarketingPage;
+  key: "home" | "pricing" | "learn" | "about" | "faq" | "contact";
+}[] = [
+  { href: "/", page: "home", key: "home" },
+  { href: "/pricing", page: "pricing", key: "pricing" },
+  { href: "/learn", page: "learn", key: "learn" },
+  { href: "/about", page: "about", key: "about" },
+  { href: "/faq", page: "faq", key: "faq" },
+  { href: "/contact", page: "contact", key: "contact" },
+];
 
 export default function MarketingHeader({ activePage }: MarketingHeaderProps) {
   const { t } = useTranslations("nav");
@@ -52,6 +56,9 @@ export default function MarketingHeader({ activePage }: MarketingHeaderProps) {
 
         <div className="flex items-center justify-end gap-2 sm:gap-3">
           <nav className="flex items-center gap-1 md:hidden" aria-label="Primary">
+            <Link href="/learn" className={marketingNavLinkClass(activePage === "learn")}>
+              {t("learn")}
+            </Link>
             <Link href="/about" className={marketingNavLinkClass(activePage === "about")}>
               {t("about")}
             </Link>
