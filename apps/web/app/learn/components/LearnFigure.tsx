@@ -1,6 +1,9 @@
 import type { Locale } from "@/lib/i18n/locales";
 import type { LearnFigureKind } from "@/lib/learn/types";
 
+type PayoffKind = "long-call" | "long-put" | "short-put" | "short-call";
+type DeltaKind = "delta-slope" | "delta-curve";
+
 interface LearnFigureProps {
   kind: LearnFigureKind;
   locale: Locale;
@@ -124,11 +127,11 @@ function PayoffFrame({
   );
 }
 
-function PayoffDiagram({ kind, locale }: { kind: Exclude<LearnFigureKind, "contract-anatomy">; locale: Locale }) {
+function PayoffDiagram({ kind, locale }: { kind: PayoffKind; locale: Locale }) {
   const labels = payoffLabels(locale);
 
   // Each diagram is a 3-point hockey-stick relative to strike and premium.
-  const shapes: Record<typeof kind, { points: string; premiumX: number; premiumY: number; premiumText: string }> = {
+  const shapes: Record<PayoffKind, { points: string; premiumX: number; premiumY: number; premiumText: string }> = {
     "long-call": {
       points: `${PLOT_LEFT},144 ${STRIKE_X},144 ${PLOT_RIGHT},54`,
       premiumX: PLOT_LEFT + 8,
@@ -147,6 +150,12 @@ function PayoffDiagram({ kind, locale }: { kind: Exclude<LearnFigureKind, "contr
       premiumY: 86,
       premiumText: `+ ${labels.premium}`,
     },
+    "short-call": {
+      points: `${PLOT_LEFT},92 ${STRIKE_X},92 ${PLOT_RIGHT},168`,
+      premiumX: PLOT_LEFT + 8,
+      premiumY: 86,
+      premiumText: `+ ${labels.premium}`,
+    },
   };
 
   const shape = shapes[kind];
@@ -159,6 +168,142 @@ function PayoffDiagram({ kind, locale }: { kind: Exclude<LearnFigureKind, "contr
         {shape.premiumText}
       </text>
     </PayoffFrame>
+  );
+}
+
+interface DeltaLabels {
+  price: string;
+  optionValue: string;
+  delta: string;
+  slope: string;
+  strike: string;
+  otm: string;
+  atm: string;
+  itm: string;
+}
+
+function deltaLabels(locale: Locale): DeltaLabels {
+  if (locale === "zh") {
+    return {
+      price: "标的价格",
+      optionValue: "期权价格",
+      delta: "Delta（Δ）",
+      slope: "斜率 = Delta",
+      strike: "行权价",
+      otm: "价外",
+      atm: "平价",
+      itm: "价内",
+    };
+  }
+  return {
+    price: "Underlying price",
+    optionValue: "Option price",
+    delta: "Delta (Δ)",
+    slope: "slope = delta",
+    strike: "Strike",
+    otm: "OTM",
+    atm: "ATM",
+    itm: "ITM",
+  };
+}
+
+function DeltaFrame({
+  xAxis,
+  yAxis,
+  children,
+}: {
+  xAxis: string;
+  yAxis: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} role="img" className="mx-auto h-auto w-full max-w-md">
+      {/* X axis baseline */}
+      <line x1={PLOT_LEFT} y1={PLOT_BOTTOM} x2={PLOT_RIGHT} y2={PLOT_BOTTOM} stroke={AXIS} strokeWidth={1.5} />
+      {/* Y axis */}
+      <line x1={PLOT_LEFT} y1={PLOT_TOP} x2={PLOT_LEFT} y2={PLOT_BOTTOM} stroke={AXIS} strokeWidth={1.5} />
+      {children}
+      <text x={(PLOT_LEFT + PLOT_RIGHT) / 2} y={H - 4} textAnchor="middle" fontSize="11" fill={TEXT_MUTED}>
+        {xAxis}
+      </text>
+      <text
+        x={14}
+        y={(PLOT_TOP + PLOT_BOTTOM) / 2}
+        textAnchor="middle"
+        fontSize="11"
+        fill={TEXT_MUTED}
+        transform={`rotate(-90 14 ${(PLOT_TOP + PLOT_BOTTOM) / 2})`}
+      >
+        {yAxis}
+      </text>
+    </svg>
+  );
+}
+
+function DeltaDiagram({ kind, locale }: { kind: DeltaKind; locale: Locale }) {
+  const labels = deltaLabels(locale);
+
+  if (kind === "delta-curve") {
+    // Call delta S-curve rising from ~0 (OTM) through 0.5 (ATM) to ~1 (ITM).
+    const yFor = (d: number) => PLOT_BOTTOM - d * (PLOT_BOTTOM - (PLOT_TOP + 8));
+    return (
+      <DeltaFrame xAxis={labels.price} yAxis={labels.delta}>
+        {[0, 0.5, 1].map((d) => (
+          <g key={d}>
+            <line
+              x1={PLOT_LEFT}
+              y1={yFor(d)}
+              x2={PLOT_RIGHT}
+              y2={yFor(d)}
+              stroke={GRID}
+              strokeWidth={0.75}
+              strokeDasharray="3 4"
+            />
+            <text x={PLOT_LEFT - 6} y={yFor(d) + 3} textAnchor="end" fontSize="9" fill={TEXT_MUTED}>
+              {d === 1 ? "1.0" : d.toString()}
+            </text>
+          </g>
+        ))}
+        {/* Strike / ATM marker */}
+        <line x1={STRIKE_X} y1={PLOT_TOP} x2={STRIKE_X} y2={PLOT_BOTTOM} stroke={AXIS} strokeWidth={1} strokeDasharray="3 4" />
+        <path
+          d={`M${PLOT_LEFT},${yFor(0.05)} C110,${yFor(0.1)} 150,${yFor(0.25)} ${STRIKE_X},${yFor(0.5)} S250,${yFor(0.9)} ${PLOT_RIGHT},${yFor(0.95)}`}
+          fill="none"
+          stroke={PROFIT_LINE}
+          strokeWidth={2.5}
+          strokeLinecap="round"
+        />
+        <circle cx={STRIKE_X} cy={yFor(0.5)} r={3.5} fill={PROFIT_LINE} />
+        <text x={95} y={PLOT_BOTTOM + 15} textAnchor="middle" fontSize="10" fill={TEXT_MUTED}>
+          {labels.otm}
+        </text>
+        <text x={STRIKE_X} y={PLOT_BOTTOM + 15} textAnchor="middle" fontSize="10" fill={TEXT_STRONG}>
+          {labels.atm}
+        </text>
+        <text x={300} y={PLOT_BOTTOM + 15} textAnchor="middle" fontSize="10" fill={TEXT_MUTED}>
+          {labels.itm}
+        </text>
+      </DeltaFrame>
+    );
+  }
+
+  // delta-slope: option value curve with a tangent line whose slope is delta.
+  return (
+    <DeltaFrame xAxis={labels.price} yAxis={labels.optionValue}>
+      <path
+        d={`M${PLOT_LEFT},158 C150,156 210,128 ${PLOT_RIGHT},52`}
+        fill="none"
+        stroke={PROFIT_LINE}
+        strokeWidth={2.5}
+        strokeLinecap="round"
+      />
+      {/* Tangent line at a point on the curve */}
+      <line x1={196} y1={124} x2={300} y2={58} stroke={TEXT_STRONG} strokeWidth={1.5} strokeDasharray="5 4" />
+      <circle cx={248} cy={91} r={3.5} fill={TEXT_STRONG} />
+      <text x={262} y={86} textAnchor="start" fontSize="10" fill={TEXT_STRONG}>
+        {labels.slope}
+      </text>
+    </DeltaFrame>
   );
 }
 
@@ -203,14 +348,96 @@ function ContractAnatomy({ locale }: { locale: Locale }) {
   );
 }
 
+// Compact, text-free version used as a list thumbnail.
+export function LearnThumbnail({ kind }: { kind: LearnFigureKind }) {
+  // 120 x 84 viewBox with a small padding.
+  const zY = 50;
+  const kX = 60;
+  const payoffPoints: Record<PayoffKind, string> = {
+    "long-call": `14,64 ${kX},64 106,20`,
+    "long-put": `14,20 ${kX},64 106,64`,
+    "short-put": `14,72 ${kX},36 106,36`,
+    "short-call": `14,36 ${kX},36 106,72`,
+  };
+
+  const renderInner = () => {
+    if (kind === "contract-anatomy") {
+      return (
+        <g>
+          {[18, 46, 74].map((x) => (
+            <rect
+              key={x}
+              x={x}
+              y={30}
+              width="24"
+              height="24"
+              rx="5"
+              fill="#ffffff"
+              stroke={AXIS}
+              strokeWidth={1.5}
+            />
+          ))}
+          <line x1="30" y1="42" x2="86" y2="42" stroke={PROFIT_LINE} strokeWidth={1.5} strokeDasharray="3 3" />
+        </g>
+      );
+    }
+
+    if (kind === "delta-curve") {
+      return (
+        <g>
+          <line x1="14" y1="66" x2="106" y2="66" stroke={GRID} strokeWidth={0.75} strokeDasharray="3 3" />
+          <path d="M14,68 C40,64 52,54 60,42 S86,20 106,17" fill="none" stroke={PROFIT_LINE} strokeWidth={2.5} strokeLinecap="round" />
+          <circle cx="60" cy="42" r="3" fill={PROFIT_LINE} />
+        </g>
+      );
+    }
+
+    if (kind === "delta-slope") {
+      return (
+        <g>
+          <path d="M14,68 C48,66 70,50 106,20" fill="none" stroke={PROFIT_LINE} strokeWidth={2.5} strokeLinecap="round" />
+          <line x1="46" y1="62" x2="94" y2="30" stroke={TEXT_STRONG} strokeWidth={1.5} strokeDasharray="4 3" />
+          <circle cx="70" cy="46" r="3" fill={TEXT_STRONG} />
+        </g>
+      );
+    }
+
+    return (
+      <g>
+        <line x1="14" y1={zY} x2="106" y2={zY} stroke={GRID} strokeWidth={1} strokeDasharray="3 3" />
+        <line x1={kX} y1="14" x2={kX} y2="70" stroke={AXIS} strokeWidth={1} strokeDasharray="2 3" />
+        <polyline
+          points={payoffPoints[kind]}
+          fill="none"
+          stroke={PROFIT_LINE}
+          strokeWidth={2.5}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+      </g>
+    );
+  };
+
+  return (
+    <svg viewBox="0 0 120 84" role="presentation" aria-hidden="true" className="h-full w-full">
+      <rect x="0" y="0" width="120" height="84" rx="8" fill="#f8fafc" />
+      {renderInner()}
+    </svg>
+  );
+}
+
+function renderFigure(kind: LearnFigureKind, locale: Locale) {
+  if (kind === "contract-anatomy") return <ContractAnatomy locale={locale} />;
+  if (kind === "delta-slope" || kind === "delta-curve") {
+    return <DeltaDiagram kind={kind} locale={locale} />;
+  }
+  return <PayoffDiagram kind={kind} locale={locale} />;
+}
+
 export default function LearnFigure({ kind, locale, caption }: LearnFigureProps) {
   return (
     <figure className="my-6 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-5">
-      {kind === "contract-anatomy" ? (
-        <ContractAnatomy locale={locale} />
-      ) : (
-        <PayoffDiagram kind={kind} locale={locale} />
-      )}
+      {renderFigure(kind, locale)}
       {caption ? (
         <figcaption className="mt-3 text-center text-xs text-slate-500">{caption}</figcaption>
       ) : null}
