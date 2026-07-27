@@ -39,7 +39,7 @@ export default function PanZoomStage({
   height,
   className,
   minScale = 0.25,
-  maxScale = 3,
+  maxScale = 5,
   labels,
   children,
 }: PanZoomStageProps) {
@@ -144,7 +144,7 @@ export default function PanZoomStage({
       ref={viewportRef}
       className={`relative w-full overflow-hidden ${className ?? ""}`}
       style={{
-        height: Math.max(340, Math.min(height, 600)),
+        height: Math.max(460, Math.min(height, 760)),
         touchAction: "none",
         cursor: dragging ? "grabbing" : "grab",
       }}
@@ -162,7 +162,6 @@ export default function PanZoomStage({
           height,
           transformOrigin: "0 0",
           transform: `translate(${t.tx}px, ${t.ty}px) scale(${t.scale})`,
-          willChange: "transform",
         }}
       >
         {children}
