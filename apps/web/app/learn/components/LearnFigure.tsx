@@ -307,6 +307,105 @@ function DeltaDiagram({ kind, locale }: { kind: DeltaKind; locale: Locale }) {
   );
 }
 
+interface GreekBellLabels {
+  price: string;
+  yAxis: string;
+  otm: string;
+  atm: string;
+  itm: string;
+  moreTime?: string;
+  lessTime?: string;
+}
+
+function greekBellLabels(kind: "gamma-curve" | "vega-curve", locale: Locale): GreekBellLabels {
+  const zh = locale === "zh";
+  if (kind === "gamma-curve") {
+    return {
+      price: zh ? "标的价格" : "Underlying price",
+      yAxis: zh ? "Gamma（Γ）" : "Gamma (Γ)",
+      otm: zh ? "价外" : "OTM",
+      atm: zh ? "平价" : "ATM",
+      itm: zh ? "价内" : "ITM",
+    };
+  }
+  return {
+    price: zh ? "标的价格" : "Underlying price",
+    yAxis: zh ? "Vega（ν）" : "Vega (ν)",
+    otm: zh ? "价外" : "OTM",
+    atm: zh ? "平价" : "ATM",
+    itm: zh ? "价内" : "ITM",
+    moreTime: zh ? "到期更远" : "more time",
+    lessTime: zh ? "到期更近" : "less time",
+  };
+}
+
+// Both gamma and vega peak at the money and taper toward deep ITM/OTM: a bell.
+function GreekBellDiagram({
+  kind,
+  locale,
+}: {
+  kind: "gamma-curve" | "vega-curve";
+  locale: Locale;
+}) {
+  const labels = greekBellLabels(kind, locale);
+  const tallBell = `M${PLOT_LEFT},162 C120,160 156,54 ${STRIKE_X},54 C200,54 236,160 ${PLOT_RIGHT},162`;
+  const shortBell = `M${PLOT_LEFT},164 C124,162 158,104 ${STRIKE_X},104 C198,104 232,162 ${PLOT_RIGHT},164`;
+
+  return (
+    <DeltaFrame xAxis={labels.price} yAxis={labels.yAxis}>
+      {/* ATM marker */}
+      <line x1={STRIKE_X} y1={PLOT_TOP} x2={STRIKE_X} y2={PLOT_BOTTOM} stroke={AXIS} strokeWidth={1} strokeDasharray="3 4" />
+      {kind === "vega-curve" ? (
+        <path d={shortBell} fill="none" stroke={GRID} strokeWidth={1.75} strokeDasharray="5 4" strokeLinecap="round" />
+      ) : null}
+      <path d={tallBell} fill="none" stroke={PROFIT_LINE} strokeWidth={2.5} strokeLinecap="round" />
+      <circle cx={STRIKE_X} cy={54} r={3.5} fill={PROFIT_LINE} />
+      {kind === "vega-curve" ? (
+        <>
+          <text x={STRIKE_X + 10} y={52} textAnchor="start" fontSize="10" fill={TEXT_STRONG}>
+            {labels.moreTime}
+          </text>
+          <text x={STRIKE_X + 10} y={102} textAnchor="start" fontSize="10" fill={TEXT_MUTED}>
+            {labels.lessTime}
+          </text>
+        </>
+      ) : null}
+      <text x={95} y={PLOT_BOTTOM + 15} textAnchor="middle" fontSize="10" fill={TEXT_MUTED}>
+        {labels.otm}
+      </text>
+      <text x={STRIKE_X} y={PLOT_BOTTOM + 15} textAnchor="middle" fontSize="10" fill={TEXT_STRONG}>
+        {labels.atm}
+      </text>
+      <text x={300} y={PLOT_BOTTOM + 15} textAnchor="middle" fontSize="10" fill={TEXT_MUTED}>
+        {labels.itm}
+      </text>
+    </DeltaFrame>
+  );
+}
+
+function RhoDiagram({ locale }: { locale: Locale }) {
+  const zh = locale === "zh";
+  const xAxis = zh ? "利率" : "Interest rate";
+  const yAxis = zh ? "期权价格" : "Option price";
+  const callLabel = zh ? "看涨（Rho > 0）" : "Call (rho > 0)";
+  const putLabel = zh ? "看跌（Rho < 0）" : "Put (rho < 0)";
+
+  return (
+    <DeltaFrame xAxis={xAxis} yAxis={yAxis}>
+      {/* Call: value rises with rates */}
+      <line x1={PLOT_LEFT} y1={148} x2={PLOT_RIGHT} y2={52} stroke={PROFIT_LINE} strokeWidth={2.5} strokeLinecap="round" />
+      <text x={PLOT_RIGHT - 4} y={46} textAnchor="end" fontSize="10" fill={PROFIT_LINE}>
+        {callLabel}
+      </text>
+      {/* Put: value falls with rates */}
+      <line x1={PLOT_LEFT} y1={60} x2={PLOT_RIGHT} y2={152} stroke={TEXT_STRONG} strokeWidth={2} strokeDasharray="6 4" strokeLinecap="round" />
+      <text x={PLOT_RIGHT - 4} y={166} textAnchor="end" fontSize="10" fill={TEXT_STRONG}>
+        {putLabel}
+      </text>
+    </DeltaFrame>
+  );
+}
+
 function ContractAnatomy({ locale }: { locale: Locale }) {
   const tokens =
     locale === "zh"
@@ -402,6 +501,28 @@ export function LearnThumbnail({ kind }: { kind: LearnFigureKind }) {
       );
     }
 
+    if (kind === "gamma-curve" || kind === "vega-curve") {
+      return (
+        <g>
+          <line x1={kX} y1="14" x2={kX} y2="70" stroke={AXIS} strokeWidth={1} strokeDasharray="2 3" />
+          {kind === "vega-curve" ? (
+            <path d="M14,70 C36,68 48,48 60,48 C72,48 84,68 106,70" fill="none" stroke={GRID} strokeWidth={1.5} strokeDasharray="4 3" strokeLinecap="round" />
+          ) : null}
+          <path d="M14,68 C38,66 50,22 60,22 C70,22 82,66 106,68" fill="none" stroke={PROFIT_LINE} strokeWidth={2.5} strokeLinecap="round" />
+          <circle cx="60" cy="22" r="3" fill={PROFIT_LINE} />
+        </g>
+      );
+    }
+
+    if (kind === "rho-line") {
+      return (
+        <g>
+          <line x1="14" y1="60" x2="106" y2="22" stroke={PROFIT_LINE} strokeWidth={2.5} strokeLinecap="round" />
+          <line x1="14" y1="24" x2="106" y2="62" stroke={TEXT_STRONG} strokeWidth={2} strokeDasharray="5 3" strokeLinecap="round" />
+        </g>
+      );
+    }
+
     return (
       <g>
         <line x1="14" y1={zY} x2="106" y2={zY} stroke={GRID} strokeWidth={1} strokeDasharray="3 3" />
@@ -431,6 +552,10 @@ function renderFigure(kind: LearnFigureKind, locale: Locale) {
   if (kind === "delta-slope" || kind === "delta-curve") {
     return <DeltaDiagram kind={kind} locale={locale} />;
   }
+  if (kind === "gamma-curve" || kind === "vega-curve") {
+    return <GreekBellDiagram kind={kind} locale={locale} />;
+  }
+  if (kind === "rho-line") return <RhoDiagram locale={locale} />;
   return <PayoffDiagram kind={kind} locale={locale} />;
 }
 
