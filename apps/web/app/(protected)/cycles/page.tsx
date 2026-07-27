@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
 import PageHeader from "@/app/components/PageHeader";
+import PanZoomStage from "@/app/components/PanZoomStage";
 import RefreshingSpinner from "@/app/components/RefreshingSpinner";
 import { BTN_ACCENT, PILL_ACTIVE, PILL_IDLE } from "@/app/components/ui/styles";
 import { listCycles, listTrades, type CycleSummary, type Trade } from "@/lib/api/trades";
@@ -118,10 +119,41 @@ function deriveWheelState(wheelTrades: Trade[], cycleState: string): string {
   return "EXIT";
 }
 
+/**
+ * Walk a leg's roll chain to its root. A rolled leg keeps its own (earlier)
+ * trade date while the new leg carries the roll date, so we order the whole
+ * chain by the root's trade date and use depth to keep parent → child order.
+ */
+function rollChainInfo(
+  trade: Trade,
+  byId: Map<string, Trade>
+): { rootTime: number; depth: number } {
+  let depth = 0;
+  let cur: Trade = trade;
+  const seen = new Set<string>([trade.id]);
+  while (cur.rolled_from_id && byId.has(cur.rolled_from_id) && !seen.has(cur.rolled_from_id)) {
+    seen.add(cur.rolled_from_id);
+    cur = byId.get(cur.rolled_from_id)!;
+    depth += 1;
+  }
+  return { rootTime: new Date(cur.trade_date).getTime(), depth };
+}
+
+/**
+ * Order legs so a rolled leg (e.g. 350) always precedes the position it was
+ * rolled into (e.g. 340), keeping the roll chain contiguous and anchored at
+ * the chain root's trade date. Stable on the original index otherwise.
+ */
+function sortWheelLegs(trades: Trade[]): Trade[] {
+  const byId = new Map(trades.map((t) => [t.id, t] as const));
+  return trades
+    .map((t, i) => ({ t, i, ...rollChainInfo(t, byId) }))
+    .sort((a, b) => a.rootTime - b.rootTime || a.depth - b.depth || a.i - b.i)
+    .map((x) => x.t);
+}
+
 function splitCycleIntoWheels(cycle: CycleSummary, linkedTrades: Trade[]): CycleWheelSummary[] {
-  const sorted = linkedTrades
-    .slice()
-    .sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime());
+  const sorted = sortWheelLegs(linkedTrades);
   if (sorted.length === 0) {
     return [{ ...cycle, source_cycle_id: cycle.id, trades: [] }];
   }
@@ -573,10 +605,13 @@ export default function CyclesPage() {
               const spokeStroke = completed ? "#fcd34d" : "#dde3e6";
 
               return (
-                <div
-                  className={`overflow-x-auto ${completed ? "bg-gradient-to-b from-amber-50/40 to-[#fcfdfd]" : "bg-[#fcfdfd]"}`}
+                <PanZoomStage
+                  width={W}
+                  height={H}
+                  className={completed ? "bg-gradient-to-b from-amber-50/40 to-[#fcfdfd]" : "bg-[#fcfdfd]"}
+                  labels={{ zoomIn: t("zoomIn"), zoomOut: t("zoomOut"), reset: t("resetView") }}
                 >
-                  <div className="relative mx-auto" style={{ width: W, height: H }}>
+                  <div className="relative" style={{ width: W, height: H }}>
 
                     {/* LAYER 1 (behind cards): guide ring + spokes */}
                     <svg className="pointer-events-none absolute inset-0" style={{ zIndex: 0 }} width={W} height={H}>
@@ -680,7 +715,7 @@ export default function CyclesPage() {
                     </svg>
 
                   </div>
-                </div>
+                </PanZoomStage>
               );
             })()}
           </div>
@@ -732,9 +767,7 @@ export default function CyclesPage() {
                 visibleCycles.map((cycle) => {
                   const linkedTrades = cycle.trades;
                   const openCount = linkedTrades.filter((trade) => trade.status === "OPEN").length;
-                  const sortedLegs = linkedTrades
-                    .slice()
-                    .sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime());
+                  const sortedLegs = sortWheelLegs(linkedTrades);
 
                   const cycleCompleted = isCompletedWheel(cycle.state);
                   return (
