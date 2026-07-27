@@ -8,7 +8,10 @@ export type LearnFigureKind =
   | "short-put"
   | "short-call"
   | "delta-slope"
-  | "delta-curve";
+  | "delta-curve"
+  | "gamma-curve"
+  | "vega-curve"
+  | "rho-line";
 
 export interface LearnSection {
   heading: string;
@@ -29,6 +32,8 @@ export interface LearnPostSource {
   slug: string;
   /** ISO date YYYY-MM-DD */
   date: string;
+  /** Curriculum depth rank (lower = more fundamental). Controls list ordering. */
+  order: number;
   /** Diagram used as the list thumbnail. */
   thumbnail?: LearnFigureKind;
   en: LearnPostLocalized;
@@ -38,6 +43,7 @@ export interface LearnPostSource {
 export interface LearnPost {
   slug: string;
   date: string;
+  order: number;
   thumbnail?: LearnFigureKind;
   title: string;
   description: string;
