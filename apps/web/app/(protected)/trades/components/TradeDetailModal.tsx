@@ -314,7 +314,10 @@ export default function TradeDetailModal({
                 },
                 {
                   label: "Capital at Risk",
-                  value: `$${cap.toLocaleString(undefined, { minimumFractionDigits: 0 })}`,
+                  value: `$${cap.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`,
                   green: false,
                 },
               ].map(({ label, value, green }) => (

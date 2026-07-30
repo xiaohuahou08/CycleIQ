@@ -43,7 +43,10 @@ const LOGO_URL_BUILDERS = [
 ];
 
 function fmtMoneyCompact(value: number, intlLocale: string): string {
-  return value.toLocaleString(intlLocale, { maximumFractionDigits: 0 });
+  return value.toLocaleString(intlLocale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 function getCapitalBudgetErrorMessage(

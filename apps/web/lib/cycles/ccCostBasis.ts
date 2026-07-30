@@ -381,7 +381,7 @@ export function buildCcCostBasisRow(
 
   const primaryPut = assignedPuts[assignedPuts.length - 1]!;
   const assignIso = assignDate ?? primaryPut.trade_date;
-  const subtitle = `$${primaryPut.strike.toFixed(0)} CSP · ${fmtDate(assignIso)}`;
+  const subtitle = `$${primaryPut.strike.toFixed(2)} CSP · ${fmtDate(assignIso)}`;
 
   const recentTradeDate = wheelTrades
     .map((t) => new Date(t.trade_date).getTime())
