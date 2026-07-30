@@ -86,8 +86,8 @@ def capital_budget_error(
     over = after - budget
     pct = capital_utilization_pct(after, budget)
     return (
-        f"Total capital invested ${after:,.0f} ({pct:.0f}% of total capital) exceeds your "
-        f"available capital of ${budget:,.0f} (over by ${over:,.0f})"
+        f"Total capital invested ${after:,.2f} ({pct:.0f}% of total capital) exceeds your "
+        f"available capital of ${budget:,.2f} (over by ${over:,.2f})"
     )
 
 

@@ -164,7 +164,8 @@ export function capitalBudgetError(
 
   const over = after - pool;
   const pct = capitalUtilizationPct(after, pool);
-  return `Total capital invested $${after.toLocaleString("en-US", { maximumFractionDigits: 0 })} (${pct.toFixed(0)}% of total capital) exceeds your available capital of $${pool.toLocaleString("en-US", { maximumFractionDigits: 0 })} (over by $${over.toLocaleString("en-US", { maximumFractionDigits: 0 })})`;
+  const money = { minimumFractionDigits: 2, maximumFractionDigits: 2 } as const;
+  return `Total capital invested $${after.toLocaleString("en-US", money)} (${pct.toFixed(0)}% of total capital) exceeds your available capital of $${pool.toLocaleString("en-US", money)} (over by $${over.toLocaleString("en-US", money)})`;
 }
 
 /** @deprecated use capitalBudgetError */

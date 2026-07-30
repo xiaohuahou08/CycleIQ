@@ -437,11 +437,11 @@ export default function CyclesPage() {
                     </div>
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
                       <p className="text-[11px] font-medium uppercase tracking-wider text-slate-600">{t("cc.premiumRealized")}</p>
-                      <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">${row.ccPremiumTotal.toFixed(0)}</p>
+                      <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">${row.ccPremiumTotal.toFixed(2)}</p>
                       <p className="text-xs text-slate-600">
                         {row.ccPremiumRealized < row.ccPremiumTotal
                           ? t("cc.premiumRealizedHint", {
-                              realized: `$${row.ccPremiumRealized.toFixed(0)}`,
+                              realized: `$${row.ccPremiumRealized.toFixed(2)}`,
                             })
                           : t("total")}
                       </p>
@@ -656,7 +656,7 @@ export default function CyclesPage() {
                           completed ? "text-[14px]" : "text-[11px] font-semibold"
                         } ${totalNet < 0 ? "text-red-700" : completed ? "text-amber-900" : "text-emerald-700"}`}
                       >
-                        {totalNet < 0 ? "−" : "+"}${Math.abs(totalNet).toFixed(0)}
+                        {totalNet < 0 ? "−" : "+"}${Math.abs(totalNet).toFixed(2)}
                       </div>
                       {completed && (
                         <span className="mt-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700/90">
@@ -684,7 +684,7 @@ export default function CyclesPage() {
                               </p>
                             </div>
                             <p className="text-[28px] font-bold leading-none tabular-nums text-slate-900">
-                              ${trade.strike.toFixed(0)}
+                              ${trade.strike.toFixed(2)}
                             </p>
                             <p className={`text-sm font-semibold tabular-nums ${isDebit ? "text-red-600" : "text-emerald-700"}`}>
                               {isDebit ? "−" : "+"}${Math.abs(net).toFixed(2)}
@@ -839,7 +839,7 @@ export default function CyclesPage() {
                                   ${trade.strike.toFixed(2)}
                                 </p>
                                 <p className="text-sm font-semibold tabular-nums text-emerald-700">
-                                  +${(trade.premium * trade.contracts * 100).toFixed(0)}
+                                  +${(trade.premium * trade.contracts * 100).toFixed(2)}
                                 </p>
                                 <p className="mt-1 text-xs text-slate-600">{fmtDate(trade.expiry, intlLocale)}</p>
                                 <span className="mt-1.5 inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-800 ring-1 ring-slate-200/80">
