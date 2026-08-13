@@ -12,4 +12,5 @@ supabase==2.15.0
 pydantic==2.11.3
 gunicorn==23.0.0
 httpx==0.28.1
+yfinance==1.5.2
 stripe==12.4.0
