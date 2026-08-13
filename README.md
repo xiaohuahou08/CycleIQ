@@ -41,8 +41,9 @@ Sell CSP → (Assigned) → Hold Stock → Sell CC → (Called Away / Expired) �
 - **Dashboard** — Capital invested, total premium, realized P&L, win rate, open premium yield, and income charts
 - **Trade log** — Manual entry with expire, roll, assign, buy-to-close, and live quote context
 - **Cycles view** — Wheel fan diagram, per-leg net P&L, and **CC cost basis** per open wheel
-- **Trading defaults** — Per-contract commission and defaults stored in browser localStorage
-- **Real-time prices** — Stock quotes fetched hourly via `/api/quote`
+- **Options screener** — Configurable Sell Put / Covered Call candidates (per-share USD thresholds, Yahoo Finance data). Advisory only — no auto trading
+- **Trading defaults** — Per-contract commission and defaults synced via preferences API
+- **Real-time prices** — Stock quotes via `/api/quote`
 - **Per-user isolation** — Supabase RLS; JWT validated on Flask API (ES256 JWKS)
 
 ---
@@ -53,12 +54,12 @@ Sell CSP → (Assigned) → Hold Stock → Sell CC → (Called Away / Expired) �
 CycleIQ/
 ├── apps/web/                  # Active frontend (Next.js 16)
 │   ├── app/
-│   │   ├── (protected)/       # Auth-gated: dashboard, trades, cycles, settings
+│   │   ├── (protected)/       # Auth-gated: dashboard, trades, cycles, screen, settings
 │   │   ├── components/        # Sidebar, AuthShell, DatePicker, icons
 │   │   ├── login/ register/   # Branded auth pages
 │   │   └── page.tsx           # Marketing landing page
 │   ├── lib/
-│   │   ├── api/trades.ts      # All API client functions
+│   │   ├── api/               # trades, preferences, screen, billing clients
 │   │   └── supabase/          # Supabase client helpers
 │   └── package.json
 │
@@ -67,7 +68,10 @@ CycleIQ/
 │   │   ├── trades.py          # /api/trades CRUD + expire/roll/assign
 │   │   ├── cycles.py          # /api/cycles + FSM transitions
 │   │   ├── dashboard.py       # /api/dashboard/insights
+│   │   ├── screen.py          # /api/screen/scan (options screener)
 │   │   └── metrics.py         # /api/metrics
+│   ├── services/
+│   │   └── screener/          # Per-share candidate metrics, filters, ranking
 │   ├── auth/                  # Supabase JWT verification (ES256 JWKS + HS256)
 │   ├── cycleiq/               # Wheel FSM domain logic
 │   └── requirements.txt

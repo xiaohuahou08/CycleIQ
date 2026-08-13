@@ -15,6 +15,7 @@ from backend.routes import (
     dashboard_bp,
     metrics_bp,
     preferences_bp,
+    screen_bp,
     trades_bp,
 )
 from backend.routes.account import register_account_routes
@@ -23,6 +24,7 @@ from backend.routes.cycles import register_cycles_routes
 from backend.routes.dashboard import register_dashboard_routes
 from backend.routes.metrics import register_metrics_routes
 from backend.routes.preferences import register_preferences_routes
+from backend.routes.screen import register_screen_routes
 from backend.routes.trades import register_trades_routes
 
 migrate = Migrate()
@@ -60,6 +62,7 @@ def create_app(config_object=None):
         register_preferences_routes(preferences_bp)
         register_account_routes(account_bp)
         register_billing_routes(billing_bp)
+        register_screen_routes(screen_bp)
         _ROUTES_REGISTERED = True
     app.register_blueprint(trades_bp)
     app.register_blueprint(dashboard_bp)
@@ -68,6 +71,7 @@ def create_app(config_object=None):
     app.register_blueprint(preferences_bp)
     app.register_blueprint(account_bp)
     app.register_blueprint(billing_bp)
+    app.register_blueprint(screen_bp)
     register_stripe_webhook(app)
 
     @app.route("/health", methods=["GET"])

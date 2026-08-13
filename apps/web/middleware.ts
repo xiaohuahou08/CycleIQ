@@ -88,6 +88,7 @@ export const config = {
     "/dashboard/:path*",
     "/trades/:path*",
     "/cycles/:path*",
+    "/screen/:path*",
     "/reports/:path*",
     "/settings/:path*",
     "/login",

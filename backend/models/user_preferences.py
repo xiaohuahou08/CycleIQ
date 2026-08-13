@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Index, Integer, Numeric, String, text
+from sqlalchemy import DateTime, Index, Integer, JSON, Numeric, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.models import db
+from backend.services.screener.config import default_screener_config, merge_screener_config
 
 DEFAULT_CONTRACTS = 1
 DEFAULT_DTE = 45
@@ -40,6 +41,7 @@ class UserPreferences(db.Model):
     stripe_subscription_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     subscription_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
     current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    screener_config: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -55,6 +57,7 @@ class UserPreferences(db.Model):
             "default_contracts": int(self.default_contracts),
             "default_dte": int(self.default_dte),
             "total_capital_budget": float(self.total_capital_budget),
+            "screener_config": merge_screener_config(self.screener_config),
         }
 
     @staticmethod
@@ -64,4 +67,5 @@ class UserPreferences(db.Model):
             "default_contracts": DEFAULT_CONTRACTS,
             "default_dte": DEFAULT_DTE,
             "total_capital_budget": DEFAULT_TOTAL_CAPITAL_BUDGET,
+            "screener_config": default_screener_config(),
         }

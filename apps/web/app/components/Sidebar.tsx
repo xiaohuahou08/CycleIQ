@@ -8,6 +8,7 @@ import {
   ChevronRight,
   LayoutDashboard,
   RefreshCw,
+  Search,
   TrendingUp,
   X,
   type LucideIcon,
@@ -28,12 +29,16 @@ const sb = {
   navLabel: "text-sm leading-tight",
 } as const;
 
-const navItemDefs: { key: "dashboard" | "trades" | "cycles"; href: string; icon: LucideIcon }[] =
-  [
-    { key: "dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { key: "trades", href: "/trades", icon: TrendingUp },
-    { key: "cycles", href: "/cycles", icon: RefreshCw },
-  ];
+const navItemDefs: {
+  key: "dashboard" | "trades" | "cycles" | "screen";
+  href: string;
+  icon: LucideIcon;
+}[] = [
+  { key: "dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { key: "trades", href: "/trades", icon: TrendingUp },
+  { key: "cycles", href: "/cycles", icon: RefreshCw },
+  { key: "screen", href: "/screen", icon: Search },
+];
 
 interface SidebarProps {
   collapsed?: boolean;
@@ -65,7 +70,7 @@ function SidebarNav({
       }`}
     >
       {navItems.map((item) => {
-        const isActive = pathname === item.href;
+        const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
         const Icon = item.icon;
         return (
           <Link

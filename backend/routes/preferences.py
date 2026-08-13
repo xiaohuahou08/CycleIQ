@@ -12,6 +12,7 @@ from backend.models.user_preferences import (
     DEFAULT_TOTAL_CAPITAL_BUDGET,
     UserPreferences,
 )
+from backend.services.screener.config import parse_screener_config
 
 
 def _parse_optional_commission(raw) -> float | None:
@@ -61,6 +62,9 @@ def register_preferences_routes(preferences_bp):
             )
             dte = _parse_positive_int(data.get("default_dte"), "default_dte", DEFAULT_DTE)
             capital_budget = _parse_capital_budget(data.get("total_capital_budget"))
+            screener_config = None
+            if "screener_config" in data:
+                screener_config = parse_screener_config(data.get("screener_config"))
         except (TypeError, ValueError) as exc:
             return jsonify({"error": str(exc)}), 400
 
@@ -74,6 +78,8 @@ def register_preferences_routes(preferences_bp):
         row.default_contracts = contracts
         row.default_dte = dte
         row.total_capital_budget = capital_budget
+        if screener_config is not None:
+            row.screener_config = screener_config
         row.updated_at = datetime.now(timezone.utc)
         db.session.commit()
         return jsonify(row.to_api_dict())

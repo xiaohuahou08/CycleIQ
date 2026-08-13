@@ -95,6 +95,8 @@ Both tables have **Row Level Security (RLS)** enabled:
 
 5. Commit **both** the model change and the migration file together.
 
+Recent relevant revisions include `0015_screener_config` (`user_preferences.screener_config` JSON for the options screener).
+
 ---
 
 ## Troubleshooting

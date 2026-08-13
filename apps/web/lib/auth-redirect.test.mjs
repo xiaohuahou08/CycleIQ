@@ -29,6 +29,7 @@ test("isProtectedRoute identifies protected app routes", () => {
   assert.equal(isProtectedRoute("/dashboard"), true);
   assert.equal(isProtectedRoute("/dashboard/settings"), true);
   assert.equal(isProtectedRoute("/cycles"), true);
+  assert.equal(isProtectedRoute("/screen"), true);
   assert.equal(isProtectedRoute("/reports/summary"), true);
   assert.equal(isProtectedRoute("/settings"), true);
   assert.equal(isProtectedRoute("/orders"), false);
@@ -44,6 +45,7 @@ test("isAuthRoute identifies login and register routes", () => {
 
 test("safeInternalRedirectPath allows only known in-app targets", () => {
   assert.equal(safeInternalRedirectPath("/cycles"), "/cycles");
+  assert.equal(safeInternalRedirectPath("/screen"), "/screen");
   assert.equal(safeInternalRedirectPath("/dashboard/foo"), "/dashboard/foo");
   assert.equal(safeInternalRedirectPath("/pricing"), "/pricing");
   assert.equal(safeInternalRedirectPath("/pricing?checkout=1"), "/pricing?checkout=1");
