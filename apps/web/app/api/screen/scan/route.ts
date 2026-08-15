@@ -36,6 +36,15 @@ export async function POST(req: NextRequest) {
       body: await req.text(),
     });
     const text = await res.text();
+    if (res.status === 405) {
+      return NextResponse.json(
+        {
+          error:
+            "API server rejected POST /api/screen/scan (405). Render is still running a build without the screener route — deploy the Flask service from the same git branch as this web app (dev), then retry.",
+        },
+        { status: 503 },
+      );
+    }
     return new NextResponse(text, {
       status: res.status,
       headers: {

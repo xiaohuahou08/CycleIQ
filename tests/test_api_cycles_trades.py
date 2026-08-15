@@ -1030,3 +1030,7 @@ def test_screen_scan_accepts_post_and_requires_auth(client):
 
     options = client.options("/api/screen/scan")
     assert options.status_code == 204
+
+    probe = client.get("/api/screen/scan")
+    assert probe.status_code == 200
+    assert probe.get_json()["ok"] is True

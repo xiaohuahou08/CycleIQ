@@ -24,7 +24,7 @@ from backend.routes.cycles import register_cycles_routes
 from backend.routes.dashboard import register_dashboard_routes
 from backend.routes.metrics import register_metrics_routes
 from backend.routes.preferences import register_preferences_routes
-from backend.routes.screen import register_screen_routes
+from backend.routes.screen import register_screen_app_routes, register_screen_routes
 from backend.routes.trades import register_trades_routes
 
 migrate = Migrate()
@@ -73,6 +73,7 @@ def create_app(config_object=None):
     app.register_blueprint(billing_bp)
     app.register_blueprint(screen_bp)
     register_stripe_webhook(app)
+    register_screen_app_routes(app)
 
     @app.route("/health", methods=["GET"])
     def health():
@@ -80,6 +81,7 @@ def create_app(config_object=None):
             {
                 "status": "ok",
                 "timestamp": datetime.now(timezone.utc).isoformat(),
+                "features": {"screen_scan": True},
             }
         )
 
