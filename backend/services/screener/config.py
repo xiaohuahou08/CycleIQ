@@ -11,15 +11,15 @@ DEFAULT_SCREENER_CONFIG: dict[str, Any] = {
     "watchlist": list(DEFAULT_WATCHLIST),
     "min_dte": 21,
     "max_dte": 45,
-    "min_net_premium_usd": 0.40,
-    "min_annualized_return": 0.10,
+    "min_net_premium_usd": 0.10,
+    "min_annualized_return": 0.0,
     "min_iv_rv_ratio": 0.0,
     "min_iv_minus_rv": 0.0,
-    "max_spread_ratio": 0.25,
-    "put_recall_below_pct": 0.15,
-    "call_recall_above_pct": 0.15,
+    "max_spread_ratio": 0.50,
+    "put_recall_below_pct": 0.25,
+    "call_recall_above_pct": 0.25,
     "call_cost_floor_mult": 1.02,
-    "earnings_hard_window_days": 7,
+    "earnings_hard_window_days": 0,
     "return_proximity_band": 0.002,
     "fee_per_contract_usd": None,
 }
@@ -118,6 +118,8 @@ def parse_screener_config(raw: Any) -> dict[str, Any]:
             watchlist.append(ticker)
     if len(watchlist) > _MAX_WATCHLIST:
         raise ValueError(f"watchlist must have at most {_MAX_WATCHLIST} tickers")
+    if not watchlist:
+        watchlist = list(DEFAULT_WATCHLIST)
     cfg["watchlist"] = watchlist
 
     min_dte = _as_int(cfg["min_dte"], "min_dte")

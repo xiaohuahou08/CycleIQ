@@ -2,7 +2,7 @@
 
 import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, ChevronUp, Info, Plus, RotateCcw, SlidersHorizontal, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Info, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { iconSm, iconStroke } from "@/app/components/icons";
 import { CARD_BASE } from "@/app/components/ui/styles";
 import { Button } from "@/components/ui/button";
@@ -173,40 +173,18 @@ export default function ScreenerConfigPanel({
   onSave,
   saving,
   loading,
-  onWatchlistMax,
 }: {
   config: ScreenerConfigApi;
   onChange: (next: ScreenerConfigApi) => void;
   onSave: () => void;
   saving: boolean;
   loading: boolean;
-  onWatchlistMax?: () => void;
 }) {
   const { t } = useTranslations("screen");
   const [open, setOpen] = useState(true);
-  const [tickerInput, setTickerInput] = useState("");
 
   const patch = <K extends keyof ScreenerConfigApi>(key: K, value: ScreenerConfigApi[K]) => {
     onChange({ ...config, [key]: value });
-  };
-
-  const addTicker = () => {
-    const ticker = tickerInput.trim().toUpperCase();
-    if (!ticker) return;
-    if (config.watchlist.includes(ticker)) {
-      setTickerInput("");
-      return;
-    }
-    if (config.watchlist.length >= 30) {
-      onWatchlistMax?.();
-      return;
-    }
-    onChange({ ...config, watchlist: [...config.watchlist, ticker] });
-    setTickerInput("");
-  };
-
-  const removeTicker = (ticker: string) => {
-    onChange({ ...config, watchlist: config.watchlist.filter((x) => x !== ticker) });
   };
 
   const resetDefaults = () => {
@@ -217,8 +195,6 @@ export default function ScreenerConfigPanel({
     min: config.min_dte,
     max: config.max_dte,
     premium: config.min_net_premium_usd.toFixed(2),
-    ann: ratioToPct(config.min_annualized_return),
-    tickers: config.watchlist.length,
   });
 
   return (
@@ -247,60 +223,6 @@ export default function ScreenerConfigPanel({
 
       {open ? (
         <div className="space-y-4 px-4 py-4">
-          <section className="rounded-2xl border border-slate-200/80 bg-white p-4">
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <div>
-                <h3 className="flex items-center gap-0.5 text-sm font-semibold text-slate-900">
-                  {t("config.watchlist")}
-                  <ParamTip tip={t("config.tips.watchlist")} ariaLabel={t("config.tipAria", { label: t("config.watchlist") })} />
-                </h3>
-                <p className="mt-0.5 text-xs text-slate-500">{t("config.watchlistHint")}</p>
-              </div>
-              <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium tabular-nums text-slate-600">
-                {config.watchlist.length}/30
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {config.watchlist.map((ticker) => (
-                <span
-                  key={ticker}
-                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold tracking-wide text-slate-700"
-                >
-                  {ticker}
-                  <button
-                    type="button"
-                    aria-label={t("config.removeTicker", { ticker })}
-                    onClick={() => removeTicker(ticker)}
-                    className="rounded-full p-0.5 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
-              {config.watchlist.length === 0 ? (
-                <span className="text-xs text-slate-400">{t("config.emptyWatchlist")}</span>
-              ) : null}
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <input
-                value={tickerInput}
-                onChange={(e) => setTickerInput(e.target.value.toUpperCase())}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addTicker();
-                  }
-                }}
-                placeholder={t("config.tickerPlaceholder")}
-                className="h-9 w-40 rounded-lg border border-slate-200 px-3 text-sm tracking-wide focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25"
-              />
-              <Button type="button" variant="outline" size="sm" onClick={addTicker}>
-                <Plus className="mr-1 h-4 w-4" />
-                {t("config.addTicker")}
-              </Button>
-            </div>
-          </section>
-
           <Section title={t("config.groups.expiry")}>
             <ConfigNumberField
               label={t("config.minDte")}
@@ -335,16 +257,6 @@ export default function ScreenerConfigPanel({
               onChange={(n) => patch("min_net_premium_usd", n)}
             />
             <ConfigNumberField
-              label={t("config.minAnnualized")}
-              tip={t("config.tips.minAnnualized")}
-              unit={t("config.units.percent")}
-              value={config.min_annualized_return}
-              step="1"
-              min={0}
-              asPercent
-              onChange={(n) => patch("min_annualized_return", n)}
-            />
-            <ConfigNumberField
               label={t("config.feePerContract")}
               tip={t("config.tips.feePerContract")}
               unit={t("config.units.usdContract")}
@@ -353,9 +265,6 @@ export default function ScreenerConfigPanel({
               min={0}
               onChange={(n) => patch("fee_per_contract_usd", n)}
             />
-          </Section>
-
-          <Section title={t("config.groups.liquidity")}>
             <ConfigNumberField
               label={t("config.maxSpread")}
               tip={t("config.tips.maxSpread")}
@@ -365,28 +274,6 @@ export default function ScreenerConfigPanel({
               min={0}
               asPercent
               onChange={(n) => patch("max_spread_ratio", n)}
-            />
-          </Section>
-
-          <Section title={t("config.groups.vol")}>
-            <ConfigNumberField
-              label={t("config.minIvRv")}
-              tip={t("config.tips.minIvRv")}
-              unit={t("config.units.ratio")}
-              value={config.min_iv_rv_ratio}
-              step="0.05"
-              min={0}
-              onChange={(n) => patch("min_iv_rv_ratio", n)}
-            />
-            <ConfigNumberField
-              label={t("config.minIvMinusRv")}
-              tip={t("config.tips.minIvMinusRv")}
-              unit={t("config.units.volPts")}
-              value={config.min_iv_minus_rv}
-              step="1"
-              min={-100}
-              asPercent
-              onChange={(n) => patch("min_iv_minus_rv", n)}
             />
           </Section>
 
@@ -422,29 +309,6 @@ export default function ScreenerConfigPanel({
               min={1}
               max={2}
               onChange={(n) => patch("call_cost_floor_mult", n)}
-            />
-          </Section>
-
-          <Section title={t("config.groups.ranking")}>
-            <ConfigNumberField
-              label={t("config.earningsWindow")}
-              tip={t("config.tips.earningsWindow")}
-              unit={t("config.units.days")}
-              value={config.earnings_hard_window_days}
-              step="1"
-              min={0}
-              max={30}
-              onChange={(n) => patch("earnings_hard_window_days", Math.round(n))}
-            />
-            <ConfigNumberField
-              label={t("config.proximityBand")}
-              tip={t("config.tips.proximityBand")}
-              unit={t("config.units.percent")}
-              value={config.return_proximity_band}
-              step="0.1"
-              min={0}
-              asPercent
-              onChange={(n) => patch("return_proximity_band", n)}
             />
           </Section>
 

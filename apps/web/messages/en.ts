@@ -961,11 +961,10 @@ const en = {
       puts: "Sell Put picks",
       calls: "Covered Call picks",
       holdings: "Held tickers",
-      watchlist: "Watchlist size",
     },
     config: {
       title: "Scan parameters",
-      summary: "{{tickers}} tickers · DTE {{min}}–{{max}} · ≥ ${{premium}}/sh · ≥ {{ann}}% ann.",
+      summary: "DTE {{min}}–{{max}} · ≥ ${{premium}}/sh",
       tipAria: "What is {{label}}?",
       reset: "Reset defaults",
       groups: {
@@ -985,12 +984,6 @@ const en = {
         multiple: "×",
         usdContract: "$/ct",
       },
-      watchlist: "Watchlist (Sell Put)",
-      watchlistHint: "Covered Call uses assigned shares from your Cycles automatically.",
-      emptyWatchlist: "Add at least one ticker to scan Sell Puts.",
-      tickerPlaceholder: "e.g. AAPL",
-      addTicker: "Add",
-      removeTicker: "Remove {{ticker}}",
       minDte: "Min DTE",
       maxDte: "Max DTE",
       minNetPremium: "Min net premium",
@@ -1005,8 +998,6 @@ const en = {
       proximityBand: "Return proximity band",
       feePerContract: "Fee per contract",
       tips: {
-        watchlist:
-          "Tickers scanned for cash-secured puts. Covered calls ignore this list and use shares already assigned in your Cycles.",
         minDte:
           "Ignore contracts with fewer days to expiration than this. Very short DTE decays fast but needs frequent rolls and concentrates event risk. Wheel traders often start around 21 days.",
         maxDte:
@@ -1080,7 +1071,6 @@ const en = {
       loadConfig: "Failed to load screener config.",
       saveConfig: "Failed to save screener config.",
       scan: "Scan failed.",
-      watchlistMax: "Watchlist is limited to 30 tickers.",
     },
   },
 

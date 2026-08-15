@@ -137,20 +137,19 @@ def test_missing_iv_rv_does_not_reject():
     assert decision["accepted"] is True
 
 
-def test_iv_rv_gate_when_enabled():
-    cfg = parse_screener_config({"min_iv_rv_ratio": 1.1, "min_iv_minus_rv": 0.0})
+def test_iv_rv_is_not_a_hard_gate():
+    cfg = parse_screener_config({"min_iv_rv_ratio": 1.1, "min_iv_minus_rv": 0.05})
     row = {
         "dte": 30,
         "spread_ratio": 0.1,
         "net_premium_per_share": 0.80,
-        "annualized_net_return": 0.20,
+        "annualized_net_return": 0.02,
         "iv_rv_ratio": 0.7,
         "iv_minus_rv": -0.10,
         "expiry": date(2026, 9, 1),
     }
-    decision = evaluate_hard_filters(row, cfg=cfg, scan_day=date(2026, 8, 1), earnings_day=None)
-    assert decision["accepted"] is False
-    assert decision["rule"] == "iv_rv_ratio_too_low"
+    decision = evaluate_hard_filters(row, cfg=cfg, scan_day=date(2026, 8, 1), earnings_day=date(2026, 8, 28))
+    assert decision["accepted"] is True
 
 
 def test_legacy_iv_rv_factory_defaults_are_relaxed():
@@ -182,11 +181,11 @@ def test_untouched_first_release_filters_upgrade_to_new_defaults():
         }
     )
     assert cfg["watchlist"] == ["AMD"]
-    assert cfg["min_net_premium_usd"] == 0.40
-    assert cfg["max_spread_ratio"] == 0.25
-    assert cfg["put_recall_below_pct"] == 0.15
-    assert cfg["call_recall_above_pct"] == 0.15
-    assert cfg["earnings_hard_window_days"] == 7
+    assert cfg["min_net_premium_usd"] == 0.10
+    assert cfg["max_spread_ratio"] == 0.50
+    assert cfg["put_recall_below_pct"] == 0.25
+    assert cfg["call_recall_above_pct"] == 0.25
+    assert cfg["earnings_hard_window_days"] == 0
     assert cfg["min_iv_rv_ratio"] == 0.0
     custom = parse_screener_config({"min_net_premium_usd": 0.80, "max_spread_ratio": 0.40})
     assert custom["min_net_premium_usd"] == 0.80
@@ -235,6 +234,12 @@ def test_rank_one_per_symbol_and_period_order():
     assert ranked[0]["contract_id"] == "AAA-b"
     assert ranked[0]["rank"] == 1
     assert ranked[1]["symbol"] == "BBB"
+
+
+def test_empty_watchlist_falls_back_to_defaults():
+    cfg = parse_screener_config({"watchlist": []})
+    assert "AAPL" in cfg["watchlist"]
+    assert len(cfg["watchlist"]) >= 1
 
 
 def test_parse_screener_config_rejects_bad_dte():

@@ -45,7 +45,11 @@ def evaluate_hard_filters(
     scan_day: date,
     earnings_day: date | None,
 ) -> dict[str, Any]:
-    """Return ``{accepted, rule, ...}`` for a metric-enriched candidate row."""
+    """Return ``{accepted, rule, ...}`` for a metric-enriched candidate row.
+
+    IV/RV, annualized return, and earnings are ranking/display signals only —
+    they are not hard gates (those filters emptied scans on typical mega-caps).
+    """
     dte = int(row.get("dte") or 0)
     if dte < int(cfg["min_dte"]) or dte > int(cfg["max_dte"]):
         return {"accepted": False, "rule": "dte_out_of_window", "metric_value": dte}
@@ -66,56 +70,6 @@ def evaluate_hard_filters(
             "rule": "net_premium_too_low",
             "metric_value": net,
             "threshold": cfg["min_net_premium_usd"],
-        }
-
-    ann = row.get("annualized_net_return")
-    if ann is None or float(ann) < float(cfg["min_annualized_return"]):
-        return {
-            "accepted": False,
-            "rule": "annualized_too_low",
-            "metric_value": ann,
-            "threshold": cfg["min_annualized_return"],
-        }
-
-    iv_rv = row.get("iv_rv_ratio")
-    iv_minus = row.get("iv_minus_rv")
-    min_ratio = float(cfg["min_iv_rv_ratio"])
-    min_minus = float(cfg["min_iv_minus_rv"])
-    # 0 (or below) means the gate is off. Missing Yahoo IV/RV also skips.
-    if (
-        iv_rv is not None
-        and min_ratio > 0
-        and float(iv_rv) < min_ratio
-    ):
-        return {
-            "accepted": False,
-            "rule": "iv_rv_ratio_too_low",
-            "metric_value": iv_rv,
-            "threshold": min_ratio,
-        }
-    if (
-        iv_minus is not None
-        and min_minus > 0
-        and float(iv_minus) < min_minus
-    ):
-        return {
-            "accepted": False,
-            "rule": "iv_minus_rv_too_low",
-            "metric_value": iv_minus,
-            "threshold": min_minus,
-        }
-
-    expiry = row.get("expiry")
-    if isinstance(expiry, date) and earnings_blocks_expiry(
-        scan_day=scan_day,
-        expiry=expiry,
-        earnings_day=earnings_day,
-        hard_window_days=int(cfg["earnings_hard_window_days"]),
-    ):
-        return {
-            "accepted": False,
-            "rule": "earnings_in_hard_window",
-            "metric_value": earnings_day.isoformat() if earnings_day else None,
         }
 
     return {"accepted": True, "rule": "accepted"}

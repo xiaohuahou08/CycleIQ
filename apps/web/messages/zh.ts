@@ -955,11 +955,10 @@ const zh = {
       puts: "Sell Put 候选",
       calls: "Covered Call 候选",
       holdings: "持股标的",
-      watchlist: "观察列表",
     },
     config: {
       title: "扫描参数",
-      summary: "{{tickers}} 个标的 · DTE {{min}}–{{max}} · ≥ ${{premium}}/股 · 年化 ≥ {{ann}}%",
+      summary: "DTE {{min}}–{{max}} · ≥ ${{premium}}/股",
       tipAria: "{{label}} 是什么？",
       reset: "恢复默认",
       groups: {
@@ -979,12 +978,6 @@ const zh = {
         multiple: "×",
         usdContract: "$/张",
       },
-      watchlist: "观察列表（Sell Put）",
-      watchlistHint: "Covered Call 自动使用 Cycles 中的指派持股，不走此列表。",
-      emptyWatchlist: "请至少添加一个标的以扫描 Sell Put。",
-      tickerPlaceholder: "例如 AAPL",
-      addTicker: "添加",
-      removeTicker: "移除 {{ticker}}",
       minDte: "最短 DTE",
       maxDte: "最长 DTE",
       minNetPremium: "最低净权利金",
@@ -999,8 +992,6 @@ const zh = {
       proximityBand: "收益接近带",
       feePerContract: "每张合约费用",
       tips: {
-        watchlist:
-          "Sell Put 会扫描这些标的。Covered Call 忽略此列表，改用 Cycles 里已经指派到账的持股。",
         minDte:
           "到期天数少于此值的合约会被跳过。DTE 太短时 Theta 衰减快，但需要更频繁滚动，事件风险也更集中。滚轮策略常用 21 天左右起。",
         maxDte:
@@ -1074,7 +1065,6 @@ const zh = {
       loadConfig: "加载选股配置失败。",
       saveConfig: "保存选股配置失败。",
       scan: "扫描失败。",
-      watchlistMax: "观察列表最多 30 个标的。",
     },
   },
 

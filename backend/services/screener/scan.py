@@ -6,7 +6,11 @@ from datetime import date, datetime, timezone
 from typing import Any
 
 from backend.models.trade import Trade
-from backend.services.screener.config import merge_screener_config, resolve_fee_per_contract
+from backend.services.screener.config import (
+    DEFAULT_WATCHLIST,
+    merge_screener_config,
+    resolve_fee_per_contract,
+)
 from backend.services.screener.filters import evaluate_hard_filters, in_strike_window
 from backend.services.screener.market_data import fetch_chains_parallel
 from backend.services.screener.metrics import build_candidate_metrics
@@ -173,7 +177,7 @@ def run_screen(
     holdings_list = open_assigned_positions(trades)
     holdings = {ticker: (shares, avg_strike) for ticker, shares, avg_strike in holdings_list}
 
-    put_symbols = list(cfg.get("watchlist") or [])
+    put_symbols = list(cfg.get("watchlist") or []) or list(DEFAULT_WATCHLIST)
     call_symbols = sorted(holdings.keys()) if "call" in wanted else []
     fetch_symbols = []
     if "put" in wanted:

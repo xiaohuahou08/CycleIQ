@@ -260,14 +260,10 @@ export default function ScreenPage() {
         </div>
 
         {result ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-3 gap-3">
             <StatChip label={t("stats.puts")} value={String(result.puts.length)} />
             <StatChip label={t("stats.calls")} value={String(result.calls.length)} />
             <StatChip label={t("stats.holdings")} value={String(result.holdings.length)} />
-            <StatChip
-              label={t("stats.watchlist")}
-              value={String(result.config_used.watchlist.length)}
-            />
           </div>
         ) : null}
 
@@ -277,7 +273,6 @@ export default function ScreenPage() {
           onSave={() => void saveConfig()}
           saving={saving}
           loading={loadingConfig}
-          onWatchlistMax={() => showToast(t("errors.watchlistMax"), "error")}
         />
 
         <div className={`${CARD_BASE} overflow-hidden`}>
