@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_migrate import Migrate
 
@@ -83,11 +83,14 @@ def create_app(config_object=None):
             }
         )
 
-    # CORS preflight must return 2xx even when a blueprint route is not deployed yet.
-    @app.route("/api/", defaults={"subpath": ""}, methods=["OPTIONS"])
-    @app.route("/api/<path:subpath>", methods=["OPTIONS"])
-    def api_cors_preflight(subpath: str):
-        return "", 204
+    # Handle CORS preflight without registering an OPTIONS-only /api/<path>
+    # rule. That pattern matches every API URL and turns unknown POSTs (e.g.
+    # /api/screen/scan before the blueprint is deployed) into HTTP 405.
+    @app.before_request
+    def api_cors_preflight():
+        if request.method == "OPTIONS" and request.path.startswith("/api/"):
+            return "", 204
+        return None
 
     return app
 

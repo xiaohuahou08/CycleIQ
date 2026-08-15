@@ -10,6 +10,7 @@ from backend.services.screener.scan import run_screen
 
 def register_screen_routes(screen_bp):
     @screen_bp.route("/scan", methods=["POST"])
+    @screen_bp.route("/scan/", methods=["POST"])
     @require_auth
     def screen_scan(user_id: str):
         data = request.get_json(silent=True) or {}
