@@ -20,6 +20,9 @@ def test_mid_and_spread():
     assert abs(spread - (0.2 / 1.1)) < 1e-9
     assert mid_and_spread(0, 1.0) is None
     assert mid_and_spread(1.2, 1.0) is None
+    last_mid, last_spread = mid_and_spread(0, 0, last=1.05)
+    assert abs(last_mid - 1.05) < 1e-9
+    assert last_spread == 0.0
 
 
 def test_put_metrics_per_share():
@@ -117,6 +120,77 @@ def test_hard_filters_accept():
     }
     decision = evaluate_hard_filters(row, cfg=cfg, scan_day=date(2026, 8, 1), earnings_day=None)
     assert decision["accepted"] is True
+
+
+def test_missing_iv_rv_does_not_reject():
+    cfg = parse_screener_config({"min_iv_rv_ratio": 1.2, "min_iv_minus_rv": 0.05})
+    row = {
+        "dte": 30,
+        "spread_ratio": 0.1,
+        "net_premium_per_share": 0.80,
+        "annualized_net_return": 0.20,
+        "iv_rv_ratio": None,
+        "iv_minus_rv": None,
+        "expiry": date(2026, 9, 1),
+    }
+    decision = evaluate_hard_filters(row, cfg=cfg, scan_day=date(2026, 8, 1), earnings_day=None)
+    assert decision["accepted"] is True
+
+
+def test_iv_rv_gate_when_enabled():
+    cfg = parse_screener_config({"min_iv_rv_ratio": 1.1, "min_iv_minus_rv": 0.0})
+    row = {
+        "dte": 30,
+        "spread_ratio": 0.1,
+        "net_premium_per_share": 0.80,
+        "annualized_net_return": 0.20,
+        "iv_rv_ratio": 0.7,
+        "iv_minus_rv": -0.10,
+        "expiry": date(2026, 9, 1),
+    }
+    decision = evaluate_hard_filters(row, cfg=cfg, scan_day=date(2026, 8, 1), earnings_day=None)
+    assert decision["accepted"] is False
+    assert decision["rule"] == "iv_rv_ratio_too_low"
+
+
+def test_legacy_iv_rv_factory_defaults_are_relaxed():
+    cfg = parse_screener_config({"min_iv_rv_ratio": 1.10, "min_iv_minus_rv": 0.05})
+    assert cfg["min_iv_rv_ratio"] == 0.0
+    assert cfg["min_iv_minus_rv"] == 0.0
+    kept = parse_screener_config({"min_iv_rv_ratio": 1.2, "min_iv_minus_rv": 0.05})
+    assert kept["min_iv_rv_ratio"] == 1.2
+    assert kept["min_iv_minus_rv"] == 0.05
+
+
+def test_untouched_first_release_filters_upgrade_to_new_defaults():
+    cfg = parse_screener_config(
+        {
+            "watchlist": ["AMD"],
+            "min_dte": 21,
+            "max_dte": 45,
+            "min_net_premium_usd": 0.50,
+            "min_annualized_return": 0.10,
+            "min_iv_rv_ratio": 1.10,
+            "min_iv_minus_rv": 0.05,
+            "max_spread_ratio": 0.40,
+            "put_recall_below_pct": 0.20,
+            "call_recall_above_pct": 0.20,
+            "call_cost_floor_mult": 1.02,
+            "earnings_hard_window_days": 6,
+            "return_proximity_band": 0.002,
+            "fee_per_contract_usd": None,
+        }
+    )
+    assert cfg["watchlist"] == ["AMD"]
+    assert cfg["min_net_premium_usd"] == 0.40
+    assert cfg["max_spread_ratio"] == 0.25
+    assert cfg["put_recall_below_pct"] == 0.15
+    assert cfg["call_recall_above_pct"] == 0.15
+    assert cfg["earnings_hard_window_days"] == 7
+    assert cfg["min_iv_rv_ratio"] == 0.0
+    custom = parse_screener_config({"min_net_premium_usd": 0.80, "max_spread_ratio": 0.40})
+    assert custom["min_net_premium_usd"] == 0.80
+    assert custom["max_spread_ratio"] == 0.40
 
 
 def test_rank_one_per_symbol_and_period_order():

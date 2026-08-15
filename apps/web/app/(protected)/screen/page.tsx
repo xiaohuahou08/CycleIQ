@@ -1,25 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ChevronDown,
-  ChevronUp,
-  Info,
-  Loader2,
-  Plus,
-  Search,
-  Sparkles,
-  X,
-} from "lucide-react";
+import { Info, Loader2, Search, Sparkles } from "lucide-react";
 import PageHeader from "@/app/components/PageHeader";
 import { useToast } from "@/app/components/Toast";
-import {
-  BTN_ACCENT,
-  CARD_BASE,
-  PILL_ACTIVE,
-  PILL_IDLE,
-} from "@/app/components/ui/styles";
-import { Button } from "@/components/ui/button";
+import { BTN_ACCENT, CARD_BASE, PILL_ACTIVE, PILL_IDLE } from "@/app/components/ui/styles";
 import { useProtectedAuth } from "@/app/(protected)/auth-context";
 import {
   DEFAULT_SCREENER_CONFIG,
@@ -29,6 +14,7 @@ import {
 } from "@/lib/api/preferences";
 import { runScreenScan, type ScreenCandidate, type ScreenScanResult } from "@/lib/api/screen";
 import { useTranslations } from "@/lib/i18n/locale-context";
+import ScreenerConfigPanel from "./ScreenerConfigPanel";
 
 type ModeTab = "put" | "call";
 
@@ -42,43 +28,6 @@ function money(value: number | null | undefined, digits = 2): string {
   return `$${value.toFixed(digits)}`;
 }
 
-function parseNumberInput(raw: string): number | null {
-  if (raw.trim() === "") return null;
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : null;
-}
-
-function ConfigNumberField({
-  label,
-  hint,
-  value,
-  step,
-  onChange,
-}: {
-  label: string;
-  hint?: string;
-  value: number;
-  step?: string;
-  onChange: (n: number) => void;
-}) {
-  return (
-    <label className="flex flex-col gap-1.5 rounded-xl border border-slate-200/80 bg-slate-50/60 p-3">
-      <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">{label}</span>
-      {hint ? <span className="text-[11px] leading-snug text-slate-500">{hint}</span> : null}
-      <input
-        type="number"
-        step={step ?? "any"}
-        value={Number.isFinite(value) ? value : ""}
-        onChange={(e) => {
-          const n = parseNumberInput(e.target.value);
-          if (n != null) onChange(n);
-        }}
-        className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25"
-      />
-    </label>
-  );
-}
-
 function StatChip({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-slate-200/80 bg-white px-3.5 py-2.5 shadow-sm">
@@ -88,18 +37,28 @@ function StatChip({ label, value }: { label: string; value: string }) {
   );
 }
 
+function rejectEntries(summary: Record<string, number> | undefined): Array<[string, number]> {
+  if (!summary) return [];
+  return Object.entries(summary)
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1]);
+}
+
 function CandidateTable({
   rows,
   mode,
   empty,
   scanning,
+  rejects,
 }: {
   rows: ScreenCandidate[];
   mode: ModeTab;
   empty: string;
   scanning: boolean;
+  rejects: Record<string, number> | undefined;
 }) {
   const { t } = useTranslations("screen");
+  const reasons = rejectEntries(rejects);
 
   if (scanning) {
     return (
@@ -118,6 +77,16 @@ function CandidateTable({
           <Search className="h-5 w-5" aria-hidden />
         </span>
         <p className="max-w-md text-sm text-slate-600">{empty}</p>
+        {reasons.length ? (
+          <ul className="mt-1 max-w-md space-y-1 text-left text-xs text-slate-500">
+            {reasons.slice(0, 6).map(([rule, count]) => (
+              <li key={rule} className="flex justify-between gap-6">
+                <span>{t(`reject.${rule}`)}</span>
+                <span className="tabular-nums text-slate-400">{count}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </div>
     );
   }
@@ -196,8 +165,6 @@ export default function ScreenPage() {
   const { t } = useTranslations("screen");
   const { showToast } = useToast();
   const [config, setConfig] = useState<ScreenerConfigApi>(DEFAULT_SCREENER_CONFIG);
-  const [configOpen, setConfigOpen] = useState(false);
-  const [tickerInput, setTickerInput] = useState("");
   const [mode, setMode] = useState<ModeTab>("put");
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [scanning, setScanning] = useState(false);
@@ -232,25 +199,6 @@ export default function ScreenPage() {
 
   const topRow = rows[0];
 
-  const addTicker = () => {
-    const ticker = tickerInput.trim().toUpperCase();
-    if (!ticker) return;
-    if (config.watchlist.includes(ticker)) {
-      setTickerInput("");
-      return;
-    }
-    if (config.watchlist.length >= 30) {
-      showToast(t("errors.watchlistMax"), "error");
-      return;
-    }
-    setConfig((c) => ({ ...c, watchlist: [...c.watchlist, ticker] }));
-    setTickerInput("");
-  };
-
-  const removeTicker = (ticker: string) => {
-    setConfig((c) => ({ ...c, watchlist: c.watchlist.filter((x) => x !== ticker) }));
-  };
-
   const saveConfig = async () => {
     if (!token) return;
     setSaving(true);
@@ -279,10 +227,6 @@ export default function ScreenPage() {
     } finally {
       setScanning(false);
     }
-  };
-
-  const patch = <K extends keyof ScreenerConfigApi>(key: K, value: ScreenerConfigApi[K]) => {
-    setConfig((c) => ({ ...c, [key]: value }));
   };
 
   if (isAuthLoading) return null;
@@ -326,6 +270,15 @@ export default function ScreenPage() {
             />
           </div>
         ) : null}
+
+        <ScreenerConfigPanel
+          config={config}
+          onChange={setConfig}
+          onSave={() => void saveConfig()}
+          saving={saving}
+          loading={loadingConfig}
+          onWatchlistMax={() => showToast(t("errors.watchlistMax"), "error")}
+        />
 
         <div className={`${CARD_BASE} overflow-hidden`}>
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-gradient-to-r from-slate-50/80 to-white px-4 py-3.5">
@@ -388,164 +341,6 @@ export default function ScreenPage() {
             </div>
           ) : null}
 
-          <div className="border-b border-slate-100 px-4 py-3">
-            <button
-              type="button"
-              className="flex w-full items-center justify-between rounded-lg px-1 py-1 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-              onClick={() => setConfigOpen((o) => !o)}
-              aria-expanded={configOpen}
-            >
-              <span>{t("config.title")}</span>
-              {configOpen ? (
-                <ChevronUp className="h-4 w-4 text-slate-500" />
-              ) : (
-                <ChevronDown className="h-4 w-4 text-slate-500" />
-              )}
-            </button>
-            {configOpen ? (
-              <div className="mt-4 space-y-5">
-                <div className="rounded-xl border border-slate-200/80 bg-white p-4">
-                  <p className="text-sm font-semibold text-slate-900">{t("config.watchlist")}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">{t("config.watchlistHint")}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {config.watchlist.map((ticker) => (
-                      <span
-                        key={ticker}
-                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700"
-                      >
-                        {ticker}
-                        <button
-                          type="button"
-                          aria-label={`Remove ${ticker}`}
-                          onClick={() => removeTicker(ticker)}
-                          className="rounded-full p-0.5 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                    {config.watchlist.length === 0 ? (
-                      <span className="text-xs text-slate-400">{t("config.emptyWatchlist")}</span>
-                    ) : null}
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <input
-                      value={tickerInput}
-                      onChange={(e) => setTickerInput(e.target.value.toUpperCase())}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addTicker();
-                        }
-                      }}
-                      placeholder={t("config.tickerPlaceholder")}
-                      className="h-9 w-36 rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25"
-                    />
-                    <Button type="button" variant="outline" size="sm" onClick={addTicker}>
-                      <Plus className="mr-1 h-4 w-4" />
-                      {t("config.addTicker")}
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <ConfigNumberField
-                    label={t("config.minDte")}
-                    value={config.min_dte}
-                    step="1"
-                    onChange={(n) => patch("min_dte", Math.round(n))}
-                  />
-                  <ConfigNumberField
-                    label={t("config.maxDte")}
-                    value={config.max_dte}
-                    step="1"
-                    onChange={(n) => patch("max_dte", Math.round(n))}
-                  />
-                  <ConfigNumberField
-                    label={t("config.minNetPremium")}
-                    hint={t("config.minNetPremiumHint")}
-                    value={config.min_net_premium_usd}
-                    step="0.05"
-                    onChange={(n) => patch("min_net_premium_usd", n)}
-                  />
-                  <ConfigNumberField
-                    label={t("config.minAnnualized")}
-                    hint={t("config.ratioHint")}
-                    value={config.min_annualized_return}
-                    step="0.01"
-                    onChange={(n) => patch("min_annualized_return", n)}
-                  />
-                  <ConfigNumberField
-                    label={t("config.minIvRv")}
-                    value={config.min_iv_rv_ratio}
-                    step="0.05"
-                    onChange={(n) => patch("min_iv_rv_ratio", n)}
-                  />
-                  <ConfigNumberField
-                    label={t("config.minIvMinusRv")}
-                    value={config.min_iv_minus_rv}
-                    step="0.01"
-                    onChange={(n) => patch("min_iv_minus_rv", n)}
-                  />
-                  <ConfigNumberField
-                    label={t("config.maxSpread")}
-                    value={config.max_spread_ratio}
-                    step="0.05"
-                    onChange={(n) => patch("max_spread_ratio", n)}
-                  />
-                  <ConfigNumberField
-                    label={t("config.putRecall")}
-                    value={config.put_recall_below_pct}
-                    step="0.05"
-                    onChange={(n) => patch("put_recall_below_pct", n)}
-                  />
-                  <ConfigNumberField
-                    label={t("config.callRecall")}
-                    value={config.call_recall_above_pct}
-                    step="0.05"
-                    onChange={(n) => patch("call_recall_above_pct", n)}
-                  />
-                  <ConfigNumberField
-                    label={t("config.callCostFloor")}
-                    value={config.call_cost_floor_mult}
-                    step="0.01"
-                    onChange={(n) => patch("call_cost_floor_mult", n)}
-                  />
-                  <ConfigNumberField
-                    label={t("config.earningsWindow")}
-                    value={config.earnings_hard_window_days}
-                    step="1"
-                    onChange={(n) => patch("earnings_hard_window_days", Math.round(n))}
-                  />
-                  <ConfigNumberField
-                    label={t("config.proximityBand")}
-                    value={config.return_proximity_band}
-                    step="0.001"
-                    onChange={(n) => patch("return_proximity_band", n)}
-                  />
-                  <ConfigNumberField
-                    label={t("config.feePerContract")}
-                    hint={t("config.feeHint")}
-                    value={config.fee_per_contract_usd ?? 0.65}
-                    step="0.05"
-                    onChange={(n) => patch("fee_per_contract_usd", n)}
-                  />
-                </div>
-
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => void saveConfig()}
-                    disabled={saving}
-                  >
-                    {saving ? t("saving") : t("saveConfig")}
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-          </div>
-
           {mode === "call" && result && result.holdings.length === 0 && !scanning ? (
             <div className="border-b border-amber-100 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
               {t("noHoldings")}
@@ -557,6 +352,7 @@ export default function ScreenPage() {
             mode={mode}
             empty={result ? t("emptyAfterScan") : t("empty")}
             scanning={scanning}
+            rejects={result?.rejected_summary?.[mode]}
           />
         </div>
       </div>

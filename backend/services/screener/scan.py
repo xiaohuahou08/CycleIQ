@@ -64,9 +64,19 @@ def _scan_side(
 
     for symbol in symbols:
         chain = chains.get(symbol) or {}
+        expirations = chain.get("expirations") or []
+        if chain.get("error") and not expirations:
+            rule = str(chain.get("error") or "fetch_failed")
+            reject_counts[rule] = reject_counts.get(rule, 0) + 1
+            continue
         spot = chain.get("spot")
         if spot is None:
             reject_counts["spot_unavailable"] = reject_counts.get("spot_unavailable", 0) + 1
+            continue
+        if not expirations:
+            reject_counts["no_expiries_in_dte_window"] = (
+                reject_counts.get("no_expiries_in_dte_window", 0) + 1
+            )
             continue
         earnings_day = chain.get("earnings_day")
         avg_cost = None
@@ -78,7 +88,7 @@ def _scan_side(
                 continue
             open_shares, avg_cost = holding
 
-        for exp in chain.get("expirations") or []:
+        for exp in expirations:
             dte = int(exp["dte"])
             expiry = exp["expiry"]
             rv = exp.get("term_matched_rv")
@@ -100,6 +110,7 @@ def _scan_side(
                     mode=mode_norm,
                     bid=float(opt["bid"]),
                     ask=float(opt["ask"]),
+                    last=opt.get("last"),
                     strike=strike,
                     spot=float(spot),
                     dte=dte,

@@ -79,21 +79,30 @@ def evaluate_hard_filters(
 
     iv_rv = row.get("iv_rv_ratio")
     iv_minus = row.get("iv_minus_rv")
-    if iv_rv is None or iv_minus is None:
-        return {"accepted": False, "rule": "iv_rv_unavailable", "metric_value": None}
-    if float(iv_rv) < float(cfg["min_iv_rv_ratio"]):
+    min_ratio = float(cfg["min_iv_rv_ratio"])
+    min_minus = float(cfg["min_iv_minus_rv"])
+    # 0 (or below) means the gate is off. Missing Yahoo IV/RV also skips.
+    if (
+        iv_rv is not None
+        and min_ratio > 0
+        and float(iv_rv) < min_ratio
+    ):
         return {
             "accepted": False,
             "rule": "iv_rv_ratio_too_low",
             "metric_value": iv_rv,
-            "threshold": cfg["min_iv_rv_ratio"],
+            "threshold": min_ratio,
         }
-    if float(iv_minus) < float(cfg["min_iv_minus_rv"]):
+    if (
+        iv_minus is not None
+        and min_minus > 0
+        and float(iv_minus) < min_minus
+    ):
         return {
             "accepted": False,
             "rule": "iv_minus_rv_too_low",
             "metric_value": iv_minus,
-            "threshold": cfg["min_iv_minus_rv"],
+            "threshold": min_minus,
         }
 
     expiry = row.get("expiry")

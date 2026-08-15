@@ -11,20 +11,41 @@ DEFAULT_SCREENER_CONFIG: dict[str, Any] = {
     "watchlist": list(DEFAULT_WATCHLIST),
     "min_dte": 21,
     "max_dte": 45,
+    "min_net_premium_usd": 0.40,
+    "min_annualized_return": 0.10,
+    "min_iv_rv_ratio": 0.0,
+    "min_iv_minus_rv": 0.0,
+    "max_spread_ratio": 0.25,
+    "put_recall_below_pct": 0.15,
+    "call_recall_above_pct": 0.15,
+    "call_cost_floor_mult": 1.02,
+    "earnings_hard_window_days": 7,
+    "return_proximity_band": 0.002,
+    "fee_per_contract_usd": None,
+}
+
+_MAX_WATCHLIST = 30
+# First-release factory gates were too strict (IV/RV) or too loose (40% spread).
+_LEGACY_IV_RV_FACTORY = (1.10, 0.05)
+_LEGACY_FILTER_FACTORY = {
+    "min_dte": 21,
+    "max_dte": 45,
     "min_net_premium_usd": 0.50,
     "min_annualized_return": 0.10,
-    "min_iv_rv_ratio": 1.10,
-    "min_iv_minus_rv": 0.05,
     "max_spread_ratio": 0.40,
     "put_recall_below_pct": 0.20,
     "call_recall_above_pct": 0.20,
     "call_cost_floor_mult": 1.02,
     "earnings_hard_window_days": 6,
     "return_proximity_band": 0.002,
-    "fee_per_contract_usd": None,
 }
 
-_MAX_WATCHLIST = 30
+
+def _close(left: Any, right: float) -> bool:
+    try:
+        return abs(float(left) - right) < 1e-9
+    except (TypeError, ValueError):
+        return False
 
 
 def default_screener_config() -> dict[str, Any]:
@@ -39,6 +60,18 @@ def merge_screener_config(raw: Any) -> dict[str, Any]:
     for key in DEFAULT_SCREENER_CONFIG:
         if key in raw:
             out[key] = raw[key]
+    if _close(out["min_iv_rv_ratio"], _LEGACY_IV_RV_FACTORY[0]) and _close(
+        out["min_iv_minus_rv"], _LEGACY_IV_RV_FACTORY[1]
+    ):
+        out["min_iv_rv_ratio"] = 0.0
+        out["min_iv_minus_rv"] = 0.0
+    if all(_close(out[key], value) for key, value in _LEGACY_FILTER_FACTORY.items()) and _close(
+        out["min_iv_rv_ratio"], 0.0
+    ) and _close(out["min_iv_minus_rv"], 0.0):
+        for key, value in DEFAULT_SCREENER_CONFIG.items():
+            if key in ("watchlist", "fee_per_contract_usd"):
+                continue
+            out[key] = deepcopy(value)
     return out
 
 

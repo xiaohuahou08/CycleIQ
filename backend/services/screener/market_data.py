@@ -128,10 +128,13 @@ def _option_rows_from_chain(chain_df, *, option_type: str) -> list[dict[str, Any
         return []
     rows: list[dict[str, Any]] = []
     for _, r in chain_df.iterrows():
-        bid = _as_float(r.get("bid"))
-        ask = _as_float(r.get("ask"))
+        bid = _as_float(r.get("bid")) or 0.0
+        ask = _as_float(r.get("ask")) or 0.0
+        last = _as_float(r.get("lastPrice"))
         strike = _as_float(r.get("strike"))
-        if bid is None or ask is None or strike is None:
+        if strike is None:
+            continue
+        if bid <= 0 and ask <= 0 and (last is None or last <= 0):
             continue
         iv = _as_float(r.get("impliedVolatility"))
         oi_raw = r.get("openInterest")
@@ -147,6 +150,7 @@ def _option_rows_from_chain(chain_df, *, option_type: str) -> list[dict[str, Any
                 "strike": strike,
                 "bid": bid,
                 "ask": ask,
+                "last": last,
                 "implied_volatility": iv,
                 "open_interest": oi,
             }
