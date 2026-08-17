@@ -152,6 +152,7 @@ const zh = {
     dashboard: "仪表盘",
     trades: "交易",
     cycles: "周期",
+    screen: "选股",
     account: "账户",
     settings: "设置",
     reports: "报告",
@@ -246,6 +247,10 @@ const zh = {
           title: "CC 成本基础",
           body: "每个开放滚轮的初始与当前股票成本（扣除已实现 CC 权利金）——仅针对开放指派持仓。",
         },
+        screen: {
+          title: "期权选股",
+          body: "可配置的 Sell Put / Covered Call 候选筛选，门槛按每股美金。仅供参考——不下单。",
+        },
       },
       cta: {
         title: "今天开始追踪您的滚轮",
@@ -280,7 +285,7 @@ const zh = {
         title: "CycleIQ 不是什么",
         p1: "对评估产品以及对广告落地页合规来说，透明都很重要：",
         i1: "不是券商：我们不下单、不路由、不执行交易",
-        i2: "不是投资建议：我们不推荐标的、行权价或具体交易",
+        i2: "不是投资建议：可选的选股扫描仅按你的规则排序合约供人工复核——我们不推荐标的、行权价或具体交易",
         i3: "不是跟单或信号产品：数据由您自行录入并归您所有",
       },
       pillars: {
@@ -929,6 +934,138 @@ const zh = {
     title: "报告",
     description: "滚轮策略的分析与导出",
     placeholder: "分析与导出功能将在后续版本中提供。",
+  },
+
+  screen: {
+    title: "选股",
+    description: "按可配置规则扫描 Sell Put 与 Covered Call 候选",
+    advisory:
+      "仅供参考。候选按你的筛选规则与 Yahoo Finance 数据排序。CycleIQ 不下单，也不提供投资建议。",
+    tabs: {
+      put: "Sell Put",
+      call: "Covered Call",
+    },
+    scan: "扫描",
+    scanning: "扫描中…",
+    scanningHint: "正在拉取期权链并排序候选，可能需要约一分钟。",
+    scannedAt: "上次扫描：{{time}}",
+    notScannedYet: "尚未扫描",
+    topPick: "首选候选",
+    stats: {
+      puts: "Sell Put 候选",
+      calls: "Covered Call 候选",
+      holdings: "持股标的",
+    },
+    config: {
+      title: "扫描参数",
+      summary: "DTE {{min}}–{{max}} · ≥ ${{premium}}/股",
+      tipAria: "{{label}} 是什么？",
+      reset: "恢复默认",
+      groups: {
+        expiry: "到期窗口",
+        premium: "权利金与收益",
+        liquidity: "流动性",
+        vol: "波动率",
+        strike: "行权价窗口",
+        ranking: "财报与排序",
+      },
+      units: {
+        days: "天",
+        usdShare: "$/股",
+        percent: "%",
+        ratio: "×",
+        volPts: "点",
+        multiple: "×",
+        usdContract: "$/张",
+      },
+      minDte: "最短 DTE",
+      maxDte: "最长 DTE",
+      minNetPremium: "最低净权利金",
+      minAnnualized: "最低年化收益",
+      minIvRv: "最低 IV / RV",
+      minIvMinusRv: "最低 IV − RV",
+      maxSpread: "最大买卖价差",
+      putRecall: "Put 窗口（现价下方）",
+      callRecall: "Call 窗口（底价上方）",
+      callCostFloor: "Call 成本底线倍数",
+      earningsWindow: "财报硬窗",
+      proximityBand: "收益接近带",
+      feePerContract: "每张合约费用",
+      tips: {
+        minDte:
+          "到期天数少于此值的合约会被跳过。DTE 太短时 Theta 衰减快，但需要更频繁滚动，事件风险也更集中。滚轮策略常用 21 天左右起。",
+        maxDte:
+          "到期天数多于此值的合约会被跳过。DTE 太长会占用资金、衰减更慢。21–45 天是常见的滚轮区间。",
+        minNetPremium:
+          "扣除费用后的每股净权利金下限（中间价 − 费用/100）。按每股美元填写，不是整张合约：0.50 约等于每张 50 美元。",
+        minAnnualized:
+          "假设期权作废到期时，净收益年化后的最低要求。按百分比填写：10 表示每年 10%。调高则只保留更“厚”的权利金。",
+        minIvRv:
+          "隐含波动率 ÷ 实现波动率的最低比值。大于 1.0 表示期权相对近期股价波动偏贵，更适合卖权。填 0 表示不限制。仅在 Yahoo 同时提供 IV 与 RV 时生效。",
+        minIvMinusRv:
+          "IV 减去 RV 的最低差值，单位是波动点。5 表示 IV 至少比 RV 高 5 个点。填 0 表示不限制。仅在两者都有数据时生效。",
+        maxSpread:
+          "买卖价差相对中间价的上限，即 (卖一 − 买一) / 中间价。价差越宽，越难按假设价格成交。40 表示价差最多为中间价的 40%。",
+        putRecall:
+          "Sell Put 的行权价必须落在现价与现价下方该比例之间。20 表示只看现价 80%–100% 这一带，避免卖太远的虚值 Put。",
+        callRecall:
+          "Covered Call 的行权价必须落在卖出底价与底价上方该比例之间。20 表示 Call 不要太深虚值。",
+        callCostFloor:
+          "Covered Call 行权价不得低于「现价」与「成本 × 该倍数」中的较高者。1.02 表示至少比持股成本高 2%，避免亏本被 Call 走。",
+        earningsWindow:
+          "若财报落在到期日当天或到期日前这么多天内，淘汰该合约，避免扛过财报跳空。填 0 表示不限制。",
+        proximityBand:
+          "排序时，期间收益率相差小于该百分比的候选视为同一档，再用折价、价差、持仓量打破平局。0.2 表示 0.2%。",
+        feePerContract:
+          "每张合约往返佣金（美元），会除以 100 摊到每股后再计算净权利金。若账户未单独设置，常用 0.65。",
+      },
+    },
+    saveConfig: "保存参数",
+    saving: "保存中…",
+    empty: "暂无候选。请调整参数后扫描。",
+    emptyAfterScan: "该侧没有通过筛选的合约。淘汰原因：",
+    noHoldings: "未找到可用于 Covered Call 的指派持股。请先完成 CSP 指派。",
+    reject: {
+      strike_out_of_window: "行权价不在召回窗口",
+      quote_unusable: "报价不可用",
+      spread_too_wide: "价差过宽",
+      net_premium_too_low: "净权利金过低",
+      annualized_too_low: "年化收益过低",
+      iv_rv_unavailable: "缺少 IV/RV",
+      iv_rv_ratio_too_low: "IV/RV 过低",
+      iv_minus_rv_too_low: "IV−RV 过低",
+      earnings_in_hard_window: "落在财报硬窗",
+      dte_out_of_window: "DTE 超窗",
+      spot_unavailable: "无现价",
+      no_expiries_in_dte_window: "窗口内无到期日",
+      no_holding: "无指派持股",
+      fetch_failed: "行情拉取失败",
+      options_calendar_unavailable: "期权到期日历不可用",
+    },
+    cols: {
+      symbol: "标的",
+      strike: "行权价",
+      expiry: "到期",
+      dte: "DTE",
+      netPremium: "净$/股",
+      periodReturn: "期间",
+      annualized: "年化",
+      spread: "价差",
+      ivRv: "IV/RV",
+      discount: "折价",
+      strikeAbove: "价外$",
+      oi: "OI",
+      capacity: "最多张",
+    },
+    toast: {
+      saved: "选股参数已保存。",
+      scanned: "扫描完成。",
+    },
+    errors: {
+      loadConfig: "加载选股配置失败。",
+      saveConfig: "保存选股配置失败。",
+      scan: "扫描失败。",
+    },
   },
 
   contact: {

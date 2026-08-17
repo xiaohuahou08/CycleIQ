@@ -1021,3 +1021,16 @@ def test_premium_plan_has_unlimited_trades(client, app):
     for _ in range(BASIC_MONTHLY_TRADE_LIMIT + 1):
         r = client.post("/api/trades", json=payload, headers=h)
         assert r.status_code == 201, r.get_json()
+
+
+def test_screen_scan_accepts_post_and_requires_auth(client):
+    """POST /api/screen/scan must not 405 (method not allowed)."""
+    unauth = client.post("/api/screen/scan", json={"modes": ["put"]})
+    assert unauth.status_code == 401, unauth.get_data(as_text=True)
+
+    options = client.options("/api/screen/scan")
+    assert options.status_code == 204
+
+    probe = client.get("/api/screen/scan")
+    assert probe.status_code == 200
+    assert probe.get_json()["ok"] is True

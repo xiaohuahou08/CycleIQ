@@ -7,6 +7,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   RefreshCw,
+  Search,
   TrendingUp,
 } from "lucide-react";
 import { CycleIQMark, iconMd, iconSm, iconStroke } from "@/app/components/icons";
@@ -302,6 +303,11 @@ export default function HomePageClient() {
                 icon={LayoutDashboard}
                 title={t("home.features.costBasis.title")}
                 description={t("home.features.costBasis.body")}
+              />
+              <FeatureCard
+                icon={Search}
+                title={t("home.features.screen.title")}
+                description={t("home.features.screen.body")}
               />
               {process.env.NEXT_PUBLIC_ADSENSE_CLIENT && process.env.NEXT_PUBLIC_ADSENSE_SLOT ? (
                 <div className="sm:col-span-2 flex justify-center">

@@ -22,6 +22,12 @@ type PanZoomStageProps = {
   className?: string;
   minScale?: number;
   maxScale?: number;
+  /**
+   * Floor for the initial / reset fit. Lets a large diagram open at a
+   * readable size (pan to see the rest) while wheel-zoom can still go
+   * down to minScale to show everything.
+   */
+  fitMinScale?: number;
   labels?: { zoomIn: string; zoomOut: string; reset: string };
   children: ReactNode;
 };
@@ -40,6 +46,7 @@ export default function PanZoomStage({
   className,
   minScale = 0.25,
   maxScale = 5,
+  fitMinScale,
   labels,
   children,
 }: PanZoomStageProps) {
@@ -54,13 +61,14 @@ export default function PanZoomStage({
     const vw = el.clientWidth;
     const vh = el.clientHeight;
     if (vw === 0 || vh === 0) return;
-    const scale = clamp(Math.min(vw / width, vh / height), minScale, maxScale);
+    const natural = Math.min(vw / width, vh / height);
+    const scale = clamp(Math.max(natural, fitMinScale ?? 0), minScale, maxScale);
     setT({
       scale,
       tx: (vw - width * scale) / 2,
       ty: (vh - height * scale) / 2,
     });
-  }, [width, height, minScale, maxScale]);
+  }, [width, height, minScale, maxScale, fitMinScale]);
 
   // Fit on mount and whenever the content size changes (e.g. switching wheels).
   useLayoutEffect(() => {

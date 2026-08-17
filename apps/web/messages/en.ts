@@ -150,6 +150,7 @@ const en = {
     dashboard: "Dashboard",
     trades: "Trades",
     cycles: "Cycles",
+    screen: "Screen",
     account: "Account",
     settings: "Settings",
     reports: "Reports",
@@ -244,6 +245,10 @@ const en = {
           title: "CC cost basis",
           body: "Per-wheel initial vs current stock cost after realized CC premium — only for open assigned positions.",
         },
+        screen: {
+          title: "Options screener",
+          body: "Configurable Sell Put and Covered Call candidates with per-share USD thresholds. Advisory only — no auto trading.",
+        },
       },
       cta: {
         title: "Start tracking your wheel today",
@@ -278,7 +283,7 @@ const en = {
         title: "What CycleIQ is not",
         p1: "Transparency matters for anyone evaluating the product — and for advertising destination standards:",
         i1: "Not a brokerage: we do not place, route, or execute orders",
-        i2: "Not investment advice: we do not recommend tickers, strikes, or trades",
+        i2: "Not investment advice: the optional screener ranks contracts by your rules for review only — we do not recommend tickers, strikes, or trades",
         i3: "Not a copy-trading or signal product: you enter and own your own data",
       },
       pillars: {
@@ -935,6 +940,138 @@ const en = {
     title: "Reports",
     description: "Analytics and exports for your wheel strategy",
     placeholder: "Analytics and exports will be available in a future iteration.",
+  },
+
+  screen: {
+    title: "Screen",
+    description: "Scan Sell Put and Covered Call candidates with your configurable rules",
+    advisory:
+      "Advisory only. Candidates are ranked by your filters using Yahoo Finance data. CycleIQ does not place orders or give investment advice.",
+    tabs: {
+      put: "Sell Put",
+      call: "Covered Call",
+    },
+    scan: "Scan",
+    scanning: "Scanning…",
+    scanningHint: "Fetching option chains and ranking candidates. This can take a minute.",
+    scannedAt: "Last scan: {{time}}",
+    notScannedYet: "Not scanned yet",
+    topPick: "Top pick",
+    stats: {
+      puts: "Sell Put picks",
+      calls: "Covered Call picks",
+      holdings: "Held tickers",
+    },
+    config: {
+      title: "Scan parameters",
+      summary: "DTE {{min}}–{{max}} · ≥ ${{premium}}/sh",
+      tipAria: "What is {{label}}?",
+      reset: "Reset defaults",
+      groups: {
+        expiry: "Expiration window",
+        premium: "Premium & return",
+        liquidity: "Liquidity",
+        vol: "Volatility",
+        strike: "Strike window",
+        ranking: "Earnings & ranking",
+      },
+      units: {
+        days: "days",
+        usdShare: "$/sh",
+        percent: "%",
+        ratio: "×",
+        volPts: "pts",
+        multiple: "×",
+        usdContract: "$/ct",
+      },
+      minDte: "Min DTE",
+      maxDte: "Max DTE",
+      minNetPremium: "Min net premium",
+      minAnnualized: "Min annualized return",
+      minIvRv: "Min IV / RV",
+      minIvMinusRv: "Min IV − RV",
+      maxSpread: "Max bid/ask spread",
+      putRecall: "Put window below spot",
+      callRecall: "Call window above floor",
+      callCostFloor: "Call cost-floor multiple",
+      earningsWindow: "Earnings hard window",
+      proximityBand: "Return proximity band",
+      feePerContract: "Fee per contract",
+      tips: {
+        minDte:
+          "Ignore contracts with fewer days to expiration than this. Very short DTE decays fast but needs frequent rolls and concentrates event risk. Wheel traders often start around 21 days.",
+        maxDte:
+          "Ignore contracts with more days to expiration than this. Longer DTE ties up capital for slower decay. A 21–45 day window is a common wheel range.",
+        minNetPremium:
+          "Minimum net credit per share after fees (mid price minus fee/100). Enter dollars per share, not per contract — $0.50 means about $50 per contract.",
+        minAnnualized:
+          "Minimum annualized net return if the option expires worthless. Enter a percent: 10 means 10% per year. Higher values keep only richer credits.",
+        minIvRv:
+          "Minimum implied volatility ÷ realized volatility. Above 1.0 means options look expensive versus recent stock moves — better for selling premium. 0 turns this filter off. Applied only when Yahoo provides both IV and RV.",
+        minIvMinusRv:
+          "Minimum IV minus RV, in volatility points. 5 means IV must be at least 5 points above RV. 0 turns this filter off. Applied only when both IV and RV exist.",
+        maxSpread:
+          "Maximum (ask − bid) / mid. Wide spreads are hard to fill near your assumed credit. 40 means the spread may be at most 40% of the mid price.",
+        putRecall:
+          "Sell-put strikes must sit between spot and this percent below spot. 20 keeps strikes in the 80%–100% of spot band so you only sell puts near the money.",
+        callRecall:
+          "Covered-call strikes must sit between the sale floor and this percent above it. 20 limits how far out-of-the-money the call can be.",
+        callCostFloor:
+          "Covered-call strike cannot be below the higher of spot and (cost basis × this multiple). 1.02 means at least 2% above your stock cost so you are not calling shares away at a loss.",
+        earningsWindow:
+          "Drop a contract if earnings falls on expiry or within this many days before it. Avoids holding short options through a hard earnings gap. 0 disables the gate.",
+        proximityBand:
+          "When ranking, contracts whose period returns differ by less than this percent are treated as a tie, then discount, spread, and open interest break the tie. 0.2 means 0.2%.",
+        feePerContract:
+          "Round-trip commission per contract in USD, divided by 100 into a per-share fee before net premium is computed. If you leave the account default, 0.65 is typical.",
+      },
+    },
+    saveConfig: "Save parameters",
+    saving: "Saving…",
+    empty: "No candidates yet. Adjust parameters and run a scan.",
+    emptyAfterScan: "No contracts passed your filters for this side. Reasons:",
+    noHoldings: "No assigned stock holdings found for Covered Call. Assign a CSP first.",
+    reject: {
+      strike_out_of_window: "Strike outside recall window",
+      quote_unusable: "Unusable bid/ask",
+      spread_too_wide: "Spread too wide",
+      net_premium_too_low: "Net premium too low",
+      annualized_too_low: "Annualized return too low",
+      iv_rv_unavailable: "IV/RV unavailable",
+      iv_rv_ratio_too_low: "IV/RV below minimum",
+      iv_minus_rv_too_low: "IV − RV below minimum",
+      earnings_in_hard_window: "Earnings in hard window",
+      dte_out_of_window: "DTE outside window",
+      spot_unavailable: "Spot price unavailable",
+      no_expiries_in_dte_window: "No expiries in DTE window",
+      no_holding: "No assigned shares",
+      fetch_failed: "Market data fetch failed",
+      options_calendar_unavailable: "Options calendar unavailable",
+    },
+    cols: {
+      symbol: "Symbol",
+      strike: "Strike",
+      expiry: "Expiry",
+      dte: "DTE",
+      netPremium: "Net $/sh",
+      periodReturn: "Period",
+      annualized: "Ann.",
+      spread: "Spread",
+      ivRv: "IV/RV",
+      discount: "Discount",
+      strikeAbove: "OTM $",
+      oi: "OI",
+      capacity: "Max cts",
+    },
+    toast: {
+      saved: "Screener parameters saved.",
+      scanned: "Scan complete.",
+    },
+    errors: {
+      loadConfig: "Failed to load screener config.",
+      saveConfig: "Failed to save screener config.",
+      scan: "Scan failed.",
+    },
   },
 
   contact: {

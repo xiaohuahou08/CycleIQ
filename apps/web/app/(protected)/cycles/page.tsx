@@ -15,6 +15,7 @@ import {
   netLegCashflow,
   wheelTotalNetPnl,
 } from "@/lib/cycles/ccCostBasis";
+import { WHEEL_FAN_CARD_W, fanArcPath, layoutWheelFan } from "@/lib/cycles/wheelFanLayout";
 import { useLocale, useTranslations } from "@/lib/i18n/locale-context";
 import { useProtectedAuth } from "../auth-context";
 
@@ -540,65 +541,14 @@ export default function CyclesPage() {
             {(() => {
               const legs = selectedWheelLegs;
               const completed = isCompletedWheel(selectedWheel.state);
-              const count = legs.length;
-              const cardW = 168;
-              const cardH = 152; // measured card height (generous)
-              const cardGap = 36; // minimum gap between card edges
-
-              // Fan angle fixed per leg count
-              const fanDeg =
-                count <= 1 ? 0
-                : count === 2 ? 110
-                : count === 3 ? 150
-                : Math.min(180, 110 + (count - 2) * 20);
-
-              const angularStep = count <= 1 ? 0 : fanDeg / (count - 1);
-              const stepRad = (angularStep * Math.PI) / 180;
-
-              // For an arc centred at -90° (top), the adjacent pair nearest the top has:
-              //   horizontal separation ≈ arcR × sin(step)
-              //   vertical separation   ≈ arcR × (1 − cos(step))
-              // Both must exceed (cardDim + gap) to avoid rectangular overlap.
-              const horzDiff = count <= 1 ? 1 : Math.sin(stepRad);
-              const vertDiff = count <= 1 ? 1 : Math.max(0.001, 1 - Math.cos(stepRad));
-              const arcRForHorz = (cardW + cardGap) / horzDiff;
-              const arcRForVert = (cardH + cardGap) / vertDiff;
-              const arcR = count <= 1 ? 190 : Math.max(220, Math.ceil(Math.max(arcRForHorz, arcRForVert)));
-              const ringPad = 22;
-              const ringR = arcR + ringPad;
-
-              // Canvas must contain the full dashed ring (not just the center node).
-              const W = Math.max(720, Math.ceil((ringR + cardW / 2 + 48) * 2));
-              const cx = W / 2;
-              const cy = arcR + cardH / 2 + 64; // top card 64 px from top
-              const H = Math.ceil(cy + ringR + 36); // room below centre for full dashed ring
-
-              const startDeg = -90 - fanDeg / 2;
+              const { W, H, cx, cy, arcR, ringR, fanDeg, startDeg, positions, arrows } =
+                layoutWheelFan(legs.length);
+              const cardW = WHEEL_FAN_CARD_W;
+              const guideD = fanArcPath(cx, cy, ringR, startDeg, fanDeg);
               const totalNet = wheelTotalNetPnl(
                 legs,
                 !completed ? (prices[selectedWheel.ticker] ?? null) : null
               );
-
-              const positions = legs.map((_, i) => {
-                const angleDeg = count <= 1 ? -90 : startDeg + (i / (count - 1)) * fanDeg;
-                const rad = (angleDeg * Math.PI) / 180;
-                return { x: cx + arcR * Math.cos(rad), y: cy + arcR * Math.sin(rad) };
-              });
-
-              // Pre-compute arrow geometry
-              const arrows = positions.slice(0, -1).map((posA, i) => {
-                const posB = positions[i + 1]!;
-                const dx = posB.x - posA.x;
-                const dy = posB.y - posA.y;
-                const len = Math.sqrt(dx * dx + dy * dy) || 1;
-                const pad = cardW / 2 + 14;
-                const x1 = posA.x + (dx / len) * pad;
-                const y1 = posA.y + (dy / len) * pad;
-                const x2 = posB.x - (dx / len) * pad;
-                const y2 = posB.y - (dy / len) * pad;
-                const color = "#6b7280"; // neutral gray arrow
-                return { x1, y1, x2, y2, color, i };
-              });
 
               const centerSize = completed ? 120 : 104;
               const ringStroke = completed ? "#f59e0b" : "#e9eeef";
@@ -608,6 +558,8 @@ export default function CyclesPage() {
                 <PanZoomStage
                   width={W}
                   height={H}
+                  minScale={0.25}
+                  fitMinScale={0.85}
                   className={completed ? "bg-gradient-to-b from-amber-50/40 to-[#fcfdfd]" : "bg-[#fcfdfd]"}
                   labels={{ zoomIn: t("zoomIn"), zoomOut: t("zoomOut"), reset: t("resetView") }}
                 >
@@ -615,10 +567,14 @@ export default function CyclesPage() {
 
                     {/* LAYER 1 (behind cards): guide ring + spokes */}
                     <svg className="pointer-events-none absolute inset-0" style={{ zIndex: 0 }} width={W} height={H}>
-                      {arcR > 0 && (
+                      {guideD ? (
+                        <path d={guideD} fill="none" stroke={ringStroke}
+                          strokeDasharray={completed ? "6 4" : "4 6"} strokeWidth={completed ? 2 : 1} />
+                      ) : arcR > 0 ? (
                         <circle cx={cx} cy={cy} r={ringR}
-                          fill="none" stroke={ringStroke} strokeDasharray={completed ? "6 4" : "4 6"} strokeWidth={completed ? 2 : 1} />
-                      )}
+                          fill="none" stroke={ringStroke} strokeDasharray={completed ? "6 4" : "4 6"}
+                          strokeWidth={completed ? 2 : 1} />
+                      ) : null}
                       {positions.map((pos, i) => (
                         <line key={`sp-${i}`}
                           x1={pos.x} y1={pos.y} x2={cx} y2={cy}
@@ -701,16 +657,14 @@ export default function CyclesPage() {
                     {/* LAYER 2 (above cards): arrows — z-index 3 */}
                     <svg className="pointer-events-none absolute inset-0" style={{ zIndex: 3 }} width={W} height={H}>
                       <defs>
-                        {arrows.map(({ color, i }) => (
-                          <marker key={`m-${i}`} id={`mh-${i}`} viewBox="0 0 10 10" refX="8" refY="5"
-                            markerWidth="5" markerHeight="5" orient="auto">
-                            <path d="M0,1.5 L8.5,5 L0,8.5 Z" fill={color} />
-                          </marker>
-                        ))}
+                        <marker id="mh-leg" viewBox="0 0 10 10" refX="8" refY="5"
+                          markerWidth="5" markerHeight="5" orient="auto">
+                          <path d="M0,1.5 L8.5,5 L0,8.5 Z" fill="#6b7280" />
+                        </marker>
                       </defs>
-                      {arrows.map(({ x1, y1, x2, y2, color, i }) => (
+                      {arrows.map(({ x1, y1, x2, y2, i }) => (
                         <line key={`arr-${i}`} x1={x1} y1={y1} x2={x2} y2={y2}
-                          stroke={color} strokeWidth="2" markerEnd={`url(#mh-${i})`} />
+                          stroke="#6b7280" strokeWidth="2" markerEnd="url(#mh-leg)" />
                       ))}
                     </svg>
 

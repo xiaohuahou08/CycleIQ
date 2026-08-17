@@ -1,44 +1,39 @@
-"""Live equity quotes (Yahoo Finance chart endpoint)."""
+"""Live equity quotes via yfinance (Yahoo Finance)."""
 
 from __future__ import annotations
 
 import logging
+import math
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import httpx
+import yfinance as yf
 
 logger = logging.getLogger(__name__)
 
-_YAHOO_CHART = "https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
-_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "Chrome/124 Safari/537.36"
-    ),
-    "Accept": "application/json, */*",
-    "Accept-Language": "en-US,en;q=0.9",
-}
 _CACHE_TTL_SEC = 60.0
 _cache: dict[str, tuple[float, float]] = {}  # ticker -> (price, fetched_at)
 
 
-def _fetch_one(ticker: str, timeout: float = 4.0) -> float | None:
-    url = _YAHOO_CHART.format(ticker=ticker)
+def _as_price(value: object) -> float | None:
     try:
-        with httpx.Client(timeout=timeout, headers=_HEADERS) as client:
-            res = client.get(url, params={"interval": "1m", "range": "1d"})
-            if res.status_code != 200:
-                return None
-            data = res.json()
-            price = (
-                data.get("chart", {})
-                .get("result", [{}])[0]
-                .get("meta", {})
-                .get("regularMarketPrice")
-            )
-            if isinstance(price, (int, float)):
-                return float(price)
+        price = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(price):
+        return None
+    return price
+
+
+def _fetch_one(ticker: str) -> float | None:
+    try:
+        stock = yf.Ticker(ticker)
+        price = _as_price(getattr(stock.fast_info, "last_price", None))
+        if price is not None:
+            return price
+        hist = stock.history(period="1d")
+        if not hist.empty:
+            return _as_price(hist["Close"].iloc[-1])
     except Exception:
         logger.debug("quote fetch failed for %s", ticker, exc_info=True)
     return None
