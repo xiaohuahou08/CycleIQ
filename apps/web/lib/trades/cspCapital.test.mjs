@@ -67,19 +67,23 @@ describe("capitalBudgetError", () => {
       status: "OPEN",
       strike: 40,
       contracts: 1,
-      expiry: "2026-08-01",
+      expiry: "2027-08-01",
     });
     assert.equal(err, null);
   });
 
   it("returns message when over budget", () => {
-    const err = capitalBudgetError([put({ strike: 90, contracts: 10 })], 10000, {
-      optionType: "PUT",
-      status: "OPEN",
-      strike: 50,
-      contracts: 5,
-      expiry: "2026-08-01",
-    });
+    const err = capitalBudgetError(
+      [put({ strike: 90, contracts: 10, expiry: "2027-08-01" })],
+      10000,
+      {
+        optionType: "PUT",
+        status: "OPEN",
+        strike: 50,
+        contracts: 5,
+        expiry: "2027-08-01",
+      }
+    );
     assert.match(err ?? "", /exceeds your available capital/);
     assert.match(err ?? "", /% of total capital/);
   });
