@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from datetime import date
 
+from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.orm import load_only
+
+from backend.models import db
 from backend.models.trade import Trade
 from backend.models.user_preferences import DEFAULT_TOTAL_CAPITAL_BUDGET, UserPreferences
 from backend.services.capital_invested import (
@@ -18,7 +22,17 @@ def csp_notional(strike: float, contracts: int) -> float:
 
 
 def get_capital_budget(user_id: str) -> float:
-    row = UserPreferences.query.filter_by(user_id=user_id).first()
+    try:
+        row = (
+            UserPreferences.query.options(load_only(UserPreferences.total_capital_budget))
+            .filter_by(user_id=user_id)
+            .first()
+        )
+    except ProgrammingError:
+        # Production DBs that have not applied 0015_screener_config still 500
+        # on a full UserPreferences SELECT. Budget is independent of screener.
+        db.session.rollback()
+        return float(DEFAULT_TOTAL_CAPITAL_BUDGET)
     if row is not None and row.total_capital_budget is not None:
         return float(row.total_capital_budget)
     return float(DEFAULT_TOTAL_CAPITAL_BUDGET)

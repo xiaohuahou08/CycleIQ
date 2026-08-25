@@ -8,6 +8,7 @@ from flask_migrate import Migrate
 
 from backend.config import ProductionConfig, cors_allowed_origins, get_config
 from backend.models import db
+from backend.services.schema_migrate import apply_pending_migrations, migrations_directory
 from backend.routes import (
     account_bp,
     billing_bp,
@@ -49,9 +50,17 @@ def create_app(config_object=None):
         CORS(app)
 
     db.init_app(app)
-    migrate.init_app(app, db)
-    # Schema changes are managed by Alembic migrations (flask db upgrade).
-    # Avoid create_all() on startup so app boot is not coupled to DDL calls.
+    migrate.init_app(app, db, directory=migrations_directory())
+    # Native Render uses `gunicorn backend.app:app` and skips Alembic. Apply
+    # pending revisions at boot so model columns (e.g. screener_config) exist.
+    if config_object is ProductionConfig:
+        try:
+            apply_pending_migrations()
+        except Exception:
+            app.logger.exception(
+                "Failed to apply database migrations on startup; "
+                "API routes that touch new columns may 500 until Alembic runs"
+            )
 
     global _ROUTES_REGISTERED
     if not _ROUTES_REGISTERED:
