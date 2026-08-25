@@ -10,8 +10,6 @@ from sqlalchemy import create_engine, text
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
 MIGRATIONS_DIR = _BACKEND_DIR / "migrations"
-_LOCK_KEY = 80150015
-
 logger = logging.getLogger(__name__)
 
 
@@ -44,18 +42,13 @@ def apply_pending_migrations() -> None:
 
     engine = create_engine(url, pool_pre_ping=True)
     try:
-        with engine.connect() as lock_conn:
-            lock_conn.execute(text("SELECT pg_advisory_lock(:k)"), {"k": _LOCK_KEY})
-            lock_conn.commit()
-            try:
-                try:
-                    _upgrade_heads(url)
-                except Exception:
-                    logger.exception("Alembic upgrade heads failed; applying screener_config safety net")
-                _ensure_screener_config_column(engine)
-            finally:
-                lock_conn.execute(text("SELECT pg_advisory_unlock(:k)"), {"k": _LOCK_KEY})
-                lock_conn.commit()
+        # ALTER first and without advisory locks — PgBouncer transaction mode
+        # rejects pg_advisory_lock and would skip the column add entirely.
+        _ensure_screener_config_column(engine)
+        try:
+            _upgrade_heads(url)
+        except Exception:
+            logger.exception("Alembic upgrade heads failed after screener_config safety net")
     finally:
         engine.dispose()
 

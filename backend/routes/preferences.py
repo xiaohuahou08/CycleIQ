@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from flask import jsonify, request
+from sqlalchemy.exc import ProgrammingError
 
 from backend.auth.supabase import require_auth
 from backend.models import db
@@ -46,7 +47,7 @@ def register_preferences_routes(preferences_bp):
     @preferences_bp.route("", methods=["GET"])
     @require_auth
     def get_preferences(user_id: str):
-        row = UserPreferences.query.filter_by(user_id=user_id).first()
+        row = UserPreferences.get_for_user(user_id)
         if not row:
             return jsonify(UserPreferences.default_api_dict())
         return jsonify(row.to_api_dict())
@@ -68,7 +69,7 @@ def register_preferences_routes(preferences_bp):
         except (TypeError, ValueError) as exc:
             return jsonify({"error": str(exc)}), 400
 
-        row = UserPreferences.query.filter_by(user_id=user_id).first()
+        row = UserPreferences.get_for_user(user_id)
 
         if not row:
             row = UserPreferences(user_id=user_id)
@@ -78,8 +79,21 @@ def register_preferences_routes(preferences_bp):
         row.default_contracts = contracts
         row.default_dte = dte
         row.total_capital_budget = capital_budget
+        row.updated_at = datetime.now(timezone.utc)
         if screener_config is not None:
             row.screener_config = screener_config
-        row.updated_at = datetime.now(timezone.utc)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except ProgrammingError:
+            db.session.rollback()
+            row = UserPreferences.get_for_user(user_id)
+            if not row:
+                row = UserPreferences(user_id=user_id)
+                db.session.add(row)
+            row.commission_per_contract = commission
+            row.default_contracts = contracts
+            row.default_dte = dte
+            row.total_capital_budget = capital_budget
+            row.updated_at = datetime.now(timezone.utc)
+            db.session.commit()
         return jsonify(row.to_api_dict())

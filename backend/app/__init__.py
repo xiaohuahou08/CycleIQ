@@ -53,14 +53,15 @@ def create_app(config_object=None):
     migrate.init_app(app, db, directory=migrations_directory())
     # Native Render uses `gunicorn backend.app:app` and skips Alembic. Apply
     # pending revisions at boot so model columns (e.g. screener_config) exist.
-    if config_object is ProductionConfig:
-        try:
-            apply_pending_migrations()
-        except Exception:
-            app.logger.exception(
-                "Failed to apply database migrations on startup; "
-                "API routes that touch new columns may 500 until Alembic runs"
-            )
+    # Run for any Postgres URL — not only ProductionConfig — because the
+    # shadowed backend/app.py module can bind DevelopmentConfig under gunicorn.
+    try:
+        apply_pending_migrations()
+    except Exception:
+        app.logger.exception(
+            "Failed to apply database migrations on startup; "
+            "API routes that touch new columns may 500 until Alembic runs"
+        )
 
     global _ROUTES_REGISTERED
     if not _ROUTES_REGISTERED:

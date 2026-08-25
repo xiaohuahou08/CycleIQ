@@ -3,6 +3,7 @@ from __future__ import annotations
 from flask import jsonify, request
 
 from backend.auth.supabase import require_auth
+from backend.models import db
 from backend.models.user_preferences import UserPreferences
 from backend.services.screener.config import merge_screener_config, parse_screener_config
 from backend.services.screener.scan import run_screen
@@ -10,13 +11,20 @@ from backend.services.screener.scan import run_screen
 
 def handle_screen_scan(user_id: str):
     data = request.get_json(silent=True) or {}
-    prefs = UserPreferences.query.filter_by(user_id=user_id).first()
+    prefs = UserPreferences.get_for_user(user_id)
 
     try:
+        stored_screener = None
+        if prefs is not None:
+            try:
+                stored_screener = prefs.screener_config
+            except Exception:
+                db.session.rollback()
+                stored_screener = None
         if "config" in data and data["config"] is not None:
             cfg = parse_screener_config(data["config"])
-        elif prefs and prefs.screener_config:
-            cfg = parse_screener_config(prefs.screener_config)
+        elif stored_screener:
+            cfg = parse_screener_config(stored_screener)
         else:
             cfg = merge_screener_config(None)
 
