@@ -10,7 +10,6 @@ from backend.auth.supabase import require_auth
 from backend.models.trade import Trade
 from backend.models.wheel_cycle import WheelCycle
 from backend.services.csp_capital import capital_utilization_pct, get_capital_budget
-from backend.services.capital_flows import capital_flow_events_for_user
 from backend.services.capital_invested import (
     build_capital_trend_charts,
     compute_open_csp_capital,
@@ -306,11 +305,10 @@ def register_dashboard_routes(dashboard_bp):
         else:
             realized_annual_roi = 0.0
 
-        capital_flows = capital_flow_events_for_user(user_id)
         time_weighted_return_pct, cumulative_total_return_pct, twr_unreliable = (
             compute_time_weighted_return(
                 trades,
-                capital_flows,
+                [],
                 capital_budget,
                 today,
                 unrealized_mtm=unrealized_stock_mtm,
@@ -337,7 +335,7 @@ def register_dashboard_routes(dashboard_bp):
             trades,
             capital_budget,
             today,
-            flows=capital_flows,
+            flows=[],
             unrealized_mtm=unrealized_stock_mtm,
         )
 
@@ -359,7 +357,6 @@ def register_dashboard_routes(dashboard_bp):
                     "time_weighted_return_pct": round(time_weighted_return_pct, 2),
                     "cumulative_total_return_pct": round(cumulative_total_return_pct, 2),
                     "time_weighted_return_unreliable": twr_unreliable,
-                    "has_capital_flows": len(capital_flows) > 0,
                     "active_trades": active_trades,
                     "win_rate": round(win_rate, 1),
                     "avg_premium_per_active_day": round(avg_premium_per_active_day, 2),

@@ -910,9 +910,7 @@ export default function DashboardInsights({
       <div className="animate-stagger-fade-up">
         <CapitalTrendChart
           trend={capitalTrend}
-          budgetLine={
-            !kpis?.has_capital_flows && capitalBudget > 0 ? capitalBudget : undefined
-          }
+          budgetLine={capitalBudget > 0 ? capitalBudget : undefined}
           overBudget={overBudget}
           intlLocale={intlLocale}
           t={t}
