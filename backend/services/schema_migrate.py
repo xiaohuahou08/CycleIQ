@@ -30,7 +30,7 @@ def _is_postgres(url: str) -> bool:
 
 
 def apply_pending_migrations() -> None:
-    """Run `alembic upgrade heads` and ensure `user_preferences.screener_config`.
+    """Run `alembic upgrade heads` plus idempotent schema safety nets.
 
     Render's live start command is `gunicorn backend.app:app` and never cds into
     `backend/` or runs Alembic. Production then 500s on any UserPreferences
@@ -42,13 +42,14 @@ def apply_pending_migrations() -> None:
 
     engine = create_engine(url, pool_pre_ping=True)
     try:
-        # ALTER first and without advisory locks — PgBouncer transaction mode
-        # rejects pg_advisory_lock and would skip the column add entirely.
+        # DDL first and without advisory locks — PgBouncer transaction mode
+        # rejects pg_advisory_lock and would skip these statements entirely.
         _ensure_screener_config_column(engine)
+        _drop_unused_capital_flows(engine)
         try:
             _upgrade_heads(url)
         except Exception:
-            logger.exception("Alembic upgrade heads failed after screener_config safety net")
+            logger.exception("Alembic upgrade heads failed after schema safety nets")
     finally:
         engine.dispose()
 
@@ -75,3 +76,10 @@ def _ensure_screener_config_column(engine) -> None:
             )
         )
     logger.info("Ensured user_preferences.screener_config exists")
+
+
+def _drop_unused_capital_flows(engine) -> None:
+    """Drop capital_flows even if Alembic is stuck behind a failed 0015."""
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS capital_flows"))
+    logger.info("Ensured capital_flows table is dropped")

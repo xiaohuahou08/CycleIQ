@@ -16,7 +16,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("user_preferences", sa.Column("screener_config", sa.JSON(), nullable=True))
+    # Idempotent: boot safety net may already have added this column while
+    # alembic_version was still at 0014, which made a plain ADD COLUMN fail
+    # and blocked later revisions (0016_drop_capital_flows).
+    op.execute(
+        "ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS screener_config JSON"
+    )
 
 
 def downgrade() -> None:
