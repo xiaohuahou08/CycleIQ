@@ -593,7 +593,7 @@ const en = {
         label: "Period Return",
         sub: "Net P&L {{amount}} · TWR {{twr}}",
         subUnreliable: "Net P&L {{amount}} · TWR {{twr}} · large flows — trust net $",
-        tip: "Main value = return on starting capital for the period: (end NAV − start NAV − net deposits) ÷ start NAV. The period starts at your first trade or capital flow (not the chart range). End NAV uses budget + net P&L as of today (includes open-share MTM when a quote is available). Subtitle shows net P&L dollars and time-weighted return (TWR). Historical TWR days use realized P&L only; today's end point adds stock MTM.",
+        tip: "Main value = return on starting capital for the period: (end NAV − start NAV − net deposits) ÷ start NAV. The period starts at your first trade (not the chart range). End NAV uses budget + net P&L as of today (includes open-share MTM when a quote is available). Subtitle shows net P&L dollars and time-weighted return (TWR). Historical TWR days use realized P&L only; today's end point adds stock MTM.",
       },
       winRate: {
         label: "Win Rate",
