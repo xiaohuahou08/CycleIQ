@@ -10,15 +10,15 @@ services:
     # (i.e. not via the Docker path above).  Render ignores these when building
     # from the Dockerfile.
     buildCommand: "pip install -r requirements.txt"
-    # Must run Alembic before gunicorn. If Render applies this startCommand, it
-    # overrides the Dockerfile CMD — a gunicorn-only command skips 0015+ schema
-    # changes and crashes GET /api/preferences (UndefinedColumn).
-    startCommand: "sh -c 'cd /app/backend && alembic upgrade heads && cd /app && gunicorn --bind 0.0.0.0:$PORT backend.wsgi:app'"
+    # Live CycleIQ/CycleIQ-Dev services are native Python (not Docker). CWD is
+    # the repo root; `/app/backend` only exists in the Dockerfile image.
+    # Dashboard startCommand currently `gunicorn backend.app:app --bind 0.0.0.0:10000`
+    # skips Alembic — keep this script in sync, or rely on create_app() boot migrate.
+    startCommand: "sh scripts/render-start.sh"
     healthCheckPath: /health
     # Run Alembic migrations before every deploy.
     # If the migration fails the deploy is aborted and the old version keeps running.
-    # Use alembic (not flask db) from /app/backend so script_location=migrations resolves.
-    preDeployCommand: "cd /app/backend && alembic upgrade heads"
+    preDeployCommand: "sh -c 'cd backend && alembic upgrade heads'"
     envVars:
       - key: PYTHON_VERSION
         value: "3.12"

@@ -41,7 +41,7 @@ class UserPreferences(db.Model):
     stripe_subscription_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     subscription_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
     current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    screener_config: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    screener_config: Mapped[dict | None] = mapped_column(JSON, nullable=True, deferred=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -50,6 +50,12 @@ class UserPreferences(db.Model):
     )
 
     def to_api_dict(self) -> dict:
+        stored_screener = None
+        try:
+            stored_screener = self.screener_config
+        except Exception:
+            db.session.rollback()
+            stored_screener = None
         return {
             "commission_per_contract": float(self.commission_per_contract)
             if self.commission_per_contract is not None
@@ -57,7 +63,7 @@ class UserPreferences(db.Model):
             "default_contracts": int(self.default_contracts),
             "default_dte": int(self.default_dte),
             "total_capital_budget": float(self.total_capital_budget),
-            "screener_config": merge_screener_config(self.screener_config),
+            "screener_config": merge_screener_config(stored_screener),
         }
 
     @staticmethod
