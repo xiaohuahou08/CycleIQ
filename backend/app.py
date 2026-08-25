@@ -16,8 +16,11 @@ def create_app(config_class=DevelopmentConfig):
     return application
 
 
-app = create_app(DevelopmentConfig)
+# Do not export `app` at module import. Gunicorn `backend.app:app` must bind
+# the package (backend/app/__init__.py) which uses FLASK_ENV=production.
+# A module-level app here would shadow that with DevelopmentConfig.
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
+    app = create_app(DevelopmentConfig)
     app.run(host="0.0.0.0", port=port, debug=True)

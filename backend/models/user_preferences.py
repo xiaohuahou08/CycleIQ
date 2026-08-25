@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, Index, Integer, JSON, Numeric, String, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.orm import Mapped, load_only, mapped_column
 
 from backend.models import db
 from backend.services.screener.config import default_screener_config, merge_screener_config
@@ -41,6 +42,7 @@ class UserPreferences(db.Model):
     stripe_subscription_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     subscription_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
     current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Deferred so default SELECTs do not require migration 0015.
     screener_config: Mapped[dict | None] = mapped_column(JSON, nullable=True, deferred=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -49,7 +51,37 @@ class UserPreferences(db.Model):
         nullable=False,
     )
 
+    @classmethod
+    def get_for_user(cls, user_id: str) -> UserPreferences | None:
+        """Load prefs without selecting screener_config (may be missing on prod)."""
+        try:
+            return (
+                cls.query.options(
+                    load_only(
+                        cls.commission_per_contract,
+                        cls.default_contracts,
+                        cls.default_dte,
+                        cls.total_capital_budget,
+                        cls.plan,
+                        cls.stripe_customer_id,
+                        cls.stripe_subscription_id,
+                        cls.subscription_status,
+                        cls.current_period_end,
+                        cls.updated_at,
+                    )
+                )
+                .filter_by(user_id=user_id)
+                .first()
+            )
+        except ProgrammingError:
+            db.session.rollback()
+            return None
+
     def to_api_dict(self) -> dict:
+        commission = self.commission_per_contract
+        contracts = int(self.default_contracts)
+        dte = int(self.default_dte)
+        budget = float(self.total_capital_budget)
         stored_screener = None
         try:
             stored_screener = self.screener_config
@@ -57,12 +89,10 @@ class UserPreferences(db.Model):
             db.session.rollback()
             stored_screener = None
         return {
-            "commission_per_contract": float(self.commission_per_contract)
-            if self.commission_per_contract is not None
-            else None,
-            "default_contracts": int(self.default_contracts),
-            "default_dte": int(self.default_dte),
-            "total_capital_budget": float(self.total_capital_budget),
+            "commission_per_contract": float(commission) if commission is not None else None,
+            "default_contracts": contracts,
+            "default_dte": dte,
+            "total_capital_budget": budget,
             "screener_config": merge_screener_config(stored_screener),
         }
 

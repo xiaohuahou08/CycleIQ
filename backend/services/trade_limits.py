@@ -60,7 +60,7 @@ def is_premium(row: UserPreferences | None, now: datetime | None = None) -> bool
 
 
 def get_user_plan(user_id: str, now: datetime | None = None) -> str:
-    row = UserPreferences.query.filter_by(user_id=user_id).first()
+    row = UserPreferences.get_for_user(user_id)
     return PREMIUM_PLAN if is_premium(row, now=now) else BASIC_PLAN
 
 
