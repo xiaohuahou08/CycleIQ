@@ -249,7 +249,7 @@ const zh = {
         },
         screen: {
           title: "期权选股",
-          body: "可配置的 Sell Put / Covered Call 候选筛选，门槛按每股美金。仅供参考——不下单。",
+          body: "只看流动性好、Delta 适中的卖 Put / 备兑 Call 候选。仅供参考——不下单。",
         },
       },
       cta: {
@@ -938,9 +938,9 @@ const zh = {
 
   screen: {
     title: "选股",
-    description: "按可配置规则扫描 Sell Put 与 Covered Call 候选",
+    description: "只扫描买卖价差窄、持仓量大、Delta 适中的卖 Put / 备兑 Call",
     advisory:
-      "仅供参考。候选按你的筛选规则与 Yahoo Finance 数据排序。CycleIQ 不下单，也不提供投资建议。",
+      "仅供参考。默认只保留基本面较好、流动性较好（价差窄、OI 够）且 Delta 约 0.15–0.35 的合约。CycleIQ 不下单，也不提供投资建议。",
     tabs: {
       put: "Sell Put",
       call: "Covered Call",
@@ -958,13 +958,15 @@ const zh = {
     },
     config: {
       title: "扫描参数",
-      summary: "DTE {{min}}–{{max}} · ≥ ${{premium}}/股",
+      summary: "DTE {{min}}–{{max}} · 价差 ≤{{spread}}% · OI ≥{{oi}} · Δ {{dMin}}–{{dMax}}{{quality}}",
+      summaryQuality: " · 基本面达标",
       tipAria: "{{label}} 是什么？",
       reset: "恢复默认",
       groups: {
-        expiry: "到期窗口",
-        premium: "权利金与收益",
+        expiry: "到期",
         liquidity: "流动性",
+        delta: "Delta",
+        premium: "权利金与收益",
         vol: "波动率",
         strike: "行权价窗口",
         ranking: "财报与排序",
@@ -977,6 +979,7 @@ const zh = {
         volPts: "点",
         multiple: "×",
         usdContract: "$/张",
+        contracts: "张",
       },
       minDte: "最短 DTE",
       maxDte: "最长 DTE",
@@ -985,12 +988,17 @@ const zh = {
       minIvRv: "最低 IV / RV",
       minIvMinusRv: "最低 IV − RV",
       maxSpread: "最大买卖价差",
+      minOpenInterest: "最低未平仓量",
+      minAbsDelta: "最低 |Delta|",
+      maxAbsDelta: "最高 |Delta|",
       putRecall: "Put 窗口（现价下方）",
       callRecall: "Call 窗口（底价上方）",
       callCostFloor: "Call 成本底线倍数",
       earningsWindow: "财报硬窗",
       proximityBand: "收益接近带",
       feePerContract: "每张合约费用",
+      quality: "只要基本面较好的标的",
+      qualityHint: "跳过市值过小、尚未盈利或负债过高的股票。",
       tips: {
         minDte:
           "到期天数少于此值的合约会被跳过。DTE 太短时 Theta 衰减快，但需要更频繁滚动，事件风险也更集中。滚轮策略常用 21 天左右起。",
@@ -1005,7 +1013,13 @@ const zh = {
         minIvMinusRv:
           "IV 减去 RV 的最低差值，单位是波动点。5 表示 IV 至少比 RV 高 5 个点。填 0 表示不限制。仅在两者都有数据时生效。",
         maxSpread:
-          "买卖价差相对中间价的上限，即 (卖一 − 买一) / 中间价。价差越宽，越难按假设价格成交。40 表示价差最多为中间价的 40%。",
+          "买卖价差相对中间价的上限，即 (卖一 − 买一) / 中间价。价差越窄越好成交。20 表示价差最多为中间价的 20%。",
+        minOpenInterest:
+          "合约未平仓量下限。OI 太低说明盘口薄、难成交。100 张起比较适合只看流动性好的合约。",
+        minAbsDelta:
+          "只保留 |Delta| 不低于该值的合约。Delta 太低（太虚）权利金薄、被指派概率低。滚轮卖权常用 0.15 起。",
+        maxAbsDelta:
+          "只保留 |Delta| 不高于该值的合约。Delta 太高（太接近平值/价内）被指派概率大。滚轮卖权常用 0.35 封顶。",
         putRecall:
           "Sell Put 的行权价必须落在现价与现价下方该比例之间。20 表示只看现价 80%–100% 这一带，避免卖太远的虚值 Put。",
         callRecall:
@@ -1018,6 +1032,8 @@ const zh = {
           "排序时，期间收益率相差小于该百分比的候选视为同一档，再用折价、价差、持仓量打破平局。0.2 表示 0.2%。",
         feePerContract:
           "每张合约往返佣金（美元），会除以 100 摊到每股后再计算净权利金。若账户未单独设置，常用 0.65。",
+        quality:
+          "用 Yahoo 的粗筛跳过基本面偏弱的标的：市值低于约 50 亿美元、过去 12 个月 EPS 不为正、利润率为负，或资产负债比高于约 2.5。拿不到数据时不拦截，避免一次扫空。",
       },
     },
     saveConfig: "保存参数",
@@ -1036,17 +1052,25 @@ const zh = {
       iv_minus_rv_too_low: "IV−RV 过低",
       earnings_in_hard_window: "落在财报硬窗",
       dte_out_of_window: "DTE 超窗",
+      open_interest_too_low: "未平仓量过低",
+      volume_too_low: "成交量过低",
+      delta_unavailable: "无法计算 Delta",
+      delta_out_of_band: "Delta 不在区间",
       spot_unavailable: "无现价",
       no_expiries_in_dte_window: "窗口内无到期日",
       no_holding: "无指派持股",
       fetch_failed: "行情拉取失败",
       options_calendar_unavailable: "期权到期日历不可用",
+      market_cap_too_small: "市值过小",
+      not_profitable: "尚未盈利",
+      leverage_too_high: "负债过高",
     },
     cols: {
       symbol: "标的",
       strike: "行权价",
       expiry: "到期",
       dte: "DTE",
+      delta: "Delta",
       netPremium: "净$/股",
       periodReturn: "期间",
       annualized: "年化",

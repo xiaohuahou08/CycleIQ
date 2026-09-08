@@ -38,6 +38,63 @@ def earnings_blocks_expiry(
     return 0 <= delta <= int(hard_window_days)
 
 
+# Large-cap / profitable floor used when require_quality_fundamentals is on.
+_MIN_MARKET_CAP_USD = 5_000_000_000.0
+_MAX_DEBT_TO_EQUITY = 2.5
+
+
+def _debt_to_equity_ratio(raw: Any) -> float | None:
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if value != value:
+        return None
+    # Yahoo sometimes sends 187 (percent) and sometimes 1.87 (ratio).
+    return value / 100.0 if value > 10 else value
+
+
+def evaluate_ticker_quality(fundamentals: dict[str, Any] | None, *, enabled: bool) -> dict[str, Any]:
+    """Hard-gate a ticker when the user wants quality underlyings.
+
+    Fail open if Yahoo did not return fundamentals, so a data hole does not
+    empty the scan. Fail closed when numbers exist and look weak.
+    """
+    if not enabled:
+        return {"accepted": True, "rule": "accepted"}
+    if not fundamentals:
+        return {"accepted": True, "rule": "accepted"}
+
+    market_cap = fundamentals.get("market_cap")
+    if market_cap is not None and float(market_cap) < _MIN_MARKET_CAP_USD:
+        return {
+            "accepted": False,
+            "rule": "market_cap_too_small",
+            "metric_value": market_cap,
+            "threshold": _MIN_MARKET_CAP_USD,
+        }
+
+    eps = fundamentals.get("trailing_eps")
+    margin = fundamentals.get("profit_margin")
+    if (eps is not None and float(eps) <= 0) or (margin is not None and float(margin) < 0):
+        return {
+            "accepted": False,
+            "rule": "not_profitable",
+            "metric_value": eps if eps is not None else margin,
+        }
+
+    leverage = _debt_to_equity_ratio(fundamentals.get("debt_to_equity"))
+    if leverage is not None and leverage > _MAX_DEBT_TO_EQUITY:
+        return {
+            "accepted": False,
+            "rule": "leverage_too_high",
+            "metric_value": leverage,
+            "threshold": _MAX_DEBT_TO_EQUITY,
+        }
+
+    return {"accepted": True, "rule": "accepted"}
+
+
 def evaluate_hard_filters(
     row: dict[str, Any],
     *,
@@ -71,5 +128,40 @@ def evaluate_hard_filters(
             "metric_value": net,
             "threshold": cfg["min_net_premium_usd"],
         }
+
+    oi = row.get("open_interest")
+    min_oi = int(cfg.get("min_open_interest") or 0)
+    if min_oi > 0 and (oi is None or int(oi) < min_oi):
+        return {
+            "accepted": False,
+            "rule": "open_interest_too_low",
+            "metric_value": oi,
+            "threshold": min_oi,
+        }
+
+    volume = row.get("volume")
+    min_vol = int(cfg.get("min_volume") or 0)
+    if min_vol > 0 and (volume is None or int(volume) < min_vol):
+        return {
+            "accepted": False,
+            "rule": "volume_too_low",
+            "metric_value": volume,
+            "threshold": min_vol,
+        }
+
+    min_delta = float(cfg.get("min_abs_delta") or 0.0)
+    max_delta = float(cfg.get("max_abs_delta") or 1.0)
+    if min_delta > 0 or max_delta < 1:
+        delta = row.get("delta")
+        if delta is None:
+            return {"accepted": False, "rule": "delta_unavailable", "metric_value": None}
+        abs_delta = abs(float(delta))
+        if abs_delta < min_delta or abs_delta > max_delta:
+            return {
+                "accepted": False,
+                "rule": "delta_out_of_band",
+                "metric_value": abs_delta,
+                "threshold": (min_delta, max_delta),
+            }
 
     return {"accepted": True, "rule": "accepted"}

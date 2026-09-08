@@ -25,6 +25,8 @@ export interface ScreenCandidate {
   iv_rv_ratio: number | null;
   iv_minus_rv: number | null;
   open_interest: number | null;
+  volume: number | null;
+  delta: number | null;
   avg_cost?: number | null;
   open_shares?: number | null;
   max_new_contracts?: number | null;

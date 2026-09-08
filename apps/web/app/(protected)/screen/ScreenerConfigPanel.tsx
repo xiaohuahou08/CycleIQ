@@ -194,7 +194,11 @@ export default function ScreenerConfigPanel({
   const summary = t("config.summary", {
     min: config.min_dte,
     max: config.max_dte,
-    premium: config.min_net_premium_usd.toFixed(2),
+    spread: (config.max_spread_ratio * 100).toFixed(0),
+    oi: config.min_open_interest,
+    dMin: config.min_abs_delta.toFixed(2),
+    dMax: config.max_abs_delta.toFixed(2),
+    quality: config.require_quality_fundamentals ? t("config.summaryQuality") : "",
   });
 
   return (
@@ -223,6 +227,24 @@ export default function ScreenerConfigPanel({
 
       {open ? (
         <div className="space-y-4 px-4 py-4">
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-slate-50/70 p-4">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-500/40"
+              checked={config.require_quality_fundamentals}
+              onChange={(e) => patch("require_quality_fundamentals", e.target.checked)}
+            />
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-0.5 text-sm font-medium text-slate-800">
+                {t("config.quality")}
+                <ParamTip tip={t("config.tips.quality")} ariaLabel={t("config.tipAria", { label: t("config.quality") })} />
+              </span>
+              <span className="mt-0.5 block text-xs leading-relaxed text-slate-500">
+                {t("config.qualityHint")}
+              </span>
+            </span>
+          </label>
+
           <Section title={t("config.groups.expiry")}>
             <ConfigNumberField
               label={t("config.minDte")}
@@ -246,25 +268,7 @@ export default function ScreenerConfigPanel({
             />
           </Section>
 
-          <Section title={t("config.groups.premium")}>
-            <ConfigNumberField
-              label={t("config.minNetPremium")}
-              tip={t("config.tips.minNetPremium")}
-              unit={t("config.units.usdShare")}
-              value={config.min_net_premium_usd}
-              step="0.05"
-              min={0}
-              onChange={(n) => patch("min_net_premium_usd", n)}
-            />
-            <ConfigNumberField
-              label={t("config.feePerContract")}
-              tip={t("config.tips.feePerContract")}
-              unit={t("config.units.usdContract")}
-              value={config.fee_per_contract_usd ?? 0.65}
-              step="0.05"
-              min={0}
-              onChange={(n) => patch("fee_per_contract_usd", n)}
-            />
+          <Section title={t("config.groups.liquidity")}>
             <ConfigNumberField
               label={t("config.maxSpread")}
               tip={t("config.tips.maxSpread")}
@@ -275,40 +279,37 @@ export default function ScreenerConfigPanel({
               asPercent
               onChange={(n) => patch("max_spread_ratio", n)}
             />
+            <ConfigNumberField
+              label={t("config.minOpenInterest")}
+              tip={t("config.tips.minOpenInterest")}
+              unit={t("config.units.contracts")}
+              value={config.min_open_interest}
+              step="50"
+              min={0}
+              onChange={(n) => patch("min_open_interest", Math.max(0, Math.round(n)))}
+            />
           </Section>
 
-          <Section title={t("config.groups.strike")}>
+          <Section title={t("config.groups.delta")}>
             <ConfigNumberField
-              label={t("config.putRecall")}
-              tip={t("config.tips.putRecall")}
-              unit={t("config.units.percent")}
-              value={config.put_recall_below_pct}
-              step="1"
-              min={1}
-              max={100}
-              asPercent
-              onChange={(n) => patch("put_recall_below_pct", n)}
+              label={t("config.minAbsDelta")}
+              tip={t("config.tips.minAbsDelta")}
+              unit="Δ"
+              value={config.min_abs_delta}
+              step="0.05"
+              min={0}
+              max={1}
+              onChange={(n) => patch("min_abs_delta", n)}
             />
             <ConfigNumberField
-              label={t("config.callRecall")}
-              tip={t("config.tips.callRecall")}
-              unit={t("config.units.percent")}
-              value={config.call_recall_above_pct}
-              step="1"
-              min={1}
-              max={100}
-              asPercent
-              onChange={(n) => patch("call_recall_above_pct", n)}
-            />
-            <ConfigNumberField
-              label={t("config.callCostFloor")}
-              tip={t("config.tips.callCostFloor")}
-              unit={t("config.units.multiple")}
-              value={config.call_cost_floor_mult}
-              step="0.01"
-              min={1}
-              max={2}
-              onChange={(n) => patch("call_cost_floor_mult", n)}
+              label={t("config.maxAbsDelta")}
+              tip={t("config.tips.maxAbsDelta")}
+              unit="Δ"
+              value={config.max_abs_delta}
+              step="0.05"
+              min={0}
+              max={1}
+              onChange={(n) => patch("max_abs_delta", n)}
             />
           </Section>
 
