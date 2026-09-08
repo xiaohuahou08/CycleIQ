@@ -11,6 +11,7 @@ import { BTN_ACCENT, PILL_ACTIVE, PILL_IDLE } from "@/app/components/ui/styles";
 import { listCycles, listTrades, type CycleSummary, type Trade } from "@/lib/api/trades";
 import {
   buildCcCostBasisRows,
+  deriveWheelState,
   isCompletedWheel,
   netLegCashflow,
   wheelTotalNetPnl,
@@ -94,30 +95,6 @@ function TickerLogo({ ticker, size = "sm" }: { ticker: string; size?: "sm" | "lg
 interface CycleWheelSummary extends CycleSummary {
   source_cycle_id: string;
   trades: Trade[];
-}
-
-function deriveWheelState(wheelTrades: Trade[], cycleState: string): string {
-  const hasOpen = wheelTrades.some((t) => t.status === "OPEN");
-  if (hasOpen) return cycleState.startsWith("CC") ? cycleState : "CSP_OPEN";
-
-  const hasCalledAwayCall = wheelTrades.some(
-    (t) => t.option_type === "CALL" && t.status === "CALLED_AWAY"
-  );
-  // A called-away covered call means the wheel fully exits this cycle.
-  if (hasCalledAwayCall) return "EXIT";
-
-  // PUT was assigned → user holds stock, not completed
-  const hasAssigned = wheelTrades.some((t) => t.status === "ASSIGNED" && t.option_type === "PUT");
-  if (hasAssigned) return "STOCK_HELD";
-
-  const hasPut = wheelTrades.some((t) => t.option_type === "PUT");
-  const hasCall = wheelTrades.some((t) => t.option_type === "CALL");
-  // 只有CSP分支（如 buy-to-close / close）结束，归到 CSP_CLOSED。
-  if (hasPut && !hasCall) return "CSP_CLOSED";
-
-  // Backend explicitly says stock is held
-  if (cycleState === "STOCK_HELD" || cycleState === "CC_OPEN") return cycleState;
-  return "EXIT";
 }
 
 /**
@@ -761,7 +738,7 @@ export default function CyclesPage() {
                           <span
                             className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${stateBadgeStyle(cycle.state)}`}
                           >
-                            {tab === "COMPLETED"
+                            {cycleCompleted
                               ? tCommon("cycleState.completed")
                               : tCommon("cycleState.active")}
                           </span>

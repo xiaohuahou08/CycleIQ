@@ -136,6 +136,135 @@ def test_trade_crud_and_user_scope(client):
     assert r_del.status_code == 204
 
 
+def test_delete_last_trade_removes_cycle(client):
+    h = auth_headers("33333333-3333-3333-3333-333333333333")
+    created = client.post(
+        "/api/trades",
+        json={
+            "ticker": "HIMS",
+            "option_type": "PUT",
+            "strike": 32,
+            "expiry": future_expiry(),
+            "trade_date": "2026-08-01",
+            "premium": 1.1,
+            "contracts": 2,
+            "status": "OPEN",
+        },
+        headers=h,
+    )
+    assert created.status_code == 201
+    body = created.get_json()
+    tid = body["id"]
+    cycle_id = body["cycle_id"]
+    assert cycle_id
+
+    assert client.delete(f"/api/trades/{tid}", headers=h).status_code == 204
+    assert client.get(f"/api/cycles/{cycle_id}", headers=h).status_code == 404
+    assert client.get("/api/cycles", headers=h).get_json()["total"] == 0
+
+
+def test_delete_open_leg_removes_orphan_rolled_cycle(client):
+    h = auth_headers("44444444-4444-4444-4444-444444444444")
+    first = client.post(
+        "/api/trades",
+        json={
+            "ticker": "HIMS",
+            "option_type": "PUT",
+            "strike": 33,
+            "expiry": future_expiry(),
+            "trade_date": "2026-07-06",
+            "premium": 2.03,
+            "contracts": 2,
+            "status": "OPEN",
+        },
+        headers=h,
+    )
+    assert first.status_code == 201
+    first_id = first.get_json()["id"]
+    cycle_id = first.get_json()["cycle_id"]
+
+    rolled = client.put(
+        f"/api/trades/{first_id}",
+        json={"status": "ROLLED", "buyback_cost_per_share": 4.69},
+        headers=h,
+    )
+    assert rolled.status_code == 200
+
+    second = client.post(
+        "/api/trades",
+        json={
+            "ticker": "HIMS",
+            "option_type": "PUT",
+            "strike": 32.5,
+            "expiry": future_expiry(),
+            "trade_date": "2026-07-30",
+            "premium": 5.42,
+            "contracts": 2,
+            "status": "OPEN",
+            "cycle_id": cycle_id,
+            "rolled_from_id": first_id,
+        },
+        headers=h,
+    )
+    assert second.status_code == 201
+    open_id = second.get_json()["id"]
+    assert second.get_json()["cycle_id"] == cycle_id
+
+    assert client.delete(f"/api/trades/{open_id}", headers=h).status_code == 204
+    assert client.get("/api/trades", headers=h).get_json()["total"] == 0
+    assert client.get(f"/api/cycles/{cycle_id}", headers=h).status_code == 404
+
+
+def test_delete_rolled_history_keeps_open_cycle(client):
+    h = auth_headers("55555555-5555-5555-5555-555555555555")
+    set_capital_budget(client, h)
+    first = client.post(
+        "/api/trades",
+        json={
+            "ticker": "MSFT",
+            "option_type": "PUT",
+            "strike": 390,
+            "expiry": future_expiry(),
+            "trade_date": "2026-07-01",
+            "premium": 2.0,
+            "contracts": 1,
+            "status": "OPEN",
+        },
+        headers=h,
+    )
+    assert first.status_code == 201
+    first_id = first.get_json()["id"]
+    cycle_id = first.get_json()["cycle_id"]
+    client.put(
+        f"/api/trades/{first_id}",
+        json={"status": "ROLLED", "buyback_cost_per_share": 0.5},
+        headers=h,
+    )
+    second = client.post(
+        "/api/trades",
+        json={
+            "ticker": "MSFT",
+            "option_type": "PUT",
+            "strike": 385,
+            "expiry": future_expiry(),
+            "trade_date": "2026-07-15",
+            "premium": 1.5,
+            "contracts": 1,
+            "status": "OPEN",
+            "cycle_id": cycle_id,
+            "rolled_from_id": first_id,
+        },
+        headers=h,
+    )
+    assert second.status_code == 201
+
+    assert client.delete(f"/api/trades/{first_id}", headers=h).status_code == 204
+    left = client.get("/api/trades", headers=h).get_json()
+    assert left["total"] == 1
+    assert left["trades"][0]["id"] == second.get_json()["id"]
+    assert client.get(f"/api/cycles/{cycle_id}", headers=h).status_code == 200
+
+
 def test_put_assigned_sets_stock_cost_basis_csp(client):
     """Premium is per share; commissions are total USD, spread across shares."""
     h = auth_headers("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")

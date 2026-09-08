@@ -70,6 +70,28 @@ def _sum_chain_premium(trade: Trade, user_id: str) -> Decimal:
     return total_premium - (total_fees / shares)
 
 
+def _cleanup_cycle_after_trade_removed(user_id: str, cycle_id: str | None) -> None:
+    """Drop a cycle that has no live legs left after a trade delete/move.
+
+    Empty cycles are removed. If the live OPEN leg was deleted and only ROLLED
+    ancestors remain, those orphaned roll rows and the cycle are removed too.
+    Completed history (EXPIRED / CLOSED / ASSIGNED / CALLED_AWAY) is kept.
+    """
+    if not cycle_id:
+        return
+    remaining = Trade.query.filter_by(cycle_id=cycle_id, user_id=user_id).all()
+    if remaining and not all(t.status == "ROLLED" for t in remaining):
+        return
+    for trade in remaining:
+        trade.rolled_from_id = None
+    db.session.flush()
+    for trade in remaining:
+        db.session.delete(trade)
+    cycle = WheelCycle.query.filter_by(id=cycle_id, user_id=user_id).first()
+    if cycle:
+        db.session.delete(cycle)
+
+
 def register_trades_routes(trades_bp):
     @trades_bp.route("", methods=["GET"])
     @require_auth
@@ -341,13 +363,10 @@ def register_trades_routes(trades_bp):
                         cycle.state = fsm_cycle.state.value
                     except (InvalidTransitionError, ValueError, KeyError, TypeError):
                         pass
-            # If the trade moved away from its old cycle, delete that cycle if it is now empty.
+            # If the trade moved away from its old cycle, drop that cycle when it is empty
+            # or left with only orphaned ROLLED legs.
             if old_cycle_id and old_cycle_id != trade.cycle_id:
-                remaining = Trade.query.filter_by(cycle_id=old_cycle_id, user_id=user_id).count()
-                if remaining == 0:
-                    old_cycle = WheelCycle.query.filter_by(id=old_cycle_id, user_id=user_id).first()
-                    if old_cycle:
-                        db.session.delete(old_cycle)
+                _cleanup_cycle_after_trade_removed(user_id, old_cycle_id)
 
         if "expiry" in data and data["expiry"]:
             try:
@@ -552,6 +571,9 @@ def register_trades_routes(trades_bp):
     @require_auth
     def delete_trade(user_id: str, trade_id: str):
         trade = Trade.query.filter_by(id=trade_id, user_id=user_id).first_or_404()
+        cycle_id = trade.cycle_id
         db.session.delete(trade)
+        db.session.flush()
+        _cleanup_cycle_after_trade_removed(user_id, cycle_id)
         db.session.commit()
         return "", 204
