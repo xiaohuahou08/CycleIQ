@@ -1049,7 +1049,7 @@ const en = {
         feePerContract:
           "Round-trip commission per contract in USD, divided by 100 into a per-share fee before net premium is computed. If you leave the account default, 0.65 is typical.",
         quality:
-          "Skip tickers that fail a coarse Yahoo quality check: market cap under about $5B, trailing EPS at or below zero, negative profit margin, or debt-to-equity above about 2.5. If Yahoo has no data, the ticker is kept so a data hole does not empty the scan.",
+          "Skip tickers that fail a coarse Yahoo quality check: market cap under about $5B, trailing EPS at or below zero, negative profit margin, or debt-to-equity above about 2.5. Names without Yahoo fundamentals are skipped before option chains are fetched.",
       },
     },
     saveConfig: "Save parameters",
@@ -1079,6 +1079,7 @@ const en = {
       options_calendar_unavailable: "Options calendar unavailable",
       market_cap_too_small: "Market cap too small",
       not_profitable: "Not profitable",
+      fundamentals_unavailable: "Fundamentals unavailable",
       leverage_too_high: "Leverage too high",
     },
     cols: {

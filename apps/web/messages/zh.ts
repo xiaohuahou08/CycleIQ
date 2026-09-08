@@ -1043,7 +1043,7 @@ const zh = {
         feePerContract:
           "每张合约往返佣金（美元），会除以 100 摊到每股后再计算净权利金。若账户未单独设置，常用 0.65。",
         quality:
-          "用 Yahoo 的粗筛跳过基本面偏弱的标的：市值低于约 50 亿美元、过去 12 个月 EPS 不为正、利润率为负，或资产负债比高于约 2.5。拿不到数据时不拦截，避免一次扫空。",
+          "用 Yahoo 的粗筛跳过基本面偏弱的标的：市值低于约 50 亿美元、过去 12 个月 EPS 不为正、利润率为负，或资产负债比高于约 2.5。拿不到基本面数据的标的会先淘汰，不会去拉期权链。",
       },
     },
     saveConfig: "保存参数",
@@ -1073,6 +1073,7 @@ const zh = {
       options_calendar_unavailable: "期权到期日历不可用",
       market_cap_too_small: "市值过小",
       not_profitable: "尚未盈利",
+      fundamentals_unavailable: "缺少基本面数据",
       leverage_too_high: "负债过高",
     },
     cols: {

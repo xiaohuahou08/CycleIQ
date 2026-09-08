@@ -361,6 +361,29 @@ def test_resolve_put_symbols_quality_first_and_extras(monkeypatch):
     assert len(symbols) >= 1
 
 
+def test_resolve_put_symbols_skips_missing_fundamentals(monkeypatch):
+    from backend.services.screener.scan import resolve_put_symbols
+
+    def fake_fundamentals(ticker: str, **_kwargs):
+        if ticker in {"AAPL", "ABT"}:
+            return None
+        return {
+            "market_cap": 80_000_000_000.0,
+            "trailing_eps": 4.0,
+            "profit_margin": 0.15,
+            "debt_to_equity": 0.8,
+        }
+
+    monkeypatch.setattr("backend.services.screener.scan.fetch_fundamentals", fake_fundamentals)
+    symbols, rejects = resolve_put_symbols(
+        {"watchlist": [], "require_quality_fundamentals": True}
+    )
+    assert "AAPL" not in symbols
+    assert "ABT" not in symbols
+    assert rejects.get("fundamentals_unavailable", 0) >= 2
+    assert len(symbols) >= 1
+
+
 def test_parse_screener_config_rejects_bad_dte():
     try:
         parse_screener_config({"min_dte": 60, "max_dte": 30})
@@ -380,6 +403,9 @@ def test_ticker_quality_fail_open_when_missing_or_disabled():
     assert evaluate_ticker_quality({}, enabled=True)["accepted"] is True
     weak = {"market_cap": 1e8, "trailing_eps": -1.0, "profit_margin": -0.1, "debt_to_equity": 400}
     assert evaluate_ticker_quality(weak, enabled=False)["accepted"] is True
+    missing = evaluate_ticker_quality(None, enabled=True, require_data=True)
+    assert missing["accepted"] is False
+    assert missing["rule"] == "fundamentals_unavailable"
 
 
 def test_ticker_quality_rejects_small_cap_unprofitable_and_leverage():

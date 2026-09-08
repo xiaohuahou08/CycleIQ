@@ -54,16 +54,30 @@ def _debt_to_equity_ratio(raw: Any) -> float | None:
     return value / 100.0 if value > 10 else value
 
 
-def evaluate_ticker_quality(fundamentals: dict[str, Any] | None, *, enabled: bool) -> dict[str, Any]:
+def evaluate_ticker_quality(
+    fundamentals: dict[str, Any] | None,
+    *,
+    enabled: bool,
+    require_data: bool = False,
+) -> dict[str, Any]:
     """Hard-gate a ticker when the user wants quality underlyings.
 
-    Fail open if Yahoo did not return fundamentals, so a data hole does not
-    empty the scan. Fail closed when numbers exist and look weak.
+    When ``require_data`` is true (universe prefilter), missing Yahoo numbers
+    fail closed so option chains are only fetched for names that actually passed.
     """
     if not enabled:
         return {"accepted": True, "rule": "accepted"}
     if not fundamentals:
+        if require_data:
+            return {"accepted": False, "rule": "fundamentals_unavailable"}
         return {"accepted": True, "rule": "accepted"}
+
+    has_signal = any(
+        fundamentals.get(key) is not None
+        for key in ("market_cap", "trailing_eps", "profit_margin", "debt_to_equity")
+    )
+    if require_data and not has_signal:
+        return {"accepted": False, "rule": "fundamentals_unavailable"}
 
     market_cap = fundamentals.get("market_cap")
     if market_cap is not None and float(market_cap) < _MIN_MARKET_CAP_USD:
