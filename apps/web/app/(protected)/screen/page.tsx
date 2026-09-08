@@ -29,6 +29,11 @@ function deltaLabel(value: number | null | undefined): string {
   return `${sign}${value.toFixed(2)}`;
 }
 
+function money(value: number | null | undefined, digits = 2): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  return `$${value.toFixed(digits)}`;
+}
+
 function StatChip({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-slate-200/80 bg-white px-3.5 py-2.5 shadow-sm">
