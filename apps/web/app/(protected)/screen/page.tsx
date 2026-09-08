@@ -23,6 +23,12 @@ function pct(value: number | null | undefined, digits = 1): string {
   return `${(value * 100).toFixed(digits)}%`;
 }
 
+function deltaLabel(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(2)}`;
+}
+
 function money(value: number | null | undefined, digits = 2): string {
   if (value == null || Number.isNaN(value)) return "—";
   return `$${value.toFixed(digits)}`;
@@ -46,13 +52,11 @@ function rejectEntries(summary: Record<string, number> | undefined): Array<[stri
 
 function CandidateTable({
   rows,
-  mode,
   empty,
   scanning,
   rejects,
 }: {
   rows: ScreenCandidate[];
-  mode: ModeTab;
   empty: string;
   scanning: boolean;
   rejects: Record<string, number> | undefined;
@@ -101,16 +105,11 @@ function CandidateTable({
             <th className="px-3 py-2.5 font-semibold">{t("cols.strike")}</th>
             <th className="px-3 py-2.5 font-semibold">{t("cols.expiry")}</th>
             <th className="px-3 py-2.5 font-semibold">{t("cols.dte")}</th>
+            <th className="px-3 py-2.5 font-semibold">{t("cols.delta")}</th>
             <th className="px-3 py-2.5 font-semibold">{t("cols.netPremium")}</th>
-            <th className="px-3 py-2.5 font-semibold">{t("cols.periodReturn")}</th>
             <th className="px-3 py-2.5 font-semibold">{t("cols.annualized")}</th>
             <th className="px-3 py-2.5 font-semibold">{t("cols.spread")}</th>
-            <th className="px-3 py-2.5 font-semibold">{t("cols.ivRv")}</th>
-            <th className="px-3 py-2.5 font-semibold">
-              {mode === "put" ? t("cols.discount") : t("cols.strikeAbove")}
-            </th>
             <th className="px-3 py-2.5 font-semibold">{t("cols.oi")}</th>
-            <th className="px-3 py-2.5 font-semibold">{t("cols.capacity")}</th>
           </tr>
         </thead>
         <tbody>
@@ -130,28 +129,17 @@ function CandidateTable({
               <td className="px-3 py-2.5 tabular-nums text-slate-800">{money(row.strike, 2)}</td>
               <td className="px-3 py-2.5 whitespace-nowrap tabular-nums text-slate-700">{row.expiry}</td>
               <td className="px-3 py-2.5 tabular-nums text-slate-700">{row.dte}</td>
+              <td className="px-3 py-2.5 tabular-nums font-medium text-slate-800">
+                {deltaLabel(row.delta)}
+              </td>
               <td className="px-3 py-2.5 tabular-nums font-semibold text-emerald-700">
                 {money(row.net_premium_per_share)}
-              </td>
-              <td className="px-3 py-2.5 tabular-nums font-medium text-slate-900">
-                {pct(row.period_net_return, 2)}
               </td>
               <td className="px-3 py-2.5 tabular-nums text-slate-700">
                 {pct(row.annualized_net_return, 1)}
               </td>
               <td className="px-3 py-2.5 tabular-nums text-slate-600">{pct(row.spread_ratio, 1)}</td>
-              <td className="px-3 py-2.5 tabular-nums text-slate-700">
-                {row.iv_rv_ratio != null ? row.iv_rv_ratio.toFixed(2) : "—"}
-              </td>
-              <td className="px-3 py-2.5 tabular-nums text-slate-700">
-                {mode === "put"
-                  ? pct(row.net_assignment_discount_pct, 1)
-                  : money((row.strike ?? 0) - (row.spot ?? 0), 2)}
-              </td>
               <td className="px-3 py-2.5 tabular-nums text-slate-600">{row.open_interest ?? "—"}</td>
-              <td className="px-3 py-2.5 tabular-nums text-slate-600">
-                {row.max_new_contracts ?? "—"}
-              </td>
             </tr>
           ))}
         </tbody>
@@ -328,7 +316,7 @@ export default function ScreenPage() {
                   {t("cols.netPremium")}: {money(topRow.net_premium_per_share)}
                 </span>
                 <span className="tabular-nums text-slate-700">
-                  {t("cols.periodReturn")}: {pct(topRow.period_net_return, 2)}
+                  {t("cols.delta")}: {deltaLabel(topRow.delta)}
                 </span>
                 <span className="tabular-nums text-slate-600">
                   {t("cols.annualized")}: {pct(topRow.annualized_net_return, 1)}
@@ -345,7 +333,6 @@ export default function ScreenPage() {
 
           <CandidateTable
             rows={rows}
-            mode={mode}
             empty={result ? t("emptyAfterScan") : t("empty")}
             scanning={scanning}
             rejects={result?.rejected_summary?.[mode]}

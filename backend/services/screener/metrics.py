@@ -37,6 +37,32 @@ def fee_per_share(fee_per_contract: float, multiplier: int = 100) -> float:
     return float(fee_per_contract) / float(mult)
 
 
+def option_delta(
+    *,
+    spot: float,
+    strike: float,
+    dte: int,
+    iv: float | None,
+    mode: str,
+    rate: float = 0.045,
+) -> float | None:
+    """Black-Scholes delta from Yahoo IV (call in (0,1], put in [-1,0))."""
+    iv_f = _finite(iv)
+    if iv_f is None or iv_f <= 0.01:
+        return None
+    if spot <= 0 or strike <= 0 or dte < 1:
+        return None
+    time_years = float(dte) / 365.0
+    sqrt_t = math.sqrt(time_years)
+    if sqrt_t <= 0:
+        return None
+    d1 = (math.log(spot / strike) + (rate + 0.5 * iv_f * iv_f) * time_years) / (iv_f * sqrt_t)
+    nd1 = 0.5 * (1.0 + math.erf(d1 / math.sqrt(2.0)))
+    if str(mode).lower() == "call":
+        return nd1
+    return nd1 - 1.0
+
+
 def build_candidate_metrics(
     *,
     mode: str,
@@ -51,6 +77,7 @@ def build_candidate_metrics(
     fee_per_contract: float,
     multiplier: int = 100,
     last: float | None = None,
+    volume: int | None = None,
 ) -> dict[str, Any] | None:
     """Return per-share metrics or None if quote is unusable."""
     mode_norm = "call" if str(mode).lower() == "call" else "put"
@@ -106,5 +133,7 @@ def build_candidate_metrics(
         "iv_rv_ratio": iv_rv_ratio,
         "iv_minus_rv": iv_minus_rv,
         "open_interest": open_interest,
+        "volume": volume,
+        "delta": option_delta(spot=spot, strike=strike, dte=dte, iv=iv_f, mode=mode_norm),
         "multiplier": multiplier,
     }

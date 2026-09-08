@@ -26,6 +26,17 @@ def _oi_key(row: dict[str, Any]) -> tuple[int, int]:
     return (1, int(oi))
 
 
+def _abs_delta(row: dict[str, Any]) -> float:
+    value = row.get("delta")
+    if value is None:
+        return 99.0
+    return abs(float(value))
+
+
+def _delta_from_target(row: dict[str, Any], *, target: float = 0.20) -> float:
+    return abs(_abs_delta(row) - target)
+
+
 def _net_premium(row: dict[str, Any]) -> float:
     return float(row.get("net_premium_per_share") or 0.0)
 
@@ -41,6 +52,7 @@ def within_symbol_sort_key(row: dict[str, Any], *, mode: str) -> tuple:
             -_period(row),
             -_discount(row),
             _spread(row),
+            _delta_from_target(row),
             -_oi_key(row)[0],
             -_oi_key(row)[1],
             -_net_premium(row),
@@ -50,6 +62,7 @@ def within_symbol_sort_key(row: dict[str, Any], *, mode: str) -> tuple:
         -_period(row),
         -float(row.get("strike") or 0.0),
         _spread(row),
+        _delta_from_target(row),
         -_oi_key(row)[0],
         -_oi_key(row)[1],
         -_net_premium(row),
@@ -64,6 +77,7 @@ def cross_symbol_sort_key(row: dict[str, Any], *, mode: str) -> tuple:
             -_period(row),
             -_discount(row),
             _spread(row),
+            _delta_from_target(row),
             -_oi_key(row)[0],
             -_oi_key(row)[1],
             -_net_premium(row),
@@ -75,6 +89,7 @@ def cross_symbol_sort_key(row: dict[str, Any], *, mode: str) -> tuple:
         -_period(row),
         -strike_above,
         _spread(row),
+        _delta_from_target(row),
         -_oi_key(row)[0],
         -_oi_key(row)[1],
         -_net_premium(row),

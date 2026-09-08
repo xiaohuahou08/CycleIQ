@@ -11,12 +11,17 @@ export interface ScreenerConfigApi {
   min_iv_rv_ratio: number;
   min_iv_minus_rv: number;
   max_spread_ratio: number;
+  min_open_interest: number;
+  min_volume: number;
+  min_abs_delta: number;
+  max_abs_delta: number;
   put_recall_below_pct: number;
   call_recall_above_pct: number;
   call_cost_floor_mult: number;
   earnings_hard_window_days: number;
   return_proximity_band: number;
   fee_per_contract_usd: number | null;
+  require_quality_fundamentals: boolean;
 }
 
 export interface TradeDefaultsApi {
@@ -35,13 +40,18 @@ export const DEFAULT_SCREENER_CONFIG: ScreenerConfigApi = {
   min_annualized_return: 0,
   min_iv_rv_ratio: 0,
   min_iv_minus_rv: 0,
-  max_spread_ratio: 0.5,
+  max_spread_ratio: 0.2,
+  min_open_interest: 100,
+  min_volume: 0,
+  min_abs_delta: 0.15,
+  max_abs_delta: 0.35,
   put_recall_below_pct: 0.25,
   call_recall_above_pct: 0.25,
   call_cost_floor_mult: 1.02,
   earnings_hard_window_days: 0,
   return_proximity_band: 0.002,
   fee_per_contract_usd: null,
+  require_quality_fundamentals: true,
 };
 
 function authHeaders(token: string): HeadersInit {

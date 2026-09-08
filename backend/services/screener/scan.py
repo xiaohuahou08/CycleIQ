@@ -11,7 +11,11 @@ from backend.services.screener.config import (
     merge_screener_config,
     resolve_fee_per_contract,
 )
-from backend.services.screener.filters import evaluate_hard_filters, in_strike_window
+from backend.services.screener.filters import (
+    evaluate_hard_filters,
+    evaluate_ticker_quality,
+    in_strike_window,
+)
 from backend.services.screener.market_data import fetch_chains_parallel
 from backend.services.screener.metrics import build_candidate_metrics
 from backend.services.screener.rank import rank_candidates
@@ -44,6 +48,8 @@ def _serialize_candidate(row: dict[str, Any]) -> dict[str, Any]:
         "iv_rv_ratio": row.get("iv_rv_ratio"),
         "iv_minus_rv": row.get("iv_minus_rv"),
         "open_interest": row.get("open_interest"),
+        "volume": row.get("volume"),
+        "delta": row.get("delta"),
         "avg_cost": row.get("avg_cost"),
         "open_shares": row.get("open_shares"),
         "max_new_contracts": row.get("max_new_contracts"),
@@ -76,6 +82,14 @@ def _scan_side(
         spot = chain.get("spot")
         if spot is None:
             reject_counts["spot_unavailable"] = reject_counts.get("spot_unavailable", 0) + 1
+            continue
+        quality = evaluate_ticker_quality(
+            chain.get("fundamentals"),
+            enabled=bool(cfg.get("require_quality_fundamentals")),
+        )
+        if not quality.get("accepted"):
+            rule = str(quality.get("rule") or "not_profitable")
+            reject_counts[rule] = reject_counts.get(rule, 0) + 1
             continue
         if not expirations:
             reject_counts["no_expiries_in_dte_window"] = (
@@ -121,6 +135,7 @@ def _scan_side(
                     iv=opt.get("implied_volatility"),
                     term_matched_rv=rv,
                     open_interest=opt.get("open_interest"),
+                    volume=opt.get("volume"),
                     fee_per_contract=fee_per_contract,
                 )
                 if metrics is None:

@@ -247,7 +247,7 @@ const en = {
         },
         screen: {
           title: "Options screener",
-          body: "Configurable Sell Put and Covered Call candidates with per-share USD thresholds. Advisory only — no auto trading.",
+          body: "Liquid Sell Put and Covered Call candidates in a delta band. Advisory only — no auto trading.",
         },
       },
       cta: {
@@ -944,9 +944,9 @@ const en = {
 
   screen: {
     title: "Screen",
-    description: "Scan Sell Put and Covered Call candidates with your configurable rules",
+    description: "Scan liquid Sell Put and Covered Call candidates in a delta band",
     advisory:
-      "Advisory only. Candidates are ranked by your filters using Yahoo Finance data. CycleIQ does not place orders or give investment advice.",
+      "Advisory only. Default filters keep quality underlyings, tight spreads, meaningful open interest, and |delta| about 0.15–0.35. CycleIQ does not place orders or give investment advice.",
     tabs: {
       put: "Sell Put",
       call: "Covered Call",
@@ -964,13 +964,15 @@ const en = {
     },
     config: {
       title: "Scan parameters",
-      summary: "DTE {{min}}–{{max}} · ≥ ${{premium}}/sh",
+      summary: "DTE {{min}}–{{max}} · spread ≤{{spread}}% · OI ≥{{oi}} · Δ {{dMin}}–{{dMax}}{{quality}}",
+      summaryQuality: " · quality names",
       tipAria: "What is {{label}}?",
       reset: "Reset defaults",
       groups: {
-        expiry: "Expiration window",
-        premium: "Premium & return",
+        expiry: "Expiration",
         liquidity: "Liquidity",
+        delta: "Delta",
+        premium: "Premium & return",
         vol: "Volatility",
         strike: "Strike window",
         ranking: "Earnings & ranking",
@@ -983,6 +985,7 @@ const en = {
         volPts: "pts",
         multiple: "×",
         usdContract: "$/ct",
+        contracts: "cts",
       },
       minDte: "Min DTE",
       maxDte: "Max DTE",
@@ -991,12 +994,17 @@ const en = {
       minIvRv: "Min IV / RV",
       minIvMinusRv: "Min IV − RV",
       maxSpread: "Max bid/ask spread",
+      minOpenInterest: "Min open interest",
+      minAbsDelta: "Min |delta|",
+      maxAbsDelta: "Max |delta|",
       putRecall: "Put window below spot",
       callRecall: "Call window above floor",
       callCostFloor: "Call cost-floor multiple",
       earningsWindow: "Earnings hard window",
       proximityBand: "Return proximity band",
       feePerContract: "Fee per contract",
+      quality: "Quality underlyings only",
+      qualityHint: "Skip names that look small, unprofitable, or highly leveraged.",
       tips: {
         minDte:
           "Ignore contracts with fewer days to expiration than this. Very short DTE decays fast but needs frequent rolls and concentrates event risk. Wheel traders often start around 21 days.",
@@ -1011,7 +1019,13 @@ const en = {
         minIvMinusRv:
           "Minimum IV minus RV, in volatility points. 5 means IV must be at least 5 points above RV. 0 turns this filter off. Applied only when both IV and RV exist.",
         maxSpread:
-          "Maximum (ask − bid) / mid. Wide spreads are hard to fill near your assumed credit. 40 means the spread may be at most 40% of the mid price.",
+          "Maximum (ask − bid) / mid. Tighter spreads fill closer to the assumed credit. 20 means the spread may be at most 20% of the mid price.",
+        minOpenInterest:
+          "Minimum open interest. Thin OI is hard to trade. 100 contracts is a practical floor for liquid names.",
+        minAbsDelta:
+          "Keep contracts whose |delta| is at least this. Very low delta (far OTM) pays little premium. Wheel short options often start around 0.15.",
+        maxAbsDelta:
+          "Keep contracts whose |delta| is at most this. High delta (near ATM / ITM) means a higher assignment chance. Wheel short options often cap around 0.35.",
         putRecall:
           "Sell-put strikes must sit between spot and this percent below spot. 20 keeps strikes in the 80%–100% of spot band so you only sell puts near the money.",
         callRecall:
@@ -1024,6 +1038,8 @@ const en = {
           "When ranking, contracts whose period returns differ by less than this percent are treated as a tie, then discount, spread, and open interest break the tie. 0.2 means 0.2%.",
         feePerContract:
           "Round-trip commission per contract in USD, divided by 100 into a per-share fee before net premium is computed. If you leave the account default, 0.65 is typical.",
+        quality:
+          "Skip tickers that fail a coarse Yahoo quality check: market cap under about $5B, trailing EPS at or below zero, negative profit margin, or debt-to-equity above about 2.5. If Yahoo has no data, the ticker is kept so a data hole does not empty the scan.",
       },
     },
     saveConfig: "Save parameters",
@@ -1042,17 +1058,25 @@ const en = {
       iv_minus_rv_too_low: "IV − RV below minimum",
       earnings_in_hard_window: "Earnings in hard window",
       dte_out_of_window: "DTE outside window",
+      open_interest_too_low: "Open interest too low",
+      volume_too_low: "Volume too low",
+      delta_unavailable: "Delta unavailable",
+      delta_out_of_band: "Delta outside band",
       spot_unavailable: "Spot price unavailable",
       no_expiries_in_dte_window: "No expiries in DTE window",
       no_holding: "No assigned shares",
       fetch_failed: "Market data fetch failed",
       options_calendar_unavailable: "Options calendar unavailable",
+      market_cap_too_small: "Market cap too small",
+      not_profitable: "Not profitable",
+      leverage_too_high: "Leverage too high",
     },
     cols: {
       symbol: "Symbol",
       strike: "Strike",
       expiry: "Expiry",
       dte: "DTE",
+      delta: "Delta",
       netPremium: "Net $/sh",
       periodReturn: "Period",
       annualized: "Ann.",

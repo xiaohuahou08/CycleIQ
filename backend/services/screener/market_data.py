@@ -19,6 +19,8 @@ _spot_cache: dict[str, tuple[float, float]] = {}
 _chain_cache: dict[str, tuple[dict[str, Any], float]] = {}
 _earnings_cache: dict[str, tuple[date | None, float]] = {}
 _rv_cache: dict[str, tuple[float | None, float]] = {}
+_fund_cache: dict[str, tuple[dict[str, Any] | None, float]] = {}
+_FUND_TTL_SEC = 3600.0
 
 
 def _as_float(value: object) -> float | None:
@@ -36,6 +38,7 @@ def clear_screener_market_cache() -> None:
     _chain_cache.clear()
     _earnings_cache.clear()
     _rv_cache.clear()
+    _fund_cache.clear()
 
 
 def fetch_spot(ticker: str) -> float | None:
@@ -57,6 +60,48 @@ def fetch_spot(ticker: str) -> float | None:
     except Exception:
         logger.debug("spot fetch failed for %s", key, exc_info=True)
         return None
+
+
+def fetch_fundamentals(ticker: str, *, stock: Any | None = None) -> dict[str, Any] | None:
+    """Snapshot of quality metrics from Yahoo (cached ~1h). Missing fields are omitted."""
+    key = ticker.strip().upper()
+    now = time.monotonic()
+    cached = _fund_cache.get(key)
+    if cached and now - cached[1] < _FUND_TTL_SEC:
+        return cached[0]
+
+    info: dict[str, Any] | None = None
+    try:
+        ticker_obj = stock if stock is not None else yf.Ticker(key)
+        fast = getattr(ticker_obj, "fast_info", None)
+        raw_info = getattr(ticker_obj, "info", None)
+        if not isinstance(raw_info, dict):
+            raw_info = {}
+        market_cap = None
+        if isinstance(fast, dict):
+            market_cap = _as_float(fast.get("market_cap") or fast.get("marketCap"))
+        elif fast is not None:
+            market_cap = _as_float(getattr(fast, "market_cap", None))
+            if market_cap is None:
+                market_cap = _as_float(getattr(fast, "marketCap", None))
+        if market_cap is None:
+            market_cap = _as_float(raw_info.get("marketCap"))
+        trailing_eps = _as_float(raw_info.get("trailingEps"))
+        profit_margin = _as_float(raw_info.get("profitMargins"))
+        debt_to_equity = _as_float(raw_info.get("debtToEquity"))
+        snapshot = {
+            "market_cap": market_cap,
+            "trailing_eps": trailing_eps,
+            "profit_margin": profit_margin,
+            "debt_to_equity": debt_to_equity,
+        }
+        if any(v is not None for v in snapshot.values()):
+            info = snapshot
+    except Exception:
+        logger.debug("fundamentals fetch failed for %s", key, exc_info=True)
+        info = None
+    _fund_cache[key] = (info, now)
+    return info
 
 
 def fetch_earnings_day(ticker: str) -> date | None:
@@ -144,6 +189,13 @@ def _option_rows_from_chain(chain_df, *, option_type: str) -> list[dict[str, Any
                 oi = int(oi_raw)
         except (TypeError, ValueError):
             oi = None
+        vol_raw = r.get("volume")
+        volume = None
+        try:
+            if vol_raw is not None and str(vol_raw) != "nan":
+                volume = int(vol_raw)
+        except (TypeError, ValueError):
+            volume = None
         rows.append(
             {
                 "option_type": option_type,
@@ -153,6 +205,7 @@ def _option_rows_from_chain(chain_df, *, option_type: str) -> list[dict[str, Any
                 "last": last,
                 "implied_volatility": iv,
                 "open_interest": oi,
+                "volume": volume,
             }
         )
     return rows
@@ -189,6 +242,8 @@ def fetch_option_chain(ticker: str, *, min_dte: int, max_dte: int) -> dict[str, 
         result["error"] = "options_calendar_unavailable"
         _chain_cache[cache_key] = (result, now)
         return result
+
+    result["fundamentals"] = fetch_fundamentals(key, stock=stock)
 
     today = datetime.now(timezone.utc).date()
     expirations: list[dict[str, Any]] = []
