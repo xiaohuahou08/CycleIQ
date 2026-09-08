@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import math
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timezone
 from typing import Any
 
@@ -15,6 +14,8 @@ import yfinance as yf
 logger = logging.getLogger(__name__)
 
 _CACHE_TTL_SEC = 120.0
+_OPTIONS_ATTEMPTS = 3
+_OPTIONS_RETRY_SEC = 0.4
 _spot_cache: dict[str, tuple[float, float]] = {}
 _chain_cache: dict[str, tuple[dict[str, Any], float]] = {}
 _earnings_cache: dict[str, tuple[date | None, float]] = {}
@@ -33,6 +34,43 @@ def _as_float(value: object) -> float | None:
     return parsed
 
 
+def _fast_attr(fast: Any, *names: str) -> Any:
+    if fast is None:
+        return None
+    if isinstance(fast, dict):
+        for name in names:
+            if name in fast and fast[name] is not None:
+                return fast[name]
+        return None
+    for name in names:
+        value = getattr(fast, name, None)
+        if value is not None:
+            return value
+    return None
+
+
+def _list_option_expiries(stock: Any, *, symbol: str) -> list[str]:
+    """Yahoo crumb/rate-limit often returns [] or throws; retry a few times."""
+    expiries: list[str] = []
+    for attempt in range(_OPTIONS_ATTEMPTS):
+        try:
+            expiries = [str(item) for item in (getattr(stock, "options", None) or [])]
+        except Exception:
+            logger.warning(
+                "options calendar attempt %s/%s failed for %s",
+                attempt + 1,
+                _OPTIONS_ATTEMPTS,
+                symbol,
+                exc_info=attempt == _OPTIONS_ATTEMPTS - 1,
+            )
+            expiries = []
+        if expiries:
+            return expiries
+        if attempt + 1 < _OPTIONS_ATTEMPTS and _OPTIONS_RETRY_SEC > 0:
+            time.sleep(_OPTIONS_RETRY_SEC * (attempt + 1))
+    return expiries
+
+
 def clear_screener_market_cache() -> None:
     _spot_cache.clear()
     _chain_cache.clear()
@@ -49,7 +87,7 @@ def fetch_spot(ticker: str) -> float | None:
         return cached[0]
     try:
         stock = yf.Ticker(key)
-        price = _as_float(getattr(stock.fast_info, "last_price", None))
+        price = _as_float(_fast_attr(getattr(stock, "fast_info", None), "last_price", "lastPrice"))
         if price is None:
             hist = stock.history(period="5d")
             if not hist.empty:
@@ -77,13 +115,7 @@ def fetch_fundamentals(ticker: str, *, stock: Any | None = None) -> dict[str, An
         raw_info = getattr(ticker_obj, "info", None)
         if not isinstance(raw_info, dict):
             raw_info = {}
-        market_cap = None
-        if isinstance(fast, dict):
-            market_cap = _as_float(fast.get("market_cap") or fast.get("marketCap"))
-        elif fast is not None:
-            market_cap = _as_float(getattr(fast, "market_cap", None))
-            if market_cap is None:
-                market_cap = _as_float(getattr(fast, "marketCap", None))
+        market_cap = _as_float(_fast_attr(fast, "market_cap", "marketCap"))
         if market_cap is None:
             market_cap = _as_float(raw_info.get("marketCap"))
         trailing_eps = _as_float(raw_info.get("trailingEps"))
@@ -211,73 +243,94 @@ def _option_rows_from_chain(chain_df, *, option_type: str) -> list[dict[str, Any
     return rows
 
 
-def fetch_option_chain(ticker: str, *, min_dte: int, max_dte: int) -> dict[str, Any]:
+def fetch_option_chain(
+    ticker: str,
+    *,
+    min_dte: int,
+    max_dte: int,
+    include_earnings: bool = False,
+    include_fundamentals: bool = True,
+    include_rv: bool = False,
+) -> dict[str, Any]:
     """Return ``{spot, expirations: [{expiry, dte, puts, calls}], earnings}``."""
     key = ticker.strip().upper()
-    cache_key = f"{key}:{min_dte}:{max_dte}"
+    cache_key = f"{key}:{min_dte}:{max_dte}:{int(include_earnings)}:{int(include_fundamentals)}:{int(include_rv)}"
     now = time.monotonic()
     cached = _chain_cache.get(cache_key)
-    if cached and now - cached[1] < _CACHE_TTL_SEC:
+    if cached and now - cached[1] < _CACHE_TTL_SEC and not cached[0].get("error"):
         return cached[0]
 
-    spot = fetch_spot(key)
-    earnings = fetch_earnings_day(key)
     result: dict[str, Any] = {
         "symbol": key,
-        "spot": spot,
-        "earnings_day": earnings,
+        "spot": None,
+        "earnings_day": None,
+        "fundamentals": None,
         "expirations": [],
         "error": None,
     }
-    if spot is None:
-        result["error"] = "spot_unavailable"
-        _chain_cache[cache_key] = (result, now)
-        return result
 
     try:
         stock = yf.Ticker(key)
-        expiries = list(getattr(stock, "options", None) or [])
-    except Exception:
-        logger.debug("options calendar failed for %s", key, exc_info=True)
-        result["error"] = "options_calendar_unavailable"
+        spot = _as_float(_fast_attr(getattr(stock, "fast_info", None), "last_price", "lastPrice"))
+        if spot is None:
+            hist = stock.history(period="5d")
+            if hist is not None and not getattr(hist, "empty", True):
+                spot = _as_float(hist["Close"].iloc[-1])
+        if spot is not None:
+            _spot_cache[key] = (spot, time.monotonic())
+        result["spot"] = spot
+        if spot is None:
+            result["error"] = "spot_unavailable"
+            return result
+
+        expiries = _list_option_expiries(stock, symbol=key)
+        if not expiries:
+            result["error"] = "options_calendar_unavailable"
+            return result
+
+        today = datetime.now(timezone.utc).date()
+        expirations: list[dict[str, Any]] = []
+        for exp_str in expiries:
+            try:
+                expiry = date.fromisoformat(str(exp_str)[:10])
+            except ValueError:
+                continue
+            dte = (expiry - today).days
+            if dte < min_dte or dte > max_dte:
+                continue
+            try:
+                chain = stock.option_chain(exp_str)
+            except Exception:
+                logger.debug("option_chain failed %s %s", key, exp_str, exc_info=True)
+                continue
+            puts = _option_rows_from_chain(chain.puts, option_type="PUT")
+            calls = _option_rows_from_chain(chain.calls, option_type="CALL")
+            expirations.append(
+                {
+                    "expiry": expiry,
+                    "expiry_str": expiry.isoformat(),
+                    "dte": dte,
+                    "puts": puts,
+                    "calls": calls,
+                    "term_matched_rv": term_matched_rv(key, dte=dte) if include_rv else None,
+                }
+            )
+
+        result["expirations"] = expirations
+        if not expirations:
+            result["error"] = "no_expiries_in_dte_window"
+            return result
+
+        if include_earnings:
+            result["earnings_day"] = fetch_earnings_day(key)
+        if include_fundamentals:
+            result["fundamentals"] = fetch_fundamentals(key, stock=stock)
         _chain_cache[cache_key] = (result, now)
         return result
-
-    result["fundamentals"] = fetch_fundamentals(key, stock=stock)
-
-    today = datetime.now(timezone.utc).date()
-    expirations: list[dict[str, Any]] = []
-    for exp_str in expiries:
-        try:
-            expiry = date.fromisoformat(str(exp_str)[:10])
-        except ValueError:
-            continue
-        dte = (expiry - today).days
-        if dte < min_dte or dte > max_dte:
-            continue
-        try:
-            chain = stock.option_chain(exp_str)
-        except Exception:
-            logger.debug("option_chain failed %s %s", key, exp_str, exc_info=True)
-            continue
-        puts = _option_rows_from_chain(chain.puts, option_type="PUT")
-        calls = _option_rows_from_chain(chain.calls, option_type="CALL")
-        expirations.append(
-            {
-                "expiry": expiry,
-                "expiry_str": expiry.isoformat(),
-                "dte": dte,
-                "puts": puts,
-                "calls": calls,
-                "term_matched_rv": term_matched_rv(key, dte=dte),
-            }
-        )
-
-    result["expirations"] = expirations
-    if not expirations:
-        result["error"] = "no_expiries_in_dte_window"
-    _chain_cache[cache_key] = (result, now)
-    return result
+    except Exception:
+        logger.warning("option chain fetch failed for %s", key, exc_info=True)
+        result["error"] = result.get("error") or "fetch_failed"
+        return result
 
 
 def fetch_chains_parallel(
@@ -285,26 +338,31 @@ def fetch_chains_parallel(
     *,
     min_dte: int,
     max_dte: int,
+    include_earnings: bool = False,
+    include_fundamentals: bool = True,
+    include_rv: bool = False,
 ) -> dict[str, dict[str, Any]]:
     unique = sorted({t.strip().upper() for t in tickers if t and t.strip()})
     out: dict[str, dict[str, Any]] = {}
-    if not unique:
-        return out
-    with ThreadPoolExecutor(max_workers=min(6, len(unique))) as pool:
-        futures = {
-            pool.submit(fetch_option_chain, t, min_dte=min_dte, max_dte=max_dte): t for t in unique
-        }
-        for fut in as_completed(futures):
-            ticker = futures[fut]
-            try:
-                out[ticker] = fut.result()
-            except Exception:
-                logger.debug("chain worker failed for %s", ticker, exc_info=True)
-                out[ticker] = {
-                    "symbol": ticker,
-                    "spot": None,
-                    "earnings_day": None,
-                    "expirations": [],
-                    "error": "fetch_failed",
-                }
+    # yfinance cookie/crumb is not safe under concurrent option-chain fetches;
+    # parallel workers were returning empty calendars for most of the watchlist.
+    for ticker in unique:
+        try:
+            out[ticker] = fetch_option_chain(
+                ticker,
+                min_dte=min_dte,
+                max_dte=max_dte,
+                include_earnings=include_earnings,
+                include_fundamentals=include_fundamentals,
+                include_rv=include_rv,
+            )
+        except Exception:
+            logger.debug("chain worker failed for %s", ticker, exc_info=True)
+            out[ticker] = {
+                "symbol": ticker,
+                "spot": None,
+                "earnings_day": None,
+                "expirations": [],
+                "error": "fetch_failed",
+            }
     return out
