@@ -159,7 +159,7 @@ def test_iv_rv_is_not_a_hard_gate():
         "dte": 30,
         "spread_ratio": 0.1,
         "net_premium_per_share": 0.80,
-        "annualized_net_return": 0.02,
+        "annualized_net_return": 0.20,
         "iv_rv_ratio": 0.7,
         "iv_minus_rv": -0.10,
         "expiry": date(2026, 9, 1),
@@ -209,6 +209,7 @@ def test_untouched_first_release_filters_upgrade_to_new_defaults():
     assert cfg["earnings_hard_window_days"] == 0
     assert cfg["min_iv_rv_ratio"] == 0.0
     assert cfg["require_quality_fundamentals"] is True
+    assert cfg["min_annualized_return"] == 0.10
     custom = parse_screener_config({"min_net_premium_usd": 0.80, "max_spread_ratio": 0.40})
     assert custom["min_net_premium_usd"] == 0.80
     assert custom["max_spread_ratio"] == 0.40
@@ -220,6 +221,7 @@ def test_hard_filters_reject_thin_open_interest():
         "dte": 30,
         "spread_ratio": 0.1,
         "net_premium_per_share": 0.80,
+        "annualized_net_return": 0.20,
         "open_interest": 10,
         "delta": -0.22,
         "expiry": date(2026, 9, 1),
@@ -235,6 +237,7 @@ def test_hard_filters_reject_delta_out_of_band():
         "dte": 30,
         "spread_ratio": 0.1,
         "net_premium_per_share": 0.80,
+        "annualized_net_return": 0.20,
         "open_interest": 500,
         "delta": -0.05,
         "expiry": date(2026, 9, 1),
@@ -244,12 +247,29 @@ def test_hard_filters_reject_delta_out_of_band():
     assert decision["rule"] == "delta_out_of_band"
 
 
+def test_hard_filters_reject_low_annualized():
+    cfg = parse_screener_config({"min_annualized_return": 0.10})
+    row = {
+        "dte": 30,
+        "spread_ratio": 0.1,
+        "net_premium_per_share": 0.80,
+        "annualized_net_return": 0.04,
+        "open_interest": 500,
+        "delta": -0.22,
+        "expiry": date(2026, 9, 1),
+    }
+    decision = evaluate_hard_filters(row, cfg=cfg, scan_day=date(2026, 8, 1), earnings_day=None)
+    assert decision["accepted"] is False
+    assert decision["rule"] == "annualized_too_low"
+
+
 def test_rank_one_per_symbol_and_period_order():
     rows = [
         {
             "symbol": "AAA",
             "strike": 90,
             "period_net_return": 0.02,
+            "annualized_net_return": 0.24,
             "net_assignment_discount_pct": 0.05,
             "spread_ratio": 0.1,
             "open_interest": 10,
@@ -261,6 +281,7 @@ def test_rank_one_per_symbol_and_period_order():
             "symbol": "AAA",
             "strike": 95,
             "period_net_return": 0.03,
+            "annualized_net_return": 0.36,
             "net_assignment_discount_pct": 0.04,
             "spread_ratio": 0.1,
             "open_interest": 20,
@@ -272,6 +293,7 @@ def test_rank_one_per_symbol_and_period_order():
             "symbol": "BBB",
             "strike": 50,
             "period_net_return": 0.025,
+            "annualized_net_return": 0.30,
             "net_assignment_discount_pct": 0.03,
             "spread_ratio": 0.05,
             "open_interest": 5,
@@ -288,10 +310,55 @@ def test_rank_one_per_symbol_and_period_order():
     assert ranked[1]["symbol"] == "BBB"
 
 
-def test_empty_watchlist_falls_back_to_defaults():
+def test_empty_watchlist_stays_empty():
     cfg = parse_screener_config({"watchlist": []})
-    assert "AAPL" in cfg["watchlist"]
-    assert len(cfg["watchlist"]) >= 1
+    assert cfg["watchlist"] == []
+    assert parse_screener_config(None)["watchlist"] == []
+
+
+def test_factory_mag7_watchlist_migrates_to_empty():
+    cfg = parse_screener_config(
+        {"watchlist": ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA"]}
+    )
+    assert cfg["watchlist"] == []
+
+
+def test_resolve_put_symbols_uses_universe_when_watchlist_empty():
+    from backend.services.screener.config import MAX_PUT_SCAN, SCREEN_UNIVERSE
+    from backend.services.screener.scan import resolve_put_symbols
+
+    symbols, rejects = resolve_put_symbols(
+        {"watchlist": [], "require_quality_fundamentals": False}
+    )
+    assert rejects == {}
+    assert symbols == list(SCREEN_UNIVERSE[:MAX_PUT_SCAN])
+
+
+def test_resolve_put_symbols_quality_first_and_extras(monkeypatch):
+    from backend.services.screener.scan import resolve_put_symbols
+
+    def fake_fundamentals(ticker: str, **_kwargs):
+        if ticker == "XYZ":
+            return {"market_cap": 1e8, "trailing_eps": 2.0}
+        if ticker == "AAPL":
+            return {"market_cap": 80_000_000_000.0, "trailing_eps": -1.0}
+        return {
+            "market_cap": 80_000_000_000.0,
+            "trailing_eps": 4.0,
+            "profit_margin": 0.15,
+            "debt_to_equity": 0.8,
+        }
+
+    monkeypatch.setattr("backend.services.screener.scan.fetch_fundamentals", fake_fundamentals)
+    symbols, rejects = resolve_put_symbols(
+        {"watchlist": ["AMD", "XYZ"], "require_quality_fundamentals": True}
+    )
+    assert symbols[0] == "AMD"
+    assert "XYZ" not in symbols
+    assert "AAPL" not in symbols
+    assert rejects.get("market_cap_too_small", 0) >= 1
+    assert rejects.get("not_profitable", 0) >= 1
+    assert len(symbols) >= 1
 
 
 def test_parse_screener_config_rejects_bad_dte():

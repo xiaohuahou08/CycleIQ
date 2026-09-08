@@ -33,11 +33,11 @@ export interface TradeDefaultsApi {
 }
 
 export const DEFAULT_SCREENER_CONFIG: ScreenerConfigApi = {
-  watchlist: ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA"],
+  watchlist: [],
   min_dte: 21,
   max_dte: 45,
   min_net_premium_usd: 0.1,
-  min_annualized_return: 0,
+  min_annualized_return: 0.1,
   min_iv_rv_ratio: 0,
   min_iv_minus_rv: 0,
   max_spread_ratio: 0.2,

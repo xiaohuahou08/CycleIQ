@@ -940,7 +940,7 @@ const zh = {
     title: "选股",
     description: "只扫描买卖价差窄、持仓量大、Delta 适中的卖 Put / 备兑 Call",
     advisory:
-      "仅供参考。默认只保留基本面较好、流动性较好（价差窄、OI 够）且 Delta 约 0.15–0.35 的合约。CycleIQ 不下单，也不提供投资建议。",
+      "仅供参考。Sell Put 先按基本面从流动大盘池筛标的，再保留年化约 10% 以上、流动性较好（价差窄、OI 够）且 Delta 约 0.15–0.35 的合约。CycleIQ 不下单，也不提供投资建议。",
     tabs: {
       put: "Sell Put",
       call: "Covered Call",
@@ -958,10 +958,18 @@ const zh = {
     },
     config: {
       title: "扫描参数",
-      summary: "DTE {{min}}–{{max}} · 价差 ≤{{spread}}% · OI ≥{{oi}} · Δ {{dMin}}–{{dMax}}{{quality}}",
+      summary: "{{names}} · DTE {{min}}–{{max}} · 年化 ≥{{ann}}% · 价差 ≤{{spread}}% · OI ≥{{oi}} · Δ {{dMin}}–{{dMax}}{{quality}}",
       summaryQuality: " · 基本面达标",
+      summaryAuto: "基本面自动选股",
+      summaryExtras: "{{count}} 只额外标的",
       tipAria: "{{label}} 是什么？",
       reset: "恢复默认",
+      watchlist: "额外标的（可选）",
+      watchlistHint: "留空则先按基本面从流动大盘池筛选，再扫描期权。填写的标的会优先加入。",
+      emptyWatchlist: "未添加额外标的，Sell Put 将按基本面从大盘池自动筛选。",
+      tickerPlaceholder: "AMD, AVGO, JPM",
+      addTicker: "添加",
+      removeTicker: "移除 {{ticker}}",
       groups: {
         expiry: "到期",
         liquidity: "流动性",
@@ -1000,6 +1008,8 @@ const zh = {
       quality: "只要基本面较好的标的",
       qualityHint: "跳过市值过小、尚未盈利或负债过高的股票。",
       tips: {
+        watchlist:
+          "Sell Put 不会从 Mag 7 起步。先对流动大盘池做基本面筛选，再对通过的标的（最多 20 只）扫描期权。你添加的额外标的会优先考虑。Covered Call 忽略此列表，改用 Cycles 里已经指派到账的持股。",
         minDte:
           "到期天数少于此值的合约会被跳过。DTE 太短时 Theta 衰减快，但需要更频繁滚动，事件风险也更集中。滚轮策略常用 21 天左右起。",
         maxDte:
@@ -1089,6 +1099,7 @@ const zh = {
       loadConfig: "加载选股配置失败。",
       saveConfig: "保存选股配置失败。",
       scan: "扫描失败。",
+      watchlistMax: "观察列表最多 30 个标的。",
     },
   },
 

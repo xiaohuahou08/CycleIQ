@@ -7,7 +7,8 @@ from typing import Any
 
 from backend.models.trade import Trade
 from backend.services.screener.config import (
-    DEFAULT_WATCHLIST,
+    MAX_PUT_SCAN,
+    SCREEN_UNIVERSE,
     merge_screener_config,
     resolve_fee_per_contract,
 )
@@ -16,7 +17,7 @@ from backend.services.screener.filters import (
     evaluate_ticker_quality,
     in_strike_window,
 )
-from backend.services.screener.market_data import fetch_chains_parallel
+from backend.services.screener.market_data import fetch_chains_parallel, fetch_fundamentals
 from backend.services.screener.metrics import build_candidate_metrics
 from backend.services.screener.rank import rank_candidates
 from backend.services.stock_mtm import open_assigned_positions
@@ -175,6 +176,43 @@ def _scan_side(
     return [_serialize_candidate(r) for r in ranked], reject_counts
 
 
+def resolve_put_symbols(cfg: dict[str, Any]) -> tuple[list[str], dict[str, int]]:
+    """Pick Sell Put names: optional extras, then fundamentals-qualified liquid large-caps."""
+    extras: list[str] = []
+    seen: set[str] = set()
+    for item in cfg.get("watchlist") or []:
+        ticker = str(item or "").strip().upper()
+        if ticker and ticker not in seen:
+            seen.add(ticker)
+            extras.append(ticker)
+
+    quality_on = bool(cfg.get("require_quality_fundamentals"))
+    reject_counts: dict[str, int] = {}
+    out: list[str] = []
+
+    def _accept(ticker: str) -> bool:
+        if not quality_on:
+            return True
+        quality = evaluate_ticker_quality(fetch_fundamentals(ticker), enabled=True)
+        if quality.get("accepted"):
+            return True
+        rule = str(quality.get("rule") or "not_profitable")
+        reject_counts[rule] = reject_counts.get(rule, 0) + 1
+        return False
+
+    for ticker in extras:
+        if _accept(ticker) and ticker not in out:
+            out.append(ticker)
+    for ticker in SCREEN_UNIVERSE:
+        if len(out) >= MAX_PUT_SCAN:
+            break
+        if ticker in seen:
+            continue
+        if _accept(ticker):
+            out.append(ticker)
+    return out[:MAX_PUT_SCAN], reject_counts
+
+
 def run_screen(
     *,
     user_id: str,
@@ -192,7 +230,10 @@ def run_screen(
     holdings_list = open_assigned_positions(trades)
     holdings = {ticker: (shares, avg_strike) for ticker, shares, avg_strike in holdings_list}
 
-    put_symbols = list(cfg.get("watchlist") or []) or list(DEFAULT_WATCHLIST)
+    put_symbols: list[str] = []
+    put_pre_rejects: dict[str, int] = {}
+    if "put" in wanted:
+        put_symbols, put_pre_rejects = resolve_put_symbols(cfg)
     call_symbols = sorted(holdings.keys()) if "call" in wanted else []
     fetch_symbols = []
     if "put" in wanted:
@@ -226,6 +267,8 @@ def run_screen(
             scan_day=scan_day,
         )
         reject_summary["put"] = put_rejects
+        for rule, count in put_pre_rejects.items():
+            reject_summary["put"][rule] = reject_summary["put"].get(rule, 0) + count
 
     if "call" in wanted:
         calls, call_rejects = _scan_side(

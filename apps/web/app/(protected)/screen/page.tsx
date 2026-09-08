@@ -262,6 +262,7 @@ export default function ScreenPage() {
           onSave={() => void saveConfig()}
           saving={saving}
           loading={loadingConfig}
+          onWatchlistMax={() => showToast(t("errors.watchlistMax"), "error")}
         />
 
         <div className={`${CARD_BASE} overflow-hidden`}>

@@ -9,6 +9,16 @@ def _period(row: dict[str, Any]) -> float:
     return float(row.get("period_net_return") or 0.0)
 
 
+def _ann(row: dict[str, Any]) -> float:
+    value = row.get("annualized_net_return")
+    if value is not None:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            pass
+    return _period(row)
+
+
 def _discount(row: dict[str, Any]) -> float:
     value = row.get("net_assignment_discount_pct")
     return float(value) if value is not None else -1.0
@@ -49,7 +59,7 @@ def within_symbol_sort_key(row: dict[str, Any], *, mode: str) -> tuple:
     mode_norm = "call" if str(mode).lower() == "call" else "put"
     if mode_norm == "put":
         return (
-            -_period(row),
+            -_ann(row),
             -_discount(row),
             _spread(row),
             _delta_from_target(row),
@@ -59,7 +69,7 @@ def within_symbol_sort_key(row: dict[str, Any], *, mode: str) -> tuple:
             _contract_id(row),
         )
     return (
-        -_period(row),
+        -_ann(row),
         -float(row.get("strike") or 0.0),
         _spread(row),
         _delta_from_target(row),
@@ -74,7 +84,7 @@ def cross_symbol_sort_key(row: dict[str, Any], *, mode: str) -> tuple:
     mode_norm = "call" if str(mode).lower() == "call" else "put"
     if mode_norm == "put":
         return (
-            -_period(row),
+            -_ann(row),
             -_discount(row),
             _spread(row),
             _delta_from_target(row),
@@ -86,7 +96,7 @@ def cross_symbol_sort_key(row: dict[str, Any], *, mode: str) -> tuple:
         )
     strike_above = float(row.get("strike") or 0.0) - float(row.get("spot") or 0.0)
     return (
-        -_period(row),
+        -_ann(row),
         -strike_above,
         _spread(row),
         _delta_from_target(row),
@@ -117,22 +127,22 @@ def rank_candidates(
     mode: str,
     proximity_band: float,
 ) -> list[dict[str, Any]]:
-    """Group by period-return proximity, sort within/across symbols like OM."""
+    """Group by annualized-return proximity, sort within/across symbols like OM."""
     if not rows:
         return []
 
     picks = pick_best_per_symbol(rows, mode=mode)
     picks_sorted = sorted(picks, key=lambda r: cross_symbol_sort_key(r, mode=mode))
 
-    # Anchor grouping: walk in period-return order, bucket near-equal returns.
-    by_period = sorted(picks_sorted, key=_period, reverse=True)
+    # Anchor grouping: walk in annualized-return order, bucket near-equal yields.
+    by_yield = sorted(picks_sorted, key=_ann, reverse=True)
     buckets: list[list[dict[str, Any]]] = []
-    for row in by_period:
+    for row in by_yield:
         if not buckets:
             buckets.append([row])
             continue
-        anchor = _period(buckets[-1][0])
-        if abs(_period(row) - anchor) <= float(proximity_band):
+        anchor = _ann(buckets[-1][0])
+        if abs(_ann(row) - anchor) <= float(proximity_band):
             buckets[-1].append(row)
         else:
             buckets.append([row])

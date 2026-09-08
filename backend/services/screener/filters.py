@@ -104,7 +104,7 @@ def evaluate_hard_filters(
 ) -> dict[str, Any]:
     """Return ``{accepted, rule, ...}`` for a metric-enriched candidate row.
 
-    IV/RV, annualized return, and earnings are ranking/display signals only —
+    IV/RV and earnings are ranking/display signals only —
     they are not hard gates (those filters emptied scans on typical mega-caps).
     """
     dte = int(row.get("dte") or 0)
@@ -128,6 +128,17 @@ def evaluate_hard_filters(
             "metric_value": net,
             "threshold": cfg["min_net_premium_usd"],
         }
+
+    min_ann = float(cfg.get("min_annualized_return") or 0.0)
+    if min_ann > 0:
+        ann = row.get("annualized_net_return")
+        if ann is None or float(ann) < min_ann:
+            return {
+                "accepted": False,
+                "rule": "annualized_too_low",
+                "metric_value": ann,
+                "threshold": min_ann,
+            }
 
     oi = row.get("open_interest")
     min_oi = int(cfg.get("min_open_interest") or 0)

@@ -946,7 +946,7 @@ const en = {
     title: "Screen",
     description: "Scan liquid Sell Put and Covered Call candidates in a delta band",
     advisory:
-      "Advisory only. Default filters keep quality underlyings, tight spreads, meaningful open interest, and |delta| about 0.15–0.35. CycleIQ does not place orders or give investment advice.",
+      "Advisory only. Sell Put first screens a liquid large-cap pool on fundamentals, then keeps contracts with about 10% annualized yield, tight spreads, meaningful open interest, and |delta| about 0.15–0.35. CycleIQ does not place orders or give investment advice.",
     tabs: {
       put: "Sell Put",
       call: "Covered Call",
@@ -964,10 +964,18 @@ const en = {
     },
     config: {
       title: "Scan parameters",
-      summary: "DTE {{min}}–{{max}} · spread ≤{{spread}}% · OI ≥{{oi}} · Δ {{dMin}}–{{dMax}}{{quality}}",
+      summary: "{{names}} · DTE {{min}}–{{max}} · ann ≥{{ann}}% · spread ≤{{spread}}% · OI ≥{{oi}} · Δ {{dMin}}–{{dMax}}{{quality}}",
       summaryQuality: " · quality names",
+      summaryAuto: "Auto universe",
+      summaryExtras: "{{count}} extras",
       tipAria: "What is {{label}}?",
       reset: "Reset defaults",
+      watchlist: "Extra tickers (optional)",
+      watchlistHint: "Leave empty to screen liquid large-caps by fundamentals first. Added tickers are included before the auto pool.",
+      emptyWatchlist: "No extras — Sell Put will pick names from the quality universe.",
+      tickerPlaceholder: "AMD, AVGO, JPM",
+      addTicker: "Add",
+      removeTicker: "Remove {{ticker}}",
       groups: {
         expiry: "Expiration",
         liquidity: "Liquidity",
@@ -1006,6 +1014,8 @@ const en = {
       quality: "Quality underlyings only",
       qualityHint: "Skip names that look small, unprofitable, or highly leveraged.",
       tips: {
+        watchlist:
+          "Sell Put does not start from Mag 7. It first applies the quality screen to a liquid large-cap pool, then scans options on names that pass, capped at 20. Extra tickers you add are always considered first. Covered calls ignore this list and use assigned shares in Cycles.",
         minDte:
           "Ignore contracts with fewer days to expiration than this. Very short DTE decays fast but needs frequent rolls and concentrates event risk. Wheel traders often start around 21 days.",
         maxDte:
@@ -1095,6 +1105,7 @@ const en = {
       loadConfig: "Failed to load screener config.",
       saveConfig: "Failed to save screener config.",
       scan: "Scan failed.",
+      watchlistMax: "Watchlist is limited to 30 tickers.",
     },
   },
 
