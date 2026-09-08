@@ -349,3 +349,99 @@ def test_ticker_quality_rejects_small_cap_unprofitable_and_leverage():
         enabled=True,
     )
     assert ok["accepted"] is True
+
+
+class _EmptyFrame:
+    empty = True
+
+
+class _FakeChain:
+    def __init__(self):
+        self.puts = _EmptyFrame()
+        self.calls = _EmptyFrame()
+
+
+def test_empty_options_calendar_is_unavailable(monkeypatch):
+    from backend.services.screener import market_data as md
+
+    md.clear_screener_market_cache()
+    monkeypatch.setattr(md, "_OPTIONS_RETRY_SEC", 0)
+
+    class FakeTicker:
+        def __init__(self, _symbol):
+            self.fast_info = type("F", (), {"last_price": 100.0})()
+
+        @property
+        def options(self):
+            return []
+
+        def option_chain(self, _exp):
+            return _FakeChain()
+
+    monkeypatch.setattr(md.yf, "Ticker", FakeTicker)
+    result = md.fetch_option_chain(
+        "AAPL", min_dte=21, max_dte=45, include_fundamentals=False, include_rv=False
+    )
+    assert result["error"] == "options_calendar_unavailable"
+    assert result["expirations"] == []
+
+
+def test_options_calendar_retries_then_succeeds(monkeypatch):
+    from datetime import datetime, timedelta, timezone
+
+    from backend.services.screener import market_data as md
+
+    md.clear_screener_market_cache()
+    monkeypatch.setattr(md, "_OPTIONS_RETRY_SEC", 0)
+    attempts = {"n": 0}
+    expiry = (datetime.now(timezone.utc).date() + timedelta(days=30)).isoformat()
+
+    class FakeTicker:
+        def __init__(self, _symbol):
+            self.fast_info = type("F", (), {"last_price": 100.0})()
+
+        @property
+        def options(self):
+            attempts["n"] += 1
+            if attempts["n"] < 3:
+                raise RuntimeError("crumb")
+            return [expiry]
+
+        def option_chain(self, _exp):
+            return _FakeChain()
+
+    monkeypatch.setattr(md.yf, "Ticker", FakeTicker)
+    result = md.fetch_option_chain(
+        "AAPL", min_dte=21, max_dte=45, include_fundamentals=False, include_rv=False
+    )
+    assert attempts["n"] == 3
+    assert result["error"] is None
+    assert len(result["expirations"]) == 1
+
+
+def test_failed_option_calendar_is_not_cached(monkeypatch):
+    from backend.services.screener import market_data as md
+
+    md.clear_screener_market_cache()
+    monkeypatch.setattr(md, "_OPTIONS_RETRY_SEC", 0)
+    attempts = {"n": 0}
+
+    class FakeTicker:
+        def __init__(self, _symbol):
+            self.fast_info = type("F", (), {"last_price": 100.0})()
+
+        @property
+        def options(self):
+            attempts["n"] += 1
+            raise RuntimeError("yahoo down")
+
+    monkeypatch.setattr(md.yf, "Ticker", FakeTicker)
+    first = md.fetch_option_chain(
+        "MSFT", min_dte=21, max_dte=45, include_fundamentals=False, include_rv=False
+    )
+    second = md.fetch_option_chain(
+        "MSFT", min_dte=21, max_dte=45, include_fundamentals=False, include_rv=False
+    )
+    assert first["error"] == "options_calendar_unavailable"
+    assert second["error"] == "options_calendar_unavailable"
+    assert attempts["n"] == md._OPTIONS_ATTEMPTS * 2

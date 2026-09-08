@@ -204,6 +204,10 @@ def run_screen(
         fetch_symbols,
         min_dte=int(cfg["min_dte"]),
         max_dte=int(cfg["max_dte"]),
+        include_earnings=int(cfg.get("earnings_hard_window_days") or 0) > 0,
+        include_fundamentals=bool(cfg.get("require_quality_fundamentals")),
+        include_rv=float(cfg.get("min_iv_rv_ratio") or 0) > 0
+        or float(cfg.get("min_iv_minus_rv") or 0) > 0,
     )
 
     puts: list[dict[str, Any]] = []
