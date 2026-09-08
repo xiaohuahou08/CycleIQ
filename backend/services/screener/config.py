@@ -5,14 +5,59 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-DEFAULT_WATCHLIST = ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA"]
+# Former factory list — kept only so stored Mag-7 configs can be migrated off it.
+_FACTORY_WATCHLIST = ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA"]
+
+# Optionable large-caps used as the Sell Put screening pool (not a recommended list).
+# Yahoo cannot scan the whole market in one request; fundamentals run on this pool first.
+SCREEN_UNIVERSE: tuple[str, ...] = (
+    "AAPL",
+    "ABT",
+    "ACN",
+    "ADBE",
+    "AMD",
+    "AMZN",
+    "AVGO",
+    "AXP",
+    "BAC",
+    "BRK-B",
+    "CAT",
+    "COST",
+    "CRM",
+    "CSCO",
+    "DIS",
+    "GOOGL",
+    "GS",
+    "HD",
+    "IBM",
+    "INTU",
+    "JNJ",
+    "JPM",
+    "LLY",
+    "MA",
+    "MCD",
+    "META",
+    "MSFT",
+    "NFLX",
+    "NVDA",
+    "ORCL",
+    "PEP",
+    "PG",
+    "QCOM",
+    "UNH",
+    "V",
+    "WMT",
+    "XOM",
+)
+MAX_PUT_SCAN = 20
+DEFAULT_WATCHLIST: list[str] = []
 
 DEFAULT_SCREENER_CONFIG: dict[str, Any] = {
     "watchlist": list(DEFAULT_WATCHLIST),
     "min_dte": 21,
     "max_dte": 45,
     "min_net_premium_usd": 0.10,
-    "min_annualized_return": 0.0,
+    "min_annualized_return": 0.10,
     "min_iv_rv_ratio": 0.0,
     "min_iv_minus_rv": 0.0,
     "max_spread_ratio": 0.20,
@@ -80,6 +125,11 @@ def merge_screener_config(raw: Any) -> dict[str, Any]:
     # Previous factory default (50% spread, no OI/delta keys) was too loose for liquid names.
     if isinstance(raw, dict) and "min_open_interest" not in raw and _close(out["max_spread_ratio"], 0.50):
         out["max_spread_ratio"] = float(DEFAULT_SCREENER_CONFIG["max_spread_ratio"])
+    stored_watchlist = out.get("watchlist")
+    if isinstance(stored_watchlist, list):
+        normalized = [str(item or "").strip().upper() for item in stored_watchlist if str(item or "").strip()]
+        if normalized == _FACTORY_WATCHLIST:
+            out["watchlist"] = []
     return out
 
 
@@ -140,8 +190,6 @@ def parse_screener_config(raw: Any) -> dict[str, Any]:
             watchlist.append(ticker)
     if len(watchlist) > _MAX_WATCHLIST:
         raise ValueError(f"watchlist must have at most {_MAX_WATCHLIST} tickers")
-    if not watchlist:
-        watchlist = list(DEFAULT_WATCHLIST)
     cfg["watchlist"] = watchlist
 
     min_dte = _as_int(cfg["min_dte"], "min_dte")
