@@ -6,6 +6,7 @@ import {
   buildCcCostBasisRows,
   effectiveCcPremiumForBasis,
   effectiveStockCostPerShareForTrade,
+  deriveWheelState,
   isCompletedWheel,
   netLegCashflow,
   resolveTradeCycleId,
@@ -396,6 +397,23 @@ describe("isCompletedWheel", () => {
     assert.equal(isCompletedWheel("EXIT"), true);
     assert.equal(isCompletedWheel("CSP_CLOSED"), true);
     assert.equal(isCompletedWheel("STOCK_HELD"), false);
+  });
+});
+
+describe("deriveWheelState", () => {
+  it("marks rolled-only CSP legs as CSP_CLOSED even if backend is still CSP_OPEN", () => {
+    const legs = [
+      trade({ id: "p1", status: "ROLLED", contracts: 2 }),
+      trade({ id: "p2", status: "ROLLED", contracts: 2, rolled_from_id: "p1" }),
+    ];
+    const state = deriveWheelState(legs, "CSP_OPEN");
+    assert.equal(state, "CSP_CLOSED");
+    assert.equal(isCompletedWheel(state), true);
+  });
+
+  it("keeps an open CSP as in progress", () => {
+    const legs = [trade({ status: "OPEN" })];
+    assert.equal(deriveWheelState(legs, "CSP_OPEN"), "CSP_OPEN");
   });
 });
 

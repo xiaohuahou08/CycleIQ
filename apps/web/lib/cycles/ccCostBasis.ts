@@ -298,6 +298,31 @@ export function isCompletedWheel(state: string): boolean {
   return state === "EXIT" || state === "CSP_CLOSED";
 }
 
+/**
+ * Display/FSM state for a wheel based on remaining legs.
+ * Deleting the last OPEN CSP leaves ROLLED puts only — that is CSP_CLOSED,
+ * even if the backend cycle row is still CSP_OPEN.
+ */
+export function deriveWheelState(wheelTrades: Trade[], cycleState: string): string {
+  const hasOpen = wheelTrades.some((t) => t.status === "OPEN");
+  if (hasOpen) return cycleState.startsWith("CC") ? cycleState : "CSP_OPEN";
+
+  const hasCalledAwayCall = wheelTrades.some(
+    (t) => t.option_type === "CALL" && t.status === "CALLED_AWAY"
+  );
+  if (hasCalledAwayCall) return "EXIT";
+
+  const hasAssigned = wheelTrades.some((t) => t.status === "ASSIGNED" && t.option_type === "PUT");
+  if (hasAssigned) return "STOCK_HELD";
+
+  const hasPut = wheelTrades.some((t) => t.option_type === "PUT");
+  const hasCall = wheelTrades.some((t) => t.option_type === "CALL");
+  if (hasPut && !hasCall) return "CSP_CLOSED";
+
+  if (cycleState === "STOCK_HELD" || cycleState === "CC_OPEN") return cycleState;
+  return "EXIT";
+}
+
 export function assignedPutsWithBasis(trades: Trade[]): Trade[] {
   return trades.filter(
     (t) =>
