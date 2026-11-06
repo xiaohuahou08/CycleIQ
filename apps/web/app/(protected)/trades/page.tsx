@@ -476,7 +476,12 @@ export default function TradesPage() {
       <ExpireTradeModal
         open={Boolean(expiringTrade)}
         trade={expiringTrade}
+        currentPrice={expiringTrade ? prices[expiringTrade.ticker] : undefined}
         onClose={() => setExpiringTrade(null)}
+        onSwitchToAssign={() => {
+          setAssigningTrade(expiringTrade);
+          setExpiringTrade(null);
+        }}
         onConfirm={async (input) => {
           if (!token || !expiringTrade) return;
           try {

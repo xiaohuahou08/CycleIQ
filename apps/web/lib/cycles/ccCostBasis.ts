@@ -19,7 +19,15 @@ export interface CcCostBasisRow {
   assignedShares: number;
   ccPositions: number;
   reductionPct: number;
-  recentTradeDate: number;
+  /** Assignment basis, then cost/share after each basis-reducing CC leg (last = currentCost). */
+  costSteps: CcCostStep[];
+}
+
+export interface CcCostStep {
+  date: string;
+  costPerShare: number;
+  /** Absent on the initial assignment step. */
+  cc?: { tradeId: string; strike: number };
 }
 
 function fmtDate(iso: string): string {
@@ -349,6 +357,11 @@ export function basisReducingCcPremium(trades: Trade[]): number {
  * on sale) plus terminal legs. Excludes CALLED_AWAY (shares exited).
  */
 export function effectiveCcPremiumForBasis(trades: Trade[]): number {
+  return basisReducingCcLegs(trades).reduce((sum, t) => sum + netLegCashflow(t), 0);
+}
+
+/** CC legs counted by `effectiveCcPremiumForBasis`, oldest first. */
+function basisReducingCcLegs(trades: Trade[]): Trade[] {
   return trades
     .filter(
       (t) =>
@@ -358,7 +371,7 @@ export function effectiveCcPremiumForBasis(trades: Trade[]): number {
           t.status === "CLOSED" ||
           t.status === "ROLLED")
     )
-    .reduce((sum, t) => sum + netLegCashflow(t), 0);
+    .sort((a, b) => a.trade_date.localeCompare(b.trade_date));
 }
 
 function tradesScopedToWheel(
@@ -408,10 +421,19 @@ export function buildCcCostBasisRow(
   const assignIso = assignDate ?? primaryPut.trade_date;
   const subtitle = `$${primaryPut.strike.toFixed(2)} CSP · ${fmtDate(assignIso)}`;
 
-  const recentTradeDate = wheelTrades
-    .map((t) => new Date(t.trade_date).getTime())
-    .filter((ts) => Number.isFinite(ts))
-    .sort((a, b) => b - a)[0];
+  const firstAssignIso = assignedPuts
+    .map((p) => p.assigned_at ?? p.expiry ?? p.trade_date)
+    .sort()[0]!;
+  const costSteps: CcCostStep[] = [{ date: firstAssignIso, costPerShare: weightedInitialCost }];
+  let cumulativePremium = 0;
+  for (const cc of basisReducingCcLegs(wheelTrades)) {
+    cumulativePremium += netLegCashflow(cc);
+    costSteps.push({
+      date: cc.trade_date,
+      costPerShare: Math.max(0, weightedInitialCost - cumulativePremium / assignedShares),
+      cc: { tradeId: cc.id, strike: cc.strike },
+    });
+  }
 
   return {
     wheelId,
@@ -424,7 +446,7 @@ export function buildCcCostBasisRow(
     assignedShares,
     ccPositions: wheelTrades.filter((t) => t.option_type === "CALL").length,
     reductionPct,
-    recentTradeDate: recentTradeDate ?? 0,
+    costSteps,
   };
 }
 

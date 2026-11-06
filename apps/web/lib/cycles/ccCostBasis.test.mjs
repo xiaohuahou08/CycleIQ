@@ -450,3 +450,29 @@ describe("resolveTradeCycleId", () => {
     assert.equal(resolveTradeCycleId(trades[1], trades), "cycle-1");
   });
 });
+
+describe("buildCcCostBasisRows costSteps", () => {
+  it("steps cost down per CC leg in trade-date order and ends at currentCost", () => {
+    const legs = [
+      trade({ id: "put", cycle_id: "w", strike: 34, stock_cost_basis_per_share: 33.44, assigned_at: "2026-07-17" }),
+      trade({ id: "cc2", cycle_id: "w", option_type: "CALL", status: "EXPIRED", trade_date: "2026-09-08", premium: 0.34, commission_fee: 0 }),
+      trade({ id: "cc1", cycle_id: "w", option_type: "CALL", status: "ROLLED", trade_date: "2026-07-27", premium: 1.91, buyback_cost_per_share: 0.26, commission_fee: 0 }),
+      trade({ id: "cc3", cycle_id: "w", option_type: "CALL", status: "OPEN", trade_date: "2026-09-29", premium: 0.59, commission_fee: 0 }),
+      trade({ id: "away", cycle_id: "w", option_type: "CALL", status: "CALLED_AWAY", trade_date: "2026-10-01", premium: 9 }),
+    ];
+    const [row] = buildCcCostBasisRows([{ id: "w", ticker: "HIMS", state: "CC_OPEN", trades: legs }], legs);
+
+    assert.deepEqual(
+      row.costSteps.map((s) => [s.date, s.cc?.tradeId ?? "assign"]),
+      [
+        ["2026-07-17", "assign"],
+        ["2026-07-27", "cc1"],
+        ["2026-09-08", "cc2"],
+        ["2026-09-29", "cc3"],
+      ]
+    );
+    const costs = row.costSteps.map((s) => Number(s.costPerShare.toFixed(2)));
+    assert.deepEqual(costs, [33.44, 31.79, 31.45, 30.86]);
+    assert.equal(row.costSteps.at(-1).costPerShare, row.currentCost);
+  });
+});
