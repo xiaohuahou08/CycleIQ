@@ -19,7 +19,6 @@ export interface CcCostBasisRow {
   assignedShares: number;
   ccPositions: number;
   reductionPct: number;
-  recentTradeDate: number;
   /** Assignment basis, then cost/share after each basis-reducing CC leg (last = currentCost). */
   costSteps: CcCostStep[];
 }
@@ -28,7 +27,7 @@ export interface CcCostStep {
   date: string;
   costPerShare: number;
   /** Absent on the initial assignment step. */
-  cc?: { tradeId: string; strike: number; status: Trade["status"] };
+  cc?: { tradeId: string; strike: number };
 }
 
 function fmtDate(iso: string): string {
@@ -422,11 +421,6 @@ export function buildCcCostBasisRow(
   const assignIso = assignDate ?? primaryPut.trade_date;
   const subtitle = `$${primaryPut.strike.toFixed(2)} CSP · ${fmtDate(assignIso)}`;
 
-  const recentTradeDate = wheelTrades
-    .map((t) => new Date(t.trade_date).getTime())
-    .filter((ts) => Number.isFinite(ts))
-    .sort((a, b) => b - a)[0];
-
   const firstAssignIso = assignedPuts
     .map((p) => p.assigned_at ?? p.expiry ?? p.trade_date)
     .sort()[0]!;
@@ -437,7 +431,7 @@ export function buildCcCostBasisRow(
     costSteps.push({
       date: cc.trade_date,
       costPerShare: Math.max(0, weightedInitialCost - cumulativePremium / assignedShares),
-      cc: { tradeId: cc.id, strike: cc.strike, status: cc.status },
+      cc: { tradeId: cc.id, strike: cc.strike },
     });
   }
 
@@ -452,7 +446,6 @@ export function buildCcCostBasisRow(
     assignedShares,
     ccPositions: wheelTrades.filter((t) => t.option_type === "CALL").length,
     reductionPct,
-    recentTradeDate: recentTradeDate ?? 0,
     costSteps,
   };
 }
