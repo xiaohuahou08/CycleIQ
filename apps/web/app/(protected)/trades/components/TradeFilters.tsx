@@ -108,13 +108,7 @@ export default function TradeFilters({
     let status = filters.status;
     if (type === "PUT" && status === "CALLED_AWAY") status = "OPEN";
     if (type === "CALL" && status === "ASSIGNED") status = "OPEN";
-    apply({
-      type,
-      status,
-      dateRangeType: "1M",
-      startDate: undefined,
-      endDate: undefined,
-    });
+    apply({ type, status });
   };
 
   const toggleCsp = () => switchOptionType("PUT");
@@ -224,14 +218,7 @@ export default function TradeFilters({
                 <button
                   key={key}
                   type="button"
-                  onClick={() =>
-                    apply({
-                      status: key,
-                      dateRangeType: "1M",
-                      startDate: undefined,
-                      endDate: undefined,
-                    })
-                  }
+                  onClick={() => apply({ status: key })}
                   className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition ${
                     active
                       ? "animate-pill-pop bg-white text-slate-950 shadow-sm ring-1 ring-slate-300/80 scale-[1.02]"
