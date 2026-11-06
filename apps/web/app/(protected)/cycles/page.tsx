@@ -29,6 +29,13 @@ function fmtDate(iso: string, intlLocale: string): string {
   }).format(new Date(y, (m ?? 1) - 1, d ?? 1));
 }
 
+function fmtShortDate(iso: string, intlLocale: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Intl.DateTimeFormat(intlLocale, { month: "numeric", day: "numeric" }).format(
+    new Date(y, (m ?? 1) - 1, d ?? 1)
+  );
+}
+
 function labelForStatus(
   status: string,
   tCommon: (key: string) => string
@@ -434,21 +441,36 @@ export default function CyclesPage() {
                     <p className="text-center text-[11px] font-medium uppercase tracking-wider text-slate-600">
                       {t("cc.costOverTime")}
                     </p>
-                    <div className="mt-3 flex items-end justify-center gap-28">
-                      <div className="w-8 rounded-t-md bg-slate-300" style={{ height: "140px" }} />
-                      <div
-                        className="w-8 rounded-t-md bg-emerald-500"
-                        style={{
-                          height: `${Math.max(
-                            20,
-                            Math.min(140, (row.currentCost / Math.max(row.initialCost, 1)) * 140)
-                          )}px`,
-                        }}
-                      />
-                    </div>
-                    <div className="mt-2 flex items-center justify-center gap-20 text-xs text-slate-600">
-                      <span>{t("purchase")}</span>
-                      <span>{fmtDate(new Date(row.recentTradeDate).toISOString().slice(0, 10), intlLocale)}</span>
+                    <div className="mt-3 overflow-x-auto">
+                      <div className="mx-auto flex w-max items-end gap-3 px-2">
+                        {row.costSteps.map((step, i) => {
+                          const isFirst = i === 0;
+                          const isLast = i === row.costSteps.length - 1;
+                          const maxCost = Math.max(row.initialCost, 0.01);
+                          const height = Math.max(4, (step.costPerShare / maxCost) * 140);
+                          const label = isFirst
+                            ? t("purchase")
+                            : fmtShortDate(step.date, intlLocale);
+                          return (
+                            <div
+                              key={step.cc?.tradeId ?? "assign"}
+                              className="flex w-12 flex-col items-center"
+                              title={`${step.cc ? `CC $${step.cc.strike.toFixed(2)} · ` : ""}${fmtDate(step.date, intlLocale)} · $${step.costPerShare.toFixed(2)}`}
+                            >
+                              <span className="mb-1 text-[11px] font-medium tabular-nums text-slate-700">
+                                ${step.costPerShare.toFixed(2)}
+                              </span>
+                              <div
+                                className={`w-8 rounded-t-md ${
+                                  isFirst ? "bg-slate-300" : isLast ? "bg-emerald-600" : "bg-emerald-400"
+                                }`}
+                                style={{ height: `${height}px` }}
+                              />
+                              <span className="mt-2 whitespace-nowrap text-xs text-slate-600">{label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 </div>

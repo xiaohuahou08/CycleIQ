@@ -13,7 +13,10 @@ import {
 interface ExpireTradeModalProps {
   open: boolean;
   trade: Trade | null;
+  /** Live underlying quote; used to warn when the option looks in the money. */
+  currentPrice?: number;
   onClose: () => void;
+  onSwitchToAssign?: () => void;
   onConfirm: (input: {
     expired_at: string;
     expire_type: "expired_worthless";
@@ -29,7 +32,9 @@ function todayIso(): string {
 export default function ExpireTradeModal({
   open,
   trade,
+  currentPrice,
   onClose,
+  onSwitchToAssign,
   onConfirm,
 }: ExpireTradeModalProps) {
   const { t } = useTranslations("trades");
@@ -59,6 +64,13 @@ export default function ExpireTradeModal({
   if (!open || !trade) return null;
 
   const shares = trade.contracts * 100;
+  const itmPrice =
+    currentPrice != null &&
+    Number.isFinite(currentPrice) &&
+    currentPrice > 0 &&
+    (trade.option_type === "CALL" ? currentPrice > trade.strike : currentPrice < trade.strike)
+      ? currentPrice
+      : null;
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -83,6 +95,29 @@ export default function ExpireTradeModal({
       labelledById="expire-trade-title"
     >
       <p className="px-6 pt-4 text-sm text-slate-500">{t("expire.intro")}</p>
+
+      {itmPrice != null && (
+        <div
+          role="alert"
+          className="mx-6 mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+        >
+          <p>
+            {t(trade.option_type === "CALL" ? "expire.itmWarningCall" : "expire.itmWarningPut", {
+              price: itmPrice.toFixed(2),
+              strike: trade.strike.toFixed(2),
+            })}
+          </p>
+          {onSwitchToAssign && (
+            <button
+              type="button"
+              onClick={onSwitchToAssign}
+              className="mt-2 font-medium underline underline-offset-2 hover:text-amber-950"
+            >
+              {t("expire.switchToAssign")}
+            </button>
+          )}
+        </div>
+      )}
 
         <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
           <div className="rounded-xl border border-slate-200 p-4">

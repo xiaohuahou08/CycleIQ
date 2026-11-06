@@ -807,6 +807,11 @@ const zh = {
       title: "标记为已到期",
       intro: "记录该期权到期作废，权利金已保留。",
       submit: "标记已到期",
+      itmWarningCall:
+        "当前股价 ${{price}} 高于行权价 ${{strike}}，这张 CC 处于价内，很可能已被行权卖出。如果股票已被收走，请改用「被行权」。",
+      itmWarningPut:
+        "当前股价 ${{price}} 低于行权价 ${{strike}}，这张 CSP 处于价内，很可能已被行权接股。如果已经接股，请改用「被行权」。",
+      switchToAssign: "改为被行权",
     },
   },
 

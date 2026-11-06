@@ -813,6 +813,11 @@ const en = {
       title: "Mark as Expired",
       intro: "Record that this option expired worthless and premium was kept.",
       submit: "Mark Expired",
+      itmWarningCall:
+        "The stock is at ${{price}}, above the ${{strike}} strike. This covered call is in the money and was likely called away. If your shares were sold, use Assign instead.",
+      itmWarningPut:
+        "The stock is at ${{price}}, below the ${{strike}} strike. This put is in the money and was likely assigned. If you received shares, use Assign instead.",
+      switchToAssign: "Switch to Assign",
     },
   },
 
